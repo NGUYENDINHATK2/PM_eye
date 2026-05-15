@@ -1,16 +1,27 @@
-import { fetchAll } from "@/lib/data";
+"use client";
+
+import { PageSkeleton } from "@/components/ui/skeleton";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { AllocationsClient } from "./AllocationsClient";
 
-export const dynamic = "force-dynamic";
+export default function AllocationsPage() {
+  const { data, loading, error } = useAppData();
 
-export default async function AllocationsPage() {
-  const { profiles, projects, phases, allocations } = await fetchAll();
+  if (loading) return <PageSkeleton variant="detail" />;
+  if (error)
+    return (
+      <div className="text-center py-20 text-rose-500">
+        Lỗi tải dữ liệu: {error}
+      </div>
+    );
+  if (!data) return null;
+
   return (
     <AllocationsClient
-      profiles={profiles}
-      projects={projects}
-      phases={phases}
-      initialAllocations={allocations}
+      profiles={data.profiles}
+      projects={data.projects}
+      phases={data.phases}
+      initialAllocations={data.allocations}
     />
   );
 }

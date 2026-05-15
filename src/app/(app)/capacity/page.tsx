@@ -1,15 +1,26 @@
-import { fetchAll } from "@/lib/data";
+"use client";
+
+import { PageSkeleton } from "@/components/ui/skeleton";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { CapacityClient } from "./CapacityClient";
 
-export const dynamic = "force-dynamic";
+export default function CapacityPage() {
+  const { data, loading, error } = useAppData();
 
-export default async function CapacityPage() {
-  const { profiles, allocations, projects } = await fetchAll();
+  if (loading) return <PageSkeleton variant="dashboard" />;
+  if (error)
+    return (
+      <div className="text-center py-20 text-rose-500">
+        Lỗi tải dữ liệu: {error}
+      </div>
+    );
+  if (!data) return null;
+
   return (
     <CapacityClient
-      profiles={profiles}
-      allocations={allocations}
-      projects={projects}
+      profiles={data.profiles}
+      allocations={data.allocations}
+      projects={data.projects}
     />
   );
 }

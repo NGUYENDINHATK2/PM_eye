@@ -1,15 +1,26 @@
+"use client";
+
+import { PageSkeleton } from "@/components/ui/skeleton";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { EmployeesClient } from "./EmployeesClient";
-import { fetchAll } from "@/lib/data";
 
-export const dynamic = "force-dynamic";
+export default function EmployeesPage() {
+  const { data, loading, error } = useAppData();
 
-export default async function EmployeesPage() {
-  const { profiles, allocations, salaryHistory } = await fetchAll();
+  if (loading) return <PageSkeleton variant="table" />;
+  if (error)
+    return (
+      <div className="text-center py-20 text-rose-500">
+        Lỗi tải dữ liệu: {error}
+      </div>
+    );
+  if (!data) return null;
+
   return (
     <EmployeesClient
-      initialProfiles={profiles}
-      initialAllocations={allocations}
-      initialSalaryHistory={salaryHistory}
+      initialProfiles={data.profiles}
+      initialAllocations={data.allocations}
+      initialSalaryHistory={data.salaryHistory}
     />
   );
 }

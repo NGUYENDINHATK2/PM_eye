@@ -1,9 +1,25 @@
-import { fetchAll } from "@/lib/data";
+"use client";
+
+import { PageSkeleton } from "@/components/ui/skeleton";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { ExpensesClient } from "./ExpensesClient";
 
-export const dynamic = "force-dynamic";
+export default function ExpensesPage() {
+  const { data, loading, error } = useAppData();
 
-export default async function ExpensesPage() {
-  const { projects, expenses } = await fetchAll();
-  return <ExpensesClient projects={projects} initialExpenses={expenses} />;
+  if (loading) return <PageSkeleton variant="table" />;
+  if (error)
+    return (
+      <div className="text-center py-20 text-rose-500">
+        Lỗi tải dữ liệu: {error}
+      </div>
+    );
+  if (!data) return null;
+
+  return (
+    <ExpensesClient
+      projects={data.projects}
+      initialExpenses={data.expenses}
+    />
+  );
 }
