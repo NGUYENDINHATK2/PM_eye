@@ -3,16 +3,25 @@ import { cn } from "@/lib/utils";
 
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { hud?: boolean }
+>(({ className, hud, children, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border bg-card text-card-foreground card-premium",
+      "relative rounded-2xl border bg-card text-card-foreground cyber-card",
+      hud && "hud-frame",
       className
     )}
     {...props}
-  />
+  >
+    {children}
+    {hud && (
+      <>
+        <span className="hud-corner-bl" aria-hidden />
+        <span className="hud-corner-br" aria-hidden />
+      </>
+    )}
+  </div>
 ));
 Card.displayName = "Card";
 

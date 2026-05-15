@@ -54,6 +54,14 @@ const config: Config = {
         amber: { brand: "hsl(var(--amber))" },
         rose: { brand: "hsl(var(--rose))" },
         violet: { brand: "hsl(var(--violet))" },
+        neon: {
+          cyan: "hsl(var(--neon-cyan))",
+          fuchsia: "hsl(var(--neon-fuchsia))",
+          violet: "hsl(var(--neon-violet))",
+          lime: "hsl(var(--neon-lime))",
+          amber: "hsl(var(--neon-amber))",
+          rose: "hsl(var(--neon-rose))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -61,7 +69,9 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "monospace"],
       },
       keyframes: {
         "accordion-down": {

@@ -1,9 +1,28 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-sans",
+  display: "swap",
+});
+const display = Space_Grotesk({
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "PM_Eye — Project · People · P&L",
-  description: "Tool quản lý dự án, nhân sự, chi phí vận hành cho PM/leader.",
+  title: "PM_Eye — Neural Ops · Project · People · P&L",
+  description: "AI cyberpunk command center cho PM/leader: dự án, nhân sự, dòng tiền — trực quan, real-time.",
 };
 
 // FOUC-safe theme init — default DARK (cosmic liquid-glass aesthetic)
@@ -29,11 +48,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html
+      lang="vi"
+      suppressHydrationWarning
+      className={`${inter.variable} ${display.variable} ${mono.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen font-sans">{children}</body>
     </html>
   );
 }

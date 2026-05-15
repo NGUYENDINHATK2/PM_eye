@@ -19,54 +19,65 @@ export type Alert = {
 
 const kindStyle: Record<
   Alert["kind"],
-  { icon: ReactNode; bg: string; text: string; ring: string }
+  { icon: ReactNode; code: string; bg: string; text: string; ring: string }
 > = {
   burnout: {
     icon: <Flame size={13} strokeWidth={2.3} />,
-    bg: "bg-rose-500/10",
-    text: "text-rose-600 dark:text-rose-400",
-    ring: "ring-rose-500/20",
+    code: "BRN",
+    bg: "bg-neon-rose/10",
+    text: "text-neon-rose",
+    ring: "ring-neon-rose/30",
   },
   idle: {
     icon: <Sparkles size={13} strokeWidth={2.3} />,
-    bg: "bg-sky-500/10",
-    text: "text-sky-600 dark:text-sky-400",
-    ring: "ring-sky-500/20",
+    code: "IDL",
+    bg: "bg-neon-cyan/10",
+    text: "text-neon-cyan",
+    ring: "ring-neon-cyan/30",
   },
   budget: {
     icon: <Wallet size={13} strokeWidth={2.3} />,
-    bg: "bg-amber-500/10",
-    text: "text-amber-600 dark:text-amber-400",
-    ring: "ring-amber-500/20",
+    code: "BGT",
+    bg: "bg-neon-amber/10",
+    text: "text-neon-amber",
+    ring: "ring-neon-amber/30",
   },
   "missing-role": {
     icon: <UserX size={13} strokeWidth={2.3} />,
-    bg: "bg-violet-500/10",
-    text: "text-violet-600 dark:text-violet-400",
-    ring: "ring-violet-500/20",
+    code: "GAP",
+    bg: "bg-neon-violet/10",
+    text: "text-neon-violet",
+    ring: "ring-neon-violet/30",
   },
 };
 
 export function AlertList({ alerts }: { alerts: Alert[] }) {
+  const hasAlerts = alerts.length > 0;
   return (
-    <Card>
+    <Card hud>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Cảnh báo</CardTitle>
-        <CardDescription>
-          {alerts.length > 0
-            ? `${alerts.length} điểm cần để ý`
-            : "Không có vấn đề nào"}
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="font-display text-base flex items-center gap-2">
+            <span className={hasAlerts ? "status-dot status-dot-rose" : "status-dot"} />
+            Cảnh báo
+          </CardTitle>
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-neon-cyan/70">
+            // SYS.ALERT · {alerts.length.toString().padStart(2, "0")}
+          </span>
+        </div>
+        <CardDescription className="font-mono text-[11px] tracking-wider uppercase">
+          {hasAlerts ? `${alerts.length} điểm cần để ý` : "ALL CLEAR"}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {alerts.length === 0 && (
+        {!hasAlerts && (
           <div className="text-center py-8">
-            <div className="w-10 h-10 mx-auto rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-3">
-              <CheckCircle2 size={18} className="text-emerald-500" />
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-neon-lime/10 ring-1 ring-neon-lime/40 flex items-center justify-center mb-3 glow-lime">
+              <CheckCircle2 size={20} className="text-neon-lime" />
             </div>
-            <div className="text-sm font-medium">Tất cả ổn áp</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              Team đang vận hành trong vùng an toàn.
+            <div className="font-display text-sm font-semibold">Tất cả ổn áp</div>
+            <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mt-1">
+              NEURAL · NOMINAL
             </div>
           </div>
         )}
@@ -76,16 +87,21 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
             return (
               <div
                 key={a.id}
-                className="group flex items-start gap-3 p-2.5 rounded-md hover:bg-accent/50 transition animate-fade-up"
+                className="group flex items-start gap-3 p-2.5 rounded-lg hover:bg-card/40 hover:ring-1 hover:ring-neon-cyan/20 transition animate-fade-up"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 <div
-                  className={`w-7 h-7 rounded-md ${s.bg} ${s.text} ring-1 ${s.ring} flex items-center justify-center shrink-0`}
+                  className={`w-8 h-8 rounded-lg ${s.bg} ${s.text} ring-1 ${s.ring} flex items-center justify-center shrink-0`}
                 >
                   {s.icon}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium leading-snug">{a.title}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium leading-snug truncate">{a.title}</div>
+                    <span className={`font-mono text-[9px] tracking-wider shrink-0 ${s.text} opacity-80`}>
+                      {s.code}
+                    </span>
+                  </div>
                   <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     {a.detail}
                   </div>

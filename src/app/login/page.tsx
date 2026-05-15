@@ -11,7 +11,6 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Sparkles,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -49,58 +48,70 @@ export default function LoginPage() {
       icon: TrendingUp,
       title: "P&L thật cho từng dự án",
       desc: "Doanh thu vs chi phí, margin trên từng dự án — lời/lỗ rõ ràng.",
-      color: "from-violet-500 to-fuchsia-500",
+      code: "FIN.PNL",
+      neonVar: "--neon-violet",
     },
     {
       icon: Users,
       title: "Capacity team trực quan",
       desc: "Heatmap 6 tháng tới — ai burn, ai rảnh, role nào sắp full.",
-      color: "from-cyan-500 to-sky-500",
+      code: "HR.CAP",
+      neonVar: "--neon-cyan",
     },
     {
       icon: Activity,
       title: "Dòng tiền & cảnh báo",
       desc: "Burnout, vượt budget, payments quá hạn — đã có sẵn câu trả lời.",
-      color: "from-emerald-500 to-teal-500",
+      code: "SYS.OPS",
+      neonVar: "--neon-lime",
     },
   ];
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">
-      {/* Cosmic background — purely decorative */}
+      {/* Neural cyber background */}
       <div className="absolute inset-0 -z-10 pointer-events-none">
         {/* Stars */}
         <div
-          className="absolute inset-0 opacity-60"
+          className="absolute inset-0 opacity-70"
           style={{
             backgroundImage: `
               radial-gradient(1px 1px at 10% 15%, white, transparent 50%),
-              radial-gradient(1.5px 1.5px at 25% 75%, hsl(var(--cyan)), transparent 50%),
+              radial-gradient(1.5px 1.5px at 25% 75%, hsl(var(--neon-cyan)), transparent 50%),
               radial-gradient(1px 1px at 45% 35%, white, transparent 50%),
-              radial-gradient(1px 1px at 60% 85%, hsl(var(--violet)), transparent 50%),
-              radial-gradient(1.5px 1.5px at 80% 25%, hsl(var(--fuchsia)), transparent 50%),
+              radial-gradient(1px 1px at 60% 85%, hsl(var(--neon-violet)), transparent 50%),
+              radial-gradient(1.5px 1.5px at 80% 25%, hsl(var(--neon-fuchsia)), transparent 50%),
               radial-gradient(1px 1px at 90% 65%, white, transparent 50%),
               radial-gradient(1px 1px at 15% 55%, white, transparent 50%),
               radial-gradient(1px 1px at 70% 45%, white, transparent 50%)
             `,
           }}
         />
-        {/* Nebula orbs */}
-        <div className="absolute -top-32 -left-32 w-[600px] h-[600px] bg-violet-500/30 rounded-full blur-3xl animate-pulse" />
+        {/* Aurora orbs */}
         <div
-          className="absolute -bottom-32 -right-32 w-[600px] h-[600px] bg-cyan-500/25 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "1.5s" }}
+          className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full blur-3xl animate-pulse"
+          style={{ background: "hsl(var(--neon-violet) / 0.32)" }}
         />
         <div
-          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-fuchsia-500/20 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "3s" }}
+          className="absolute -bottom-32 -right-32 w-[600px] h-[600px] rounded-full blur-3xl animate-pulse"
+          style={{
+            background: "hsl(var(--neon-cyan) / 0.28)",
+            animationDelay: "1.5s",
+          }}
         />
-        {/* Grid pattern */}
         <div
-          className="absolute inset-0 opacity-[0.08]"
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-3xl animate-pulse"
+          style={{
+            background: "hsl(var(--neon-fuchsia) / 0.22)",
+            animationDelay: "3s",
+          }}
+        />
+        {/* Neural grid */}
+        <div
+          className="absolute inset-0 opacity-[0.10]"
           style={{
             backgroundImage:
-              "linear-gradient(hsl(var(--violet)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--violet)) 1px, transparent 1px)",
+              "linear-gradient(hsl(var(--neon-cyan)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--neon-cyan)) 1px, transparent 1px)",
             backgroundSize: "48px 48px",
             maskImage:
               "radial-gradient(ellipse 80% 60% at center, black, transparent 80%)",
@@ -114,52 +125,80 @@ export default function LoginPage() {
           <div className="hidden lg:block animate-fade-up">
             <div className="flex items-center gap-3 mb-12">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 blur-lg opacity-70 rounded-2xl animate-float" />
-                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-600 flex items-center justify-center text-white shadow-xl">
-                  <Sparkles size={22} strokeWidth={2.5} />
+                <div
+                  className="absolute -inset-1 blur-lg opacity-70 rounded-2xl animate-float"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(var(--neon-violet)), hsl(var(--neon-fuchsia)), hsl(var(--neon-cyan)))",
+                  }}
+                />
+                <div
+                  className="relative w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(var(--neon-violet)), hsl(var(--neon-cyan)))",
+                    boxShadow:
+                      "0 0 0 1px hsl(var(--neon-cyan) / 0.4), 0 8px 24px -4px hsl(var(--neon-violet) / 0.5)",
+                  }}
+                >
+                  <Eye size={22} strokeWidth={2.5} />
                 </div>
               </div>
               <div>
-                <div className="font-bold text-2xl tracking-tight">
-                  PM<span className="gradient-text">_Eye</span>
+                <div className="font-display font-bold text-2xl tracking-tight">
+                  PM<span className="holo-text">_Eye</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-[0.25em] font-semibold">
-                  Project · People · P&L
+                <div className="text-[10px] font-mono text-neon-cyan/80 uppercase tracking-[0.25em] font-bold mt-0.5">
+                  NEURAL · OPS · COMMAND
                 </div>
               </div>
             </div>
 
             <div className="mb-2">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full liquid-glass text-[11px] font-semibold text-muted-foreground">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Internal · v1.0
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-[11px] font-mono tracking-wider uppercase text-neon-cyan">
+                <span className="status-dot" />
+                SYSTEM ONLINE · v1.0
               </span>
             </div>
 
-            <h1 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05] mt-5">
+            <h1 className="font-display text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05] mt-5">
               Nhìn 1 phát biết
               <br />
-              <span className="gradient-text-cosmic">team đang lời hay lỗ.</span>
+              <span className="holo-text">team đang lời hay lỗ.</span>
             </h1>
             <p className="text-base text-muted-foreground mt-5 max-w-md leading-relaxed">
-              Tool quản lý dự án IT cho trưởng phòng kinh doanh — doanh thu, chi
-              phí, margin, capacity team. Đủ data để pitch sếp.
+              AI command center cho PM/leader — doanh thu, chi phí, margin,
+              capacity team. Real-time. Trực quan. Đủ data để pitch sếp.
             </p>
 
             <div className="mt-10 space-y-3 max-w-md">
               {features.map((f, i) => (
                 <div
                   key={f.title}
-                  className="flex items-start gap-3 p-3 rounded-2xl liquid-glass animate-fade-up"
+                  className="relative flex items-start gap-3 p-3 rounded-2xl cyber-card hud-frame animate-fade-up overflow-hidden"
                   style={{ animationDelay: `${(i + 1) * 120}ms` }}
                 >
+                  <span className="hud-corner-bl" aria-hidden />
+                  <span className="hud-corner-br" aria-hidden />
                   <div
-                    className={`w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center text-white shadow-md`}
+                    className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-white relative"
+                    style={{
+                      background: `linear-gradient(135deg, hsl(var(${f.neonVar})), hsl(var(${f.neonVar}) / 0.6))`,
+                      boxShadow: `0 0 0 1px hsl(var(${f.neonVar}) / 0.4), 0 6px 18px -4px hsl(var(${f.neonVar}) / 0.5), 0 0 16px -2px hsl(var(${f.neonVar}) / 0.4)`,
+                    }}
                   >
                     <f.icon size={16} strokeWidth={2.2} />
                   </div>
-                  <div>
-                    <div className="font-medium text-sm">{f.title}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-sm">{f.title}</div>
+                      <span
+                        className="text-[9px] font-mono tracking-wider opacity-80"
+                        style={{ color: `hsl(var(${f.neonVar}))` }}
+                      >
+                        {f.code}
+                      </span>
+                    </div>
                     <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       {f.desc}
                     </div>
@@ -168,17 +207,17 @@ export default function LoginPage() {
               ))}
             </div>
 
-            <div className="mt-10 flex items-center gap-4 text-[11px] text-muted-foreground">
+            <div className="mt-10 flex items-center gap-4 text-[10px] font-mono tracking-wider text-muted-foreground uppercase">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={11} className="text-emerald-500" />
+                <CheckCircle2 size={11} className="text-neon-lime" />
                 Next.js 15
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={11} className="text-emerald-500" />
+                <CheckCircle2 size={11} className="text-neon-lime" />
                 Supabase
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 size={11} className="text-emerald-500" />
+                <CheckCircle2 size={11} className="text-neon-lime" />
                 shadcn/ui
               </span>
             </div>
@@ -192,31 +231,56 @@ export default function LoginPage() {
             {/* Mobile-only logo */}
             <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-500 blur-md opacity-60 rounded-2xl" />
-                <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-600 flex items-center justify-center text-white shadow-lg">
-                  <Sparkles size={20} strokeWidth={2.5} />
+                <div
+                  className="absolute -inset-1 blur-md opacity-60 rounded-2xl"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(var(--neon-violet)), hsl(var(--neon-cyan)))",
+                  }}
+                />
+                <div
+                  className="relative w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(var(--neon-violet)), hsl(var(--neon-cyan)))",
+                  }}
+                >
+                  <Eye size={20} strokeWidth={2.5} />
                 </div>
               </div>
               <div>
-                <div className="font-semibold text-lg tracking-tight">
-                  PM<span className="gradient-text">_Eye</span>
+                <div className="font-display font-semibold text-lg tracking-tight">
+                  PM<span className="holo-text">_Eye</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                  Project · People · P&L
+                <div className="text-[10px] font-mono text-neon-cyan/80 uppercase tracking-wider">
+                  NEURAL · OPS
                 </div>
               </div>
             </div>
 
             <div className="relative">
-              {/* Outer gradient glow */}
-              <div className="absolute -inset-px bg-gradient-to-br from-violet-500/40 via-fuchsia-500/30 to-cyan-500/40 rounded-[18px] blur-md opacity-60" />
+              {/* Outer neon glow */}
+              <div
+                className="absolute -inset-px rounded-[18px] blur-md opacity-50"
+                style={{
+                  background:
+                    "linear-gradient(135deg, hsl(var(--neon-violet) / 0.5), hsl(var(--neon-cyan) / 0.4), hsl(var(--neon-fuchsia) / 0.5))",
+                }}
+              />
 
-              <div className="relative liquid-glass rounded-2xl p-7 sm:p-8">
-                <h2 className="text-2xl font-semibold tracking-tight">
-                  Chào mừng trở lại 👋
+              <div className="relative cyber-card hud-frame rounded-2xl p-7 sm:p-8 scanlines">
+                <span className="hud-corner-bl" aria-hidden />
+                <span className="hud-corner-br" aria-hidden />
+                <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-neon-cyan mb-3 flex items-center gap-2">
+                  <span className="status-dot" />
+                  // ACCESS · AUTH_LAYER
+                </div>
+                <h2 className="font-display text-2xl font-semibold tracking-tight">
+                  Chào mừng trở lại{" "}
+                  <span className="text-neon-cyan animate-blink">_</span>
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1.5">
-                  Đăng nhập để vào dashboard quản lý.
+                  Xác thực để vào neural command center.
                 </p>
 
                 <form onSubmit={onSubmit} className="mt-7 space-y-4">
@@ -309,14 +373,14 @@ export default function LoginPage() {
                   </Button>
                 </form>
 
-                <p className="text-center text-[11px] text-muted-foreground mt-6">
-                  Tool nội bộ — chỉ admin được cấp tài khoản.
+                <p className="text-center text-[10px] font-mono tracking-wider text-muted-foreground mt-6 uppercase">
+                  // INTERNAL · ADMIN-PROVISIONED ACCESS
                 </p>
               </div>
             </div>
 
-            <p className="text-center text-[10px] text-muted-foreground/70 mt-6 tracking-wide">
-              © PM_Eye · Built with Next.js · Supabase
+            <p className="text-center text-[10px] font-mono text-muted-foreground/70 mt-6 tracking-[0.18em] uppercase">
+              © PM_EYE · NEURAL_OPS · v1.0
             </p>
           </div>
         </div>
