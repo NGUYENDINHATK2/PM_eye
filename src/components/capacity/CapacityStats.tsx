@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { userLoadToday } from "@/lib/calculations";
+import { userLoadCurrentMonth } from "@/lib/calculations";
 import { formatPercent } from "@/lib/utils";
 import type { Allocation, Profile } from "@/types/database";
 import { Activity, Flame, Sparkles, Users } from "lucide-react";
@@ -20,7 +20,7 @@ export function CapacityStats({
   let underusedCount = 0;
   let totalLoad = 0;
   for (const p of active) {
-    const load = userLoadToday(p.id, allocations, today);
+    const load = userLoadCurrentMonth(p.id, allocations, today);
     totalLoad += load;
     if (load > 1.0) burnoutCount++;
     else if (load === 0) benchCount++;

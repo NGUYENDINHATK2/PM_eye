@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { userLoadToday } from "@/lib/calculations";
+import { userLoadCurrentMonth } from "@/lib/calculations";
 import { cn, formatDate, formatPercent } from "@/lib/utils";
 import type {
   Allocation,
@@ -565,7 +565,7 @@ function PersonRail({
   allocations: Allocation[];
   today: Date;
 }) {
-  const load = userLoadToday(profile.id, allocations, today);
+  const load = userLoadCurrentMonth(profile.id, allocations, today);
   return (
     <>
       <Avatar className="h-10 w-10 shrink-0">

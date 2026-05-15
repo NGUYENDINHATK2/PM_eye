@@ -8,7 +8,12 @@ import type {
   RequiredRole,
   SalaryHistory,
 } from "@/types/database";
-import { daysInMonth, monthKey, rangeOverlapDays } from "./utils";
+import {
+  daysInMonth,
+  monthKey,
+  parseLocalDate,
+  rangeOverlapDays,
+} from "./utils";
 
 // =====================================================
 // Cost & load calculations
@@ -78,8 +83,9 @@ export function allocationCostForMonth(
 }
 
 /**
- * Current load of a user — sum of percents from all allocations
- * that are active right now (today between start and end).
+ * Tải hiện tại (point-in-time) của 1 user — tổng % của tất cả allocation
+ * đang active đúng ngày `asOf`. Date strings được parse về local midnight
+ * và end_date là inclusive đến hết ngày, tránh off-by-one do timezone.
  */
 export function userLoadToday(
   userId: string,
@@ -89,12 +95,30 @@ export function userLoadToday(
   let load = 0;
   for (const a of allocations) {
     if (a.user_id !== userId) continue;
-    const s = new Date(a.start_date);
-    const e = new Date(a.end_date);
+    const s = parseLocalDate(a.start_date);
+    const e = parseLocalDate(a.end_date, true);
     if (asOf < s || asOf > e) continue;
     load += Number(a.percent);
   }
   return load;
+}
+
+/**
+ * Tải trung bình của 1 user trong tháng chứa `asOf`. Khớp với cách heatmap
+ * tính → dùng cho bảng nhân sự / bench detection để tránh trường hợp "hôm
+ * nay chưa active nhưng tháng này có allocation" bị gắn nhãn Bench.
+ */
+export function userLoadCurrentMonth(
+  userId: string,
+  allocations: Allocation[],
+  asOf: Date = new Date()
+): number {
+  return userLoadForMonth(
+    userId,
+    allocations,
+    asOf.getFullYear(),
+    asOf.getMonth() + 1
+  );
 }
 
 /**
@@ -165,8 +189,8 @@ export function userLoadForMonth(
   let load = 0;
   for (const a of allocations) {
     if (a.user_id !== userId) continue;
-    const aStart = new Date(a.start_date);
-    const aEnd = new Date(a.end_date);
+    const aStart = parseLocalDate(a.start_date);
+    const aEnd = parseLocalDate(a.end_date);
     const overlap = rangeOverlapDays(monthStart, monthEnd, aStart, aEnd);
     if (overlap <= 0) continue;
     load += a.percent * (overlap / dim);

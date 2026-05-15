@@ -15,6 +15,7 @@ import {
   paymentSummary,
   phaseRoleGaps,
   projectFinance,
+  userLoadCurrentMonth,
   userLoadToday,
 } from "@/lib/calculations";
 import { useAppData } from "@/lib/hooks/useAppData";
@@ -126,15 +127,18 @@ function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppDat
     }
 
     for (const p of profiles) {
-      const load = userLoadToday(p.id, allocations, today);
-      if (load > 1.0) {
+      // Burnout dùng point-in-time (hôm nay đang quá tải mới đáng cảnh báo).
+      // Bench dùng tải tháng (tránh báo nhầm khi allocation chỉ chưa khởi động hôm nay).
+      const loadNow = userLoadToday(p.id, allocations, today);
+      const loadMonth = userLoadCurrentMonth(p.id, allocations, today);
+      if (loadNow > 1.0) {
         alerts.push({
           id: `burn-${p.id}`,
           kind: "burnout",
-          title: `${p.full_name} đang ${Math.round(load * 100)}% tải`,
+          title: `${p.full_name} đang ${Math.round(loadNow * 100)}% tải`,
           detail: `Quá tải so với 100%. Cân nhắc giảm scope hoặc rebalance team.`,
         });
-      } else if (load === 0 && p.is_active) {
+      } else if (loadMonth === 0 && p.is_active) {
         alerts.push({
           id: `idle-${p.id}`,
           kind: "idle",

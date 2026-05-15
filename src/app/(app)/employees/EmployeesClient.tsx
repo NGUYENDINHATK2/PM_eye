@@ -44,7 +44,7 @@ import {
 import {
   loadStatus,
   loadStatusLabel,
-  userLoadToday,
+  userLoadCurrentMonth,
 } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -221,7 +221,7 @@ export function EmployeesClient({
     .filter((p) => p.is_active)
     .reduce((s, p) => s + Number(p.base_salary), 0);
   const benchCount = profiles.filter(
-    (p) => p.is_active && userLoadToday(p.id, allocations, today) === 0
+    (p) => p.is_active && userLoadCurrentMonth(p.id, allocations, today) === 0
   ).length;
 
   return (
@@ -273,7 +273,7 @@ export function EmployeesClient({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Danh sách thành viên</CardTitle>
           <CardDescription>
-            Tải hiện tại = tổng % allocation đang chạy hôm nay.
+            Tải tháng này = trung bình % allocation trải đều trong tháng (khớp với heatmap capacity).
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -283,7 +283,7 @@ export function EmployeesClient({
                 <TableHead className="pl-6">Tên</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="text-right">Lương / tháng</TableHead>
-                <TableHead>Tải hiện tại</TableHead>
+                <TableHead>Tải tháng này</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead className="pr-6 w-16"></TableHead>
               </TableRow>
@@ -307,7 +307,7 @@ export function EmployeesClient({
                 </TableRow>
               )}
               {profiles.map((p) => {
-                const load = userLoadToday(p.id, allocations, today);
+                const load = userLoadCurrentMonth(p.id, allocations, today);
                 const st = loadStatus(load);
                 const badgeVariant =
                   st === "critical" || st === "overloaded"

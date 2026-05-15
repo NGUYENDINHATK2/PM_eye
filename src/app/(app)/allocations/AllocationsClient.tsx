@@ -26,7 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import {
   loadStatus,
   loadStatusLabel,
-  userLoadToday,
+  userLoadCurrentMonth,
   userPeakLoad,
 } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
@@ -471,7 +471,7 @@ export function AllocationsClient({
       <div className="space-y-3">
         {profiles.map((p) => {
           const items = grouped.get(p.id) ?? [];
-          const load = userLoadToday(p.id, allocations, today);
+          const load = userLoadCurrentMonth(p.id, allocations, today);
           const st = loadStatus(load);
           const variant =
             st === "critical" || st === "overloaded"

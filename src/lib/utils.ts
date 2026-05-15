@@ -73,6 +73,23 @@ export function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
 
+/**
+ * Parse một date-only string `YYYY-MM-DD` từ DB sang Date ở local timezone.
+ *
+ * Vì sao cần: `new Date('2026-05-16')` parse là UTC midnight, ở ICT (+7) sẽ
+ * thành 07:00 sáng — lệch một múi giờ. Khi so sánh với `new Date()` (local
+ * time) sẽ gây off-by-one ở rìa ngày. Hàm này luôn parse về local midnight.
+ *
+ * @param endOfDay nếu true → set giờ về 23:59:59.999 (dùng cho end_date inclusive)
+ */
+export function parseLocalDate(s: string, endOfDay = false): Date {
+  // Lấy 10 ký tự đầu để xử lý cả 'YYYY-MM-DD' và 'YYYY-MM-DDTHH:mm:ssZ'
+  const [yy, mm, dd] = s.slice(0, 10).split("-").map(Number);
+  const d = new Date(yy, (mm ?? 1) - 1, dd ?? 1);
+  if (endOfDay) d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 export function rangeOverlapDays(
   aStart: Date,
   aEnd: Date,
