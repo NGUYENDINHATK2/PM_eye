@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ProjectCostBreakdown } from "@/components/projects/ProjectCostBreakdown";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,6 @@ import {
 } from "@/components/ui/select";
 import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import {
-  monthlyCostTimeline,
   paymentSummary,
   phaseRoleGaps,
   projectFinance,
@@ -55,6 +55,7 @@ import type {
   ProjectPayment,
   ProjectPhase,
   RequiredRole,
+  SalaryHistory,
 } from "@/types/database";
 import {
   AlertCircle,
@@ -72,15 +73,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 export function ProjectDetailClient({
   project,
@@ -90,6 +82,7 @@ export function ProjectDetailClient({
   allAllocations,
   expenses,
   initialPayments,
+  salaryHistory,
 }: {
   project: Project;
   profiles: Profile[];
@@ -98,6 +91,7 @@ export function ProjectDetailClient({
   allAllocations: Allocation[];
   expenses: OperatingExpense[];
   initialPayments: ProjectPayment[];
+  salaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
   const [phases, setPhases] = useState(initialPhases);
@@ -123,20 +117,16 @@ export function ProjectDetailClient({
   );
 
   const finance = useMemo(
-    () => projectFinance(project, allAllocations, profilesById, expenses),
-    [project, allAllocations, profilesById, expenses]
-  );
-
-  const timeline = useMemo(
     () =>
-      monthlyCostTimeline(
+      projectFinance(
+        project,
         allAllocations,
         profilesById,
         expenses,
-        6,
-        project.id
+        new Date(),
+        salaryHistory
       ),
-    [allAllocations, profilesById, expenses, project.id]
+    [project, allAllocations, profilesById, expenses, salaryHistory]
   );
 
   // Team đang chạy hôm nay + chi tiết phases họ tham gia
@@ -364,9 +354,24 @@ export function ProjectDetailClient({
           <div className="flex items-center gap-2">
             {!project.end_date && <Badge variant="info">Vận hành</Badge>}
             <Badge
-              variant={project.status === "ongoing" ? "success" : "info"}
+              variant={
+                project.status === "ongoing"
+                  ? "success"
+                  : project.status === "paused"
+                  ? "warning"
+                  : project.status === "completed"
+                  ? "secondary"
+                  : "info"
+              }
             >
-              {project.status}
+              {(
+                {
+                  planned: "Lên kế hoạch",
+                  ongoing: "Đang chạy",
+                  paused: "Tạm dừng",
+                  completed: "Đã đóng",
+                } as Record<string, string>
+              )[project.status] ?? project.status}
             </Badge>
           </div>
         }
@@ -493,94 +498,13 @@ export function ProjectDetailClient({
         </Card>
       </div>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Chi phí dự án theo tháng</CardTitle>
-          <CardDescription>
-            Cộng dồn lương phân bổ + chi phí vận hành.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-56 -mx-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={timeline}
-                margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="2 4"
-                  stroke="hsl(var(--border))"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="label"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  width={50}
-                  tickFormatter={(v) =>
-                    v >= 1_000_000
-                      ? `${(v / 1_000_000).toFixed(1)}M`
-                      : v >= 1_000
-                      ? `${(v / 1_000).toFixed(0)}k`
-                      : v
-                  }
-                />
-                <Tooltip
-                  cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    const labor =
-                      (payload.find((p) => p.dataKey === "labor")
-                        ?.value as number) ?? 0;
-                    const ops =
-                      (payload.find((p) => p.dataKey === "ops")
-                        ?.value as number) ?? 0;
-                    return (
-                      <div className="rounded-lg border bg-popover px-3 py-2.5 shadow-md text-xs min-w-[140px]">
-                        <div className="font-semibold mb-1.5">{label}</div>
-                        <div className="flex items-center gap-3 justify-between">
-                          <span className="text-muted-foreground">Lương</span>
-                          <span className="tnum">{formatCurrency(labor)}</span>
-                        </div>
-                        <div className="flex items-center gap-3 justify-between">
-                          <span className="text-muted-foreground">Vận hành</span>
-                          <span className="tnum">{formatCurrency(ops)}</span>
-                        </div>
-                        <div className="flex items-center gap-3 justify-between pt-1 mt-1 border-t">
-                          <span>Tổng</span>
-                          <span className="tnum font-semibold">
-                            {formatCurrency(labor + ops)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }}
-                />
-                <Bar
-                  dataKey="labor"
-                  stackId="a"
-                  fill="hsl(var(--indigo))"
-                  radius={[0, 0, 0, 0]}
-                />
-                <Bar
-                  dataKey="ops"
-                  stackId="a"
-                  fill="hsl(var(--sky))"
-                  radius={[6, 6, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <ProjectCostBreakdown
+        projectId={project.id}
+        allocations={allAllocations}
+        profilesById={profilesById}
+        expenses={expenses}
+        salaryHistory={salaryHistory}
+      />
 
       {/* Payments (khách trả nhiều đợt) */}
       <Card>

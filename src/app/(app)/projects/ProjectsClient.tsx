@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -45,8 +52,17 @@ import type {
   Profile,
   Project,
   ProjectPhase,
+  SalaryHistory,
 } from "@/types/database";
-import { Briefcase, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  Briefcase,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -90,12 +106,14 @@ export function ProjectsClient({
   allocations,
   expenses,
   profiles,
+  salaryHistory,
 }: {
   initialProjects: Project[];
   phases: ProjectPhase[];
   allocations: Allocation[];
   expenses: OperatingExpense[];
   profiles: Profile[];
+  salaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
   const [projects, setProjects] = useState(initialProjects);
@@ -106,6 +124,13 @@ export function ProjectsClient({
   const [billingType, setBillingType] = useState<string>("fixed");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Filters / sort
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<
+    "recent" | "name" | "profit" | "spent"
+  >("recent");
 
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
@@ -195,6 +220,57 @@ export function ProjectsClient({
     setProjects((arr) => arr.filter((x) => x.id !== p.id));
   }
 
+  // Filter + sort
+  const filteredProjects = useMemo(() => {
+    let arr = projects;
+    if (statusFilter !== "all") {
+      arr = arr.filter((p) => p.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      arr = arr.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.client ?? "").toLowerCase().includes(q)
+      );
+    }
+    const sorted = [...arr];
+    if (sortBy === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === "profit") {
+      sorted.sort((a, b) => {
+        const fa = projectFinance(a, allocations, profilesById, expenses, undefined, salaryHistory);
+        const fb = projectFinance(b, allocations, profilesById, expenses, undefined, salaryHistory);
+        return fb.profit - fa.profit;
+      });
+    } else if (sortBy === "spent") {
+      sorted.sort((a, b) => {
+        const fa = projectFinance(a, allocations, profilesById, expenses, undefined, salaryHistory);
+        const fb = projectFinance(b, allocations, profilesById, expenses, undefined, salaryHistory);
+        return fb.totalSpent - fa.totalSpent;
+      });
+    }
+    return sorted;
+  }, [projects, statusFilter, search, sortBy, allocations, profilesById, expenses]);
+
+  // Stats summary
+  const statsSummary = useMemo(() => {
+    const total = projects.length;
+    const ongoing = projects.filter((p) => p.status === "ongoing").length;
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    let lossCount = 0;
+    for (const p of projects) {
+      const f = projectFinance(p, allocations, profilesById, expenses, undefined, salaryHistory);
+      totalRevenue += f.revenue;
+      if (f.hasRevenue) {
+        totalProfit += f.profit;
+        if (f.profit < 0) lossCount++;
+      }
+    }
+    return { total, ongoing, totalRevenue, totalProfit, lossCount };
+  }, [projects, allocations, profilesById, expenses]);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -207,28 +283,124 @@ export function ProjectsClient({
         }
       />
 
+      {/* Summary strip */}
+      {projects.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <SummaryStat label="Tổng dự án" value={statsSummary.total.toString()} />
+          <SummaryStat
+            label="Đang chạy"
+            value={statsSummary.ongoing.toString()}
+            tone="success"
+          />
+          <SummaryStat
+            label="Tổng doanh thu"
+            value={formatCurrency(statsSummary.totalRevenue)}
+            tone="indigo"
+          />
+          <SummaryStat
+            label={statsSummary.totalProfit >= 0 ? "Lợi nhuận" : "Đang lỗ"}
+            value={formatCurrency(statsSummary.totalProfit)}
+            tone={
+              statsSummary.totalProfit >= 0
+                ? statsSummary.lossCount > 0
+                  ? "warning"
+                  : "success"
+                : "danger"
+            }
+            hint={
+              statsSummary.lossCount > 0
+                ? `${statsSummary.lossCount} dự án lỗ`
+                : undefined
+            }
+          />
+        </div>
+      )}
+
+      {/* Filter toolbar */}
+      {projects.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <Input
+              type="search"
+              placeholder="Tìm theo tên dự án hoặc khách hàng..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+            {(["all", "ongoing", "planned", "paused", "completed"] as const).map(
+              (s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatusFilter(s)}
+                  className={cn(
+                    "px-3 h-7 rounded-md text-xs font-medium transition",
+                    statusFilter === s
+                      ? "bg-accent text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s === "all" ? "Tất cả" : STATUS_LABEL[s]}
+                </button>
+              )
+            )}
+          </div>
+
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Mới tạo trước</SelectItem>
+              <SelectItem value="name">Theo tên</SelectItem>
+              <SelectItem value="profit">Lợi nhuận cao</SelectItem>
+              <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <TooltipProvider delayDuration={100}>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {projects.length === 0 && (
           <Card className="col-span-full">
-            <CardContent className="text-center py-16 text-muted-foreground">
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-muted flex items-center justify-center mb-3">
-                <Briefcase size={20} />
+            <CardContent className="text-center py-20 text-muted-foreground">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 flex items-center justify-center mb-4">
+                <Briefcase size={22} className="text-indigo-500" />
               </div>
-              <div className="text-sm">Chưa có dự án nào.</div>
-              <Button variant="link" onClick={openNew} className="mt-2">
-                Tạo dự án đầu tiên →
+              <div className="text-base font-medium text-foreground">
+                Chưa có dự án nào
+              </div>
+              <div className="text-sm mt-1">
+                Tạo dự án đầu tiên để bắt đầu track P&L + team.
+              </div>
+              <Button variant="brand" onClick={openNew} className="mt-4">
+                <Plus /> Tạo dự án đầu tiên
               </Button>
             </CardContent>
           </Card>
         )}
-        {projects.map((p) => {
-          const fin = projectFinance(p, allocations, profilesById, expenses);
-          const phaseCount = phases.filter(
-            (ph) => ph.project_id === p.id
-          ).length;
 
-          // Active team — allocations of this project that overlap today
+        {projects.length > 0 && filteredProjects.length === 0 && (
+          <Card className="col-span-full">
+            <CardContent className="text-center py-12 text-muted-foreground text-sm">
+              Không có dự án nào khớp bộ lọc.
+            </CardContent>
+          </Card>
+        )}
+
+        {filteredProjects.map((p, idx) => {
+          const fin = projectFinance(p, allocations, profilesById, expenses, undefined, salaryHistory);
+          const phaseCount = phases.filter((ph) => ph.project_id === p.id).length;
+
+          // Active team
           const today = new Date();
           const memberMap = new Map<string, number>();
           for (const a of allocations) {
@@ -249,127 +421,182 @@ export function ProjectsClient({
             .sort((a, b) => b.percent - a.percent);
 
           return (
-            <Card
+            <div
               key={p.id}
-              className="group overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 duration-200"
+              className="group relative animate-fade-up"
+              style={{ animationDelay: `${idx * 40}ms` }}
             >
-              <div className="h-1" style={{ background: p.color }} />
-              <CardContent className="p-5 space-y-3.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/projects/${p.id}`}
-                      className="font-semibold hover:underline truncate block"
+              <Card className="relative overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300">
+                {/* Color stripe + glow */}
+                <div
+                  className="absolute top-0 inset-x-0 h-1.5"
+                  style={{
+                    background: `linear-gradient(90deg, ${p.color}, ${p.color}aa)`,
+                  }}
+                />
+                <div
+                  className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none"
+                  style={{ background: p.color }}
+                />
+
+                <CardContent className="relative p-6 space-y-4">
+                  {/* Header: name + status + menu */}
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/projects/${p.id}`}
+                        className="font-semibold text-lg tracking-tight hover:text-indigo-500 transition truncate block"
+                      >
+                        {p.name}
+                      </Link>
+                      {p.client && (
+                        <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {p.client}
+                        </div>
+                      )}
+                    </div>
+
+                    <Badge
+                      variant={STATUS_VARIANT[p.status]}
+                      className="shrink-0 gap-1.5"
                     >
-                      {p.name}
-                    </Link>
-                    {p.client && (
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {p.client}
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          background:
+                            p.status === "ongoing"
+                              ? "rgb(16 185 129)"
+                              : p.status === "paused"
+                              ? "rgb(245 158 11)"
+                              : p.status === "completed"
+                              ? "rgb(148 163 184)"
+                              : "rgb(56 189 248)",
+                        }}
+                      />
+                      {STATUS_LABEL[p.status]}
+                    </Badge>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-accent focus:outline-none">
+                        <MoreHorizontal size={14} />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => openEdit(p)}>
+                          <Pencil />
+                          Sửa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href={`/projects/${p.id}`}>
+                            <ArrowUpRight />
+                            Mở chi tiết
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => remove(p)}
+                          className="text-rose-600 focus:text-rose-600"
+                        >
+                          <Trash2 />
+                          Xóa
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* P&L hero */}
+                  {fin.hasRevenue ? (
+                    <ProfitBlock fin={fin} />
+                  ) : fin.hasCap ? (
+                    <CostCapBlock fin={fin} />
+                  ) : (
+                    <NoCapBlock fin={fin} />
+                  )}
+
+                  {/* Team */}
+                  <div className="flex items-center gap-3 pt-3 border-t">
+                    {members.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground italic flex-1">
+                        Chưa phân bổ ai
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex -space-x-2">
+                          {members.slice(0, 5).map((m) => (
+                            <Tooltip key={m.profile.id}>
+                              <TooltipTrigger asChild>
+                                <Avatar className="w-7 h-7 ring-2 ring-card hover:scale-110 hover:z-10 transition cursor-default">
+                                  <AvatarFallback className="text-[10px]">
+                                    {m.profile.full_name?.[0]?.toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="font-medium">
+                                  {m.profile.full_name}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground">
+                                  {m.profile.role} · {formatPercent(m.percent)}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                          {members.length > 5 && (
+                            <div className="w-7 h-7 rounded-full bg-muted ring-2 ring-card flex items-center justify-center text-[10px] font-medium text-muted-foreground">
+                              +{members.length - 5}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground flex-1 truncate">
+                          {members.length} người ·{" "}
+                          {members
+                            .reduce((s, m) => s + m.percent, 0)
+                            .toFixed(1)}{" "}
+                          FTE
+                        </div>
+                      </>
                     )}
                   </div>
-                  <Badge variant={STATUS_VARIANT[p.status]}>
-                    {STATUS_LABEL[p.status]}
-                  </Badge>
-                </div>
 
-                {/* P&L section */}
-                {fin.hasRevenue ? (
-                  <ProfitBlock fin={fin} />
-                ) : fin.hasCap ? (
-                  <CostCapBlock fin={fin} />
-                ) : (
-                  <NoCapBlock fin={fin} />
-                )}
-
-                {/* Team đang chạy */}
-                <div className="pt-1 border-t">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="eyebrow text-[10px]">Team đang chạy</div>
-                    <div className="text-[11px] text-muted-foreground tnum">
-                      {members.length > 0
-                        ? `${members.length} người`
-                        : "—"}
-                    </div>
-                  </div>
-                  {members.length === 0 ? (
-                    <div className="text-[11px] text-muted-foreground italic">
-                      Chưa phân bổ ai
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      <div className="flex -space-x-1.5">
-                        {members.slice(0, 5).map((m) => (
-                          <Tooltip key={m.profile.id}>
-                            <TooltipTrigger asChild>
-                              <Avatar className="w-7 h-7 ring-2 ring-card hover:scale-110 hover:z-10 transition">
-                                <AvatarFallback className="text-[10px]">
-                                  {m.profile.full_name?.[0]?.toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="font-medium">
-                                {m.profile.full_name}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground">
-                                {m.profile.role} · {formatPercent(m.percent)}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                        {members.length > 5 && (
-                          <div className="w-7 h-7 rounded-full bg-muted ring-2 ring-card flex items-center justify-center text-[10px] font-medium text-muted-foreground">
-                            +{members.length - 5}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground truncate">
-                        {members
-                          .slice(0, 3)
-                          .map(
-                            (m) =>
-                              `${m.profile.full_name.split(" ").slice(-1)[0]} ${formatPercent(m.percent)}`
-                          )
-                          .join(" · ")}
-                        {members.length > 3 && ` · +${members.length - 3}`}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{phaseCount} giai đoạn</span>
-                  {p.start_date && p.end_date && (
-                    <span>
-                      {formatDate(p.start_date)} → {formatDate(p.end_date)}
+                  {/* Meta footer */}
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <span
+                        className="inline-flex items-center justify-center w-4 h-4 rounded bg-muted text-[9px] font-semibold"
+                      >
+                        {phaseCount}
+                      </span>
+                      giai đoạn
                     </span>
-                  )}
-                </div>
+                    <span>
+                      {p.start_date && p.end_date
+                        ? `${formatDate(p.start_date)} → ${formatDate(p.end_date)}`
+                        : p.start_date
+                        ? `Từ ${formatDate(p.start_date)} · Vận hành`
+                        : "—"}
+                    </span>
+                  </div>
 
-                <div className="flex gap-2 pt-1">
+                  {/* Primary CTA */}
                   <Button
                     asChild
                     variant="secondary"
                     size="sm"
-                    className="flex-1"
+                    className="w-full group/btn"
                   >
-                    <Link href={`/projects/${p.id}`}>Chi tiết</Link>
+                    <Link
+                      href={`/projects/${p.id}`}
+                      className="flex items-center justify-center gap-1.5"
+                    >
+                      Mở chi tiết
+                      <ArrowUpRight
+                        size={12}
+                        className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform"
+                      />
+                    </Link>
                   </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => openEdit(p)}
-                  >
-                    <Pencil />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => remove(p)}>
-                    <Trash2 className="text-rose-500" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           );
         })}
       </div>
@@ -692,11 +919,47 @@ function NoCapBlock({ fin }: { fin: ProjectFinance }) {
         <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
           Đã tiêu (no cap)
         </div>
-        <div className="text-sm font-semibold tnum">
+        <div className="text-lg font-semibold tnum">
           {formatCurrency(fin.totalSpent)}
         </div>
       </div>
       <Badge variant="info">Vận hành</Badge>
+    </div>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "default" | "success" | "warning" | "danger" | "indigo";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "text-emerald-500"
+      : tone === "warning"
+      ? "text-amber-500"
+      : tone === "danger"
+      ? "text-rose-500"
+      : tone === "indigo"
+      ? "gradient-text-indigo"
+      : "text-foreground";
+  return (
+    <div className="rounded-xl border bg-card px-4 py-3 shadow-sm">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        {label}
+      </div>
+      <div className={cn("text-lg font-semibold tnum mt-1", toneClass)}>
+        {value}
+      </div>
+      {hint && (
+        <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
+      )}
     </div>
   );
 }

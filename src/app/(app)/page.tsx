@@ -1,9 +1,11 @@
 import { AlertList, type Alert } from "@/components/dashboard/AlertList";
-import { BurnChart } from "@/components/dashboard/BurnChart";
+import { CashFlowTrend } from "@/components/dashboard/CashFlowTrend";
 import { PortfolioMix } from "@/components/dashboard/PortfolioMix";
 import { ProjectHealth } from "@/components/dashboard/ProjectHealth";
+import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { TeamHeatmap } from "@/components/dashboard/TeamHeatmap";
+import { TopProjects } from "@/components/dashboard/TopProjects";
 import { WelcomeHero } from "@/components/dashboard/WelcomeHero";
 import {
   monthlyCostTimeline,
@@ -23,8 +25,15 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { profiles, projects, phases, allocations, expenses, payments } =
-    await fetchAll();
+  const {
+    profiles,
+    projects,
+    phases,
+    allocations,
+    expenses,
+    payments,
+    salaryHistory,
+  } = await fetchAll();
   const profilesById = new Map(profiles.map((p) => [p.id, p]));
 
   const ongoingProjects = projects.filter((p) => p.status === "ongoing").length;
@@ -42,13 +51,27 @@ export default async function DashboardPage() {
       .map((a) => a.user_id)
   );
 
-  const timeline = monthlyCostTimeline(allocations, profilesById, expenses, 6);
+  const timeline = monthlyCostTimeline(
+    allocations,
+    profilesById,
+    expenses,
+    6,
+    undefined,
+    salaryHistory
+  );
   const burnThisMonth =
     timeline.find((b) => b.key === `${y}-${String(m).padStart(2, "0")}`)?.total ?? 0;
 
   const finances = projects.map((p) => ({
     project: p,
-    finance: projectFinance(p, allocations, profilesById, expenses, today),
+    finance: projectFinance(
+      p,
+      allocations,
+      profilesById,
+      expenses,
+      today,
+      salaryHistory
+    ),
   }));
 
   // Revenue & profit aggregate
@@ -172,32 +195,54 @@ export default async function DashboardPage() {
         burnSpark={timeline.map((t) => t.total)}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div
-          className="lg:col-span-2 animate-fade-up"
-          style={{ animationDelay: "120ms" }}
-        >
-          <BurnChart data={timeline} />
+      {/* Cash flow trend — hero data viz */}
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up"
+        style={{ animationDelay: "120ms" }}
+      >
+        <div className="lg:col-span-2">
+          <CashFlowTrend
+            allocations={allocations}
+            profilesById={profilesById}
+            expenses={expenses}
+            payments={payments}
+            salaryHistory={salaryHistory}
+          />
         </div>
-        <div className="animate-fade-up" style={{ animationDelay: "180ms" }}>
-          <AlertList alerts={alerts} />
-        </div>
+        <AlertList alerts={alerts} />
       </div>
 
-      <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
+      {/* Top projects leaderboard + Portfolio mix */}
+      <div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-up"
+        style={{ animationDelay: "200ms" }}
+      >
+        <TopProjects items={finances} />
         <PortfolioMix items={finances} />
       </div>
 
+      {/* Team capacity + Project health */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div
           className="lg:col-span-2 animate-fade-up"
-          style={{ animationDelay: "300ms" }}
+          style={{ animationDelay: "280ms" }}
         >
           <TeamHeatmap profiles={profiles} allocations={allocations} />
         </div>
-        <div className="animate-fade-up" style={{ animationDelay: "360ms" }}>
+        <div className="animate-fade-up" style={{ animationDelay: "340ms" }}>
           <ProjectHealth items={finances} />
         </div>
+      </div>
+
+      {/* Recent activity feed */}
+      <div className="animate-fade-up" style={{ animationDelay: "400ms" }}>
+        <RecentActivity
+          allocations={allocations}
+          expenses={expenses}
+          payments={payments}
+          profiles={profiles}
+          projects={projects}
+        />
       </div>
     </div>
   );

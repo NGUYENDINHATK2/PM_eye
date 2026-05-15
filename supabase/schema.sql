@@ -60,6 +60,16 @@ create table if not exists public.allocations (
   created_at timestamptz default now()
 );
 
+-- 1b. SALARY_HISTORY — lịch sử lương theo từng giai đoạn
+create table if not exists public.salary_history (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  monthly_amount numeric not null,
+  effective_from date not null,
+  note text,
+  created_at timestamptz default now()
+);
+
 -- 5b. PROJECT_PAYMENTS — khách trả nhiều đợt
 create table if not exists public.project_payments (
   id uuid primary key default gen_random_uuid(),
@@ -93,6 +103,7 @@ create index if not exists idx_phase_project on public.project_phases(project_id
 create index if not exists idx_expense_project on public.operating_expenses(project_id);
 create index if not exists idx_payment_project on public.project_payments(project_id);
 create index if not exists idx_payment_due on public.project_payments(due_date);
+create index if not exists idx_salary_profile_date on public.salary_history(profile_id, effective_from desc);
 
 -- =====================================================
 -- RLS — chỉ cho phép user đã đăng nhập đọc/ghi
@@ -103,13 +114,14 @@ alter table public.project_phases enable row level security;
 alter table public.allocations enable row level security;
 alter table public.operating_expenses enable row level security;
 alter table public.project_payments enable row level security;
+alter table public.salary_history enable row level security;
 
 -- Policy: bất kỳ user đã auth được full access (tool nội bộ)
 do $$
 declare
   t text;
 begin
-  foreach t in array array['profiles','projects','project_phases','allocations','operating_expenses','project_payments']
+  foreach t in array array['profiles','projects','project_phases','allocations','operating_expenses','project_payments','salary_history']
   loop
     execute format('drop policy if exists "auth_all_%s" on public.%I;', t, t);
     execute format($f$

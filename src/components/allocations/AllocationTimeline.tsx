@@ -16,9 +16,42 @@ import type {
   Project,
   ProjectPhase,
 } from "@/types/database";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Lane = Allocation[];
+
+const STATUS_LABEL_VI: Record<string, string> = {
+  planned: "Lên KH",
+  ongoing: "Đang chạy",
+  paused: "Tạm dừng",
+  completed: "Đã đóng",
+};
+
+/**
+ * Pack allocations vào lanes theo key — mỗi key (vd user_id hoặc project_id)
+ * đi vào 1 lane riêng. Lane sort theo tổng % desc (heavy load lên đầu),
+ * trong lane sort theo start_date asc.
+ */
+function packByGroup(
+  allocs: Allocation[],
+  keyFn: (a: Allocation) => string
+): Lane[] {
+  const map = new Map<string, Lane>();
+  for (const a of allocs) {
+    const k = keyFn(a);
+    const list = map.get(k) ?? [];
+    list.push(a);
+    map.set(k, list);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => a.start_date.localeCompare(b.start_date));
+  }
+  return Array.from(map.values()).sort((a, b) => {
+    const ta = a.reduce((s, x) => s + Number(x.percent), 0);
+    const tb = b.reduce((s, x) => s + Number(x.percent), 0);
+    return tb - ta;
+  });
+}
 
 // Distinct vibrant palette — dùng cho người khi group-by-project.
 const PERSON_PALETTE = [
@@ -149,20 +182,58 @@ export function AllocationTimeline({
     return arr;
   }, [startDate, endDate]);
 
+  // Day ticks — chia mỗi tháng thành các mốc 5/10/15/20/25 (hoặc dense hơn ở comfy)
+  const dayTicks = useMemo(() => {
+    const stepByDensity: Record<typeof density, number[]> = {
+      compact: [10, 20],
+      normal: [5, 10, 15, 20, 25],
+      comfy: [3, 6, 9, 12, 15, 18, 21, 24, 27],
+    };
+    const days = stepByDensity[density];
+    const result: { date: Date; pct: number; day: number }[] = [];
+    for (const m of months) {
+      const dim = new Date(m.year, m.month + 1, 0).getDate();
+      for (const day of days) {
+        if (day > dim) continue;
+        const d = new Date(m.year, m.month, day);
+        if (d < startDate || d > endDate) continue;
+        const t = d.getTime();
+        const pct = ((t - startMs) / totalMs) * 100;
+        result.push({ date: d, pct, day });
+      }
+    }
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [months, startMs, totalMs, density]);
+
   function pctFromDate(d: Date) {
     const t = Math.max(startMs, Math.min(endMs, d.getTime()));
     return ((t - startMs) / totalMs) * 100;
   }
 
+  // Chỉ tính todayPct sau khi component mount trên client để tránh
+  // hydration mismatch (new Date() ở SSR và client cho millisecond khác nhau
+  // → floating-point % khác nhau trên DOM).
+  const [todayPct, setTodayPct] = useState<number | null>(null);
+  useEffect(() => {
+    const t = Date.now();
+    if (t < startMs || t > endMs) {
+      setTodayPct(null);
+    } else {
+      setTodayPct(((t - startMs) / totalMs) * 100);
+    }
+  }, [startMs, endMs, totalMs]);
+
+  // today vẫn cần cho PersonRail (load) và các filter date-only — nhưng các
+  // chỗ đó so sánh theo ngày (boolean) nên không bị mismatch.
   const today = new Date();
-  const todayPct =
-    today >= startDate && today <= endDate ? pctFromDate(today) : null;
 
   // Density tunings — padTop/padBot là khoảng đệm trên/dưới row
+  // headerH cộng thêm ~14px để chứa hàng day ticks ở đáy header
   const sizes = {
-    compact: { left: 200, barH: 22, laneStep: 28, rowMin: 56, monthMinW: 70, headerH: 50, padTop: 10, padBot: 12 },
-    normal: { left: 240, barH: 30, laneStep: 36, rowMin: 76, monthMinW: 96, headerH: 64, padTop: 14, padBot: 16 },
-    comfy: { left: 260, barH: 36, laneStep: 44, rowMin: 92, monthMinW: 120, headerH: 72, padTop: 18, padBot: 20 },
+    compact: { left: 200, barH: 22, laneStep: 28, rowMin: 56, monthMinW: 70, headerH: 64, padTop: 10, padBot: 12 },
+    normal: { left: 240, barH: 30, laneStep: 36, rowMin: 76, monthMinW: 96, headerH: 78, padTop: 14, padBot: 16 },
+    comfy: { left: 260, barH: 36, laneStep: 44, rowMin: 92, monthMinW: 140, headerH: 86, padTop: 18, padBot: 20 },
   }[density];
 
   // ─── ROW MODEL ───
@@ -180,17 +251,26 @@ export function AllocationTimeline({
 
   const rows = useMemo<Row[]>(() => {
     if (groupBy === "person") {
+      // Trong row của 1 người: mỗi dự án người đó tham gia = 1 lane (giai đoạn của
+      // cùng dự án nằm cùng hàng, thứ tự thời gian)
       return profiles.map((p) => ({
         kind: "person" as const,
         profile: p,
-        lanes: packIntoLanes(allocations.filter((a) => a.user_id === p.id)),
+        lanes: packByGroup(
+          allocations.filter((a) => a.user_id === p.id),
+          (a) => a.project_id
+        ),
       }));
     }
+    // Trong row của 1 dự án: mỗi nhân sự tham gia = 1 lane riêng (các đợt phân
+    // bổ của cùng người nằm cùng hàng — không bị split lanes lộn xộn).
+    // Sort lanes: tải cao đứng đầu.
     return projects.map((proj) => ({
       kind: "project" as const,
       project: proj,
-      lanes: packIntoLanes(
-        allocations.filter((a) => a.project_id === proj.id)
+      lanes: packByGroup(
+        allocations.filter((a) => a.project_id === proj.id),
+        (a) => a.user_id
       ),
     }));
   }, [groupBy, profiles, projects, allocations]);
@@ -216,29 +296,50 @@ export function AllocationTimeline({
                 {density === "comfy" && "Comfortable"} · {months.length} tháng
               </div>
             </div>
-            <div className="flex flex-1">
-              {months.map((m) => (
-                <div
-                  key={m.key}
-                  className={cn(
-                    "flex-1 flex flex-col justify-center items-center border-l border-border/60 text-center",
-                    m.isCurrent
-                      ? "text-indigo-500 bg-indigo-500/[0.06]"
-                      : "text-muted-foreground"
-                  )}
-                  style={{ minWidth: sizes.monthMinW }}
-                >
-                  <div className={cn("text-sm font-semibold", m.isCurrent && "text-indigo-500")}>
-                    {m.label}
-                  </div>
-                  <div className="text-[10px] opacity-70">{m.year}</div>
-                  {m.isCurrent && (
-                    <div className="text-[9px] mt-0.5 font-medium uppercase tracking-wider">
-                      Hiện tại
+            <div className="flex-1 relative">
+              {/* Month labels — flex layout (chiếm chiều dọc trên) */}
+              <div className="flex h-full">
+                {months.map((m) => (
+                  <div
+                    key={m.key}
+                    className={cn(
+                      "flex-1 flex flex-col justify-center items-center border-l border-border/60 text-center relative",
+                      m.isCurrent
+                        ? "text-indigo-500 bg-indigo-500/[0.06]"
+                        : "text-muted-foreground"
+                    )}
+                    style={{ minWidth: sizes.monthMinW }}
+                  >
+                    <div
+                      className={cn(
+                        "text-sm font-semibold",
+                        m.isCurrent && "text-indigo-500"
+                      )}
+                    >
+                      {m.label}
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="text-[10px] opacity-70">{m.year}</div>
+                    {m.isCurrent && (
+                      <div className="text-[9px] mt-0.5 font-medium uppercase tracking-wider">
+                        Hiện tại
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Day ticks — absolute positioned ở đáy header */}
+              <div className="absolute left-0 right-0 bottom-1 pointer-events-none">
+                {dayTicks.map((t) => (
+                  <div
+                    key={`${t.date.getTime()}`}
+                    className="absolute -translate-x-1/2 text-[9px] tnum text-muted-foreground/60 font-medium leading-none"
+                    style={{ left: `${t.pct}%` }}
+                  >
+                    {t.day}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -282,18 +383,27 @@ export function AllocationTimeline({
                   {/* Timeline */}
                   <div className="flex-1 relative">
                     <div className="relative" style={{ height: rowHeight }}>
-                      {/* Month columns */}
+                      {/* Month columns — đường kẻ tháng đậm */}
                       {months.map((m, i) => (
                         <div
                           key={m.key}
                           className={cn(
-                            "absolute top-0 bottom-0 border-l border-border/40",
+                            "absolute top-0 bottom-0 border-l border-border/60",
                             m.isCurrent && "bg-indigo-500/[0.04]"
                           )}
                           style={{
                             left: `${(i / months.length) * 100}%`,
                             width: `${(1 / months.length) * 100}%`,
                           }}
+                        />
+                      ))}
+
+                      {/* Day tick lines — đường kẻ ngày nhạt */}
+                      {dayTicks.map((t) => (
+                        <div
+                          key={`tick-${t.date.getTime()}`}
+                          className="absolute top-0 bottom-0 w-px bg-border/30 pointer-events-none"
+                          style={{ left: `${t.pct}%` }}
                         />
                       ))}
 
@@ -526,8 +636,19 @@ function ProjectRail({
           {activeMembers.size} người · {roles.size} role
         </div>
       </div>
-      <Badge variant="secondary" className="shrink-0 text-[10px]">
-        {project.status}
+      <Badge
+        variant={
+          project.status === "ongoing"
+            ? "success"
+            : project.status === "paused"
+            ? "warning"
+            : project.status === "completed"
+            ? "secondary"
+            : "info"
+        }
+        className="shrink-0 text-[10px]"
+      >
+        {STATUS_LABEL_VI[project.status] ?? project.status}
       </Badge>
     </>
   );

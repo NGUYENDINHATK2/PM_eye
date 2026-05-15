@@ -10,8 +10,15 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { profiles, projects, phases, allocations, expenses, payments } =
-    await fetchAll();
+  const {
+    profiles,
+    projects,
+    phases,
+    allocations,
+    expenses,
+    payments,
+    salaryHistory,
+  } = await fetchAll();
   const project = projects.find((p) => p.id === id);
   if (!project) notFound();
   return (
@@ -23,6 +30,7 @@ export default async function ProjectDetailPage({
       allAllocations={allocations}
       expenses={expenses.filter((e) => e.project_id === id)}
       initialPayments={payments.filter((p) => p.project_id === id)}
+      salaryHistory={salaryHistory}
     />
   );
 }

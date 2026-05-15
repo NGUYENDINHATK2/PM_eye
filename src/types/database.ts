@@ -29,6 +29,15 @@ export type Project = {
   created_at: string;
 };
 
+export type SalaryHistory = {
+  id: string;
+  profile_id: string;
+  monthly_amount: number;
+  effective_from: string; // YYYY-MM-DD
+  note: string | null;
+  created_at: string;
+};
+
 export type PaymentStatus = "planned" | "invoiced" | "paid";
 
 export type ProjectPayment = {

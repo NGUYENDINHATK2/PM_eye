@@ -6,6 +6,7 @@ import type {
   ProjectPayment,
   ProjectPhase,
   RequiredRole,
+  SalaryHistory,
 } from "@/types/database";
 import { daysInMonth, monthKey, rangeOverlapDays } from "./utils";
 
@@ -14,23 +15,66 @@ import { daysInMonth, monthKey, rangeOverlapDays } from "./utils";
 // =====================================================
 
 /**
- * Cost a single allocation contributes to a given month.
- * cost = base_salary * percent * (overlapDays / daysInMonth)
+ * Lương 1 nhân sự tại 1 ngày cụ thể, dựa trên salary_history.
+ * Lấy entry có effective_from lớn nhất ≤ date. Nếu không có entry nào trước
+ * ngày đó → trả `fallback` (thường = profile.base_salary).
+ */
+export function salaryAt(
+  profileId: string,
+  date: Date,
+  salaryHistory: SalaryHistory[],
+  fallback = 0
+): number {
+  const ds = date.toISOString().slice(0, 10);
+  let best: SalaryHistory | null = null;
+  for (const h of salaryHistory) {
+    if (h.profile_id !== profileId) continue;
+    if (h.effective_from > ds) continue;
+    if (!best || h.effective_from > best.effective_from) {
+      best = h;
+    }
+  }
+  return best ? Number(best.monthly_amount) : fallback;
+}
+
+/**
+ * Chi phí 1 allocation đóng góp vào 1 tháng.
+ *
+ * Cũ: cost = base_salary × percent × (overlapDays / daysInMonth)
+ * Mới: iterate từng ngày overlap, dùng đúng lương tại ngày đó theo salary_history.
+ *      cost = Σ (salaryAtDay / daysInMonth × percent)
+ *
+ * → Nếu lương thay đổi giữa tháng (vd Sơn 10M → 15M từ 15/3) thì tháng 3 sẽ
+ *    được tính chính xác chứ không phải mức nào áp dụng cho cả tháng.
+ *
+ * salaryHistory mặc định = [] để backward compat (sẽ dùng profile.base_salary).
  */
 export function allocationCostForMonth(
   alloc: Allocation,
   profile: Profile,
   year: number,
-  month: number // 1..12
+  month: number, // 1..12
+  salaryHistory: SalaryHistory[] = []
 ): number {
   const dim = daysInMonth(year, month);
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month - 1, dim);
   const aStart = new Date(alloc.start_date);
   const aEnd = new Date(alloc.end_date);
-  const overlap = rangeOverlapDays(monthStart, monthEnd, aStart, aEnd);
-  if (overlap <= 0) return 0;
-  return profile.base_salary * alloc.percent * (overlap / dim);
+
+  const start = aStart > monthStart ? aStart : monthStart;
+  const end = aEnd < monthEnd ? aEnd : monthEnd;
+  if (end < start) return 0;
+
+  const baseFallback = Number(profile.base_salary);
+  let cost = 0;
+  const cur = new Date(start);
+  while (cur <= end) {
+    const salary = salaryAt(profile.id, cur, salaryHistory, baseFallback);
+    cost += (salary / dim) * Number(alloc.percent);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return cost;
 }
 
 /**
@@ -51,6 +95,58 @@ export function userLoadToday(
     load += Number(a.percent);
   }
   return load;
+}
+
+/**
+ * Tìm peak load (đỉnh tải) của 1 user trong khoảng [rangeStart, rangeEnd],
+ * có thể giả lập thêm 1 allocation mới (addPercent) và loại trừ 1 allocation
+ * đang edit (excludeAllocId). Trả về { date, load } tại ngày đỉnh.
+ *
+ * Cốt lõi: load tại 1 ngày = tổng percent của tất cả allocation active hôm đó.
+ * Peak luôn xảy ra tại 1 trong các "biên" (start/end) của các allocation, nên
+ * chỉ cần check tại các biên thay vì iterate từng ngày.
+ */
+export function userPeakLoad(
+  userId: string,
+  allocations: Allocation[],
+  rangeStart: Date,
+  rangeEnd: Date,
+  addPercent = 0,
+  excludeAllocId?: string
+): { date: Date; load: number } | null {
+  const userAllocs = allocations.filter(
+    (a) =>
+      a.user_id === userId &&
+      a.id !== excludeAllocId &&
+      new Date(a.end_date) >= rangeStart &&
+      new Date(a.start_date) <= rangeEnd
+  );
+  if (userAllocs.length === 0 && addPercent === 0) return null;
+
+  // Candidates: rangeStart + clamped start/end của các allocation overlap range
+  const candidates: Date[] = [new Date(rangeStart), new Date(rangeEnd)];
+  for (const a of userAllocs) {
+    const s = new Date(a.start_date);
+    const e = new Date(a.end_date);
+    if (s >= rangeStart && s <= rangeEnd) candidates.push(s);
+    if (e >= rangeStart && e <= rangeEnd) candidates.push(e);
+  }
+
+  let maxLoad = 0;
+  let maxDate = new Date(rangeStart);
+  for (const d of candidates) {
+    let load = addPercent;
+    for (const a of userAllocs) {
+      const s = new Date(a.start_date);
+      const e = new Date(a.end_date);
+      if (d >= s && d <= e) load += Number(a.percent);
+    }
+    if (load > maxLoad) {
+      maxLoad = load;
+      maxDate = d;
+    }
+  }
+  return { date: maxDate, load: maxLoad };
 }
 
 /**
@@ -152,7 +248,8 @@ export function projectFinance(
   allocations: Allocation[],
   profilesById: Map<string, Profile>,
   expenses: OperatingExpense[],
-  upTo: Date = new Date()
+  upTo: Date = new Date(),
+  salaryHistory: SalaryHistory[] = []
 ): ProjectFinance {
   const projAllocs = allocations.filter((a) => a.project_id === project.id);
   let laborSpent = 0;
@@ -170,7 +267,7 @@ export function projectFinance(
       for (const a of projAllocs) {
         const p = profilesById.get(a.user_id);
         if (!p) continue;
-        laborSpent += allocationCostForMonth(a, p, y, m);
+        laborSpent += allocationCostForMonth(a, p, y, m, salaryHistory);
       }
       cur.setMonth(cur.getMonth() + 1);
     }
@@ -317,7 +414,172 @@ export function phaseRoleGaps(
 }
 
 // =====================================================
-// Monthly cost timeline (for charts)
+// Period cost (week/month/custom range) — universal cost calc
+// =====================================================
+
+export type PeriodCost = {
+  key: string;
+  label: string;
+  short: string; // short label cho chart x-axis
+  start: Date;
+  end: Date;
+  labor: number;
+  ops: number;
+  total: number;
+  /** Δ so với kỳ liền trước (signed). 0 nếu là kỳ đầu tiên. */
+  deltaTotal: number;
+  /** Δ % so với kỳ liền trước. null nếu kỳ trước = 0. */
+  deltaPct: number | null;
+};
+
+/**
+ * Tính chi phí (lương + vận hành) cho một khoảng [start, end] tuỳ ý,
+ * dùng đúng mức lương lịch sử theo từng ngày.
+ */
+function costInRange(
+  start: Date,
+  end: Date,
+  allocations: Allocation[],
+  profilesById: Map<string, Profile>,
+  expenses: OperatingExpense[],
+  salaryHistory: SalaryHistory[],
+  projectId?: string
+): { labor: number; ops: number } {
+  let labor = 0;
+  for (const a of allocations) {
+    if (projectId && a.project_id !== projectId) continue;
+    const profile = profilesById.get(a.user_id);
+    if (!profile) continue;
+    const aStart = new Date(a.start_date);
+    const aEnd = new Date(a.end_date);
+    const s = aStart > start ? aStart : start;
+    const e = aEnd < end ? aEnd : end;
+    if (e < s) continue;
+    const cur = new Date(s);
+    while (cur <= e) {
+      const dim = daysInMonth(cur.getFullYear(), cur.getMonth() + 1);
+      const salary = salaryAt(
+        profile.id,
+        cur,
+        salaryHistory,
+        Number(profile.base_salary)
+      );
+      labor += (salary / dim) * Number(a.percent);
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  let ops = 0;
+  for (const e of expenses) {
+    if (projectId && e.project_id !== projectId) continue;
+    const ed = new Date(e.spent_date);
+    if (ed >= start && ed <= end) ops += Number(e.amount);
+  }
+  return { labor, ops };
+}
+
+/**
+ * Sinh dãy kỳ (tháng / tuần) lùi từ hiện tại, mỗi kỳ kèm chi phí + delta.
+ */
+export function periodCostTimeline(
+  granularity: "week" | "month",
+  count: number,
+  allocations: Allocation[],
+  profilesById: Map<string, Profile>,
+  expenses: OperatingExpense[],
+  salaryHistory: SalaryHistory[] = [],
+  projectId?: string
+): PeriodCost[] {
+  const now = new Date();
+  const periods: { start: Date; end: Date; key: string; label: string; short: string }[] = [];
+
+  if (granularity === "month") {
+    for (let i = count - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const start = new Date(y, m, 1);
+      const end = new Date(y, m + 1, 0);
+      periods.push({
+        start,
+        end,
+        key: `${y}-${String(m + 1).padStart(2, "0")}`,
+        label: `Tháng ${m + 1}/${y}`,
+        short: `T${m + 1}`,
+      });
+    }
+  } else {
+    // weekly: Mon → Sun
+    const today = new Date(now);
+    const dayOfWeek = (today.getDay() + 6) % 7; // 0 = Mon
+    const thisMonday = new Date(today);
+    thisMonday.setHours(0, 0, 0, 0);
+    thisMonday.setDate(today.getDate() - dayOfWeek);
+    for (let i = count - 1; i >= 0; i--) {
+      const start = new Date(thisMonday);
+      start.setDate(thisMonday.getDate() - i * 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      const wk = isoWeekNumber(start);
+      periods.push({
+        start,
+        end,
+        key: `${start.getFullYear()}-W${String(wk).padStart(2, "0")}`,
+        label: `Tuần ${wk}, ${start.getFullYear()} (${formatDM(start)}–${formatDM(end)})`,
+        short: `W${wk}`,
+      });
+    }
+  }
+
+  // Compute cost for each, then deltas
+  const computed: PeriodCost[] = periods.map((p) => {
+    const { labor, ops } = costInRange(
+      p.start,
+      p.end,
+      allocations,
+      profilesById,
+      expenses,
+      salaryHistory,
+      projectId
+    );
+    return {
+      ...p,
+      labor,
+      ops,
+      total: labor + ops,
+      deltaTotal: 0,
+      deltaPct: null,
+    };
+  });
+
+  for (let i = 1; i < computed.length; i++) {
+    const prev = computed[i - 1].total;
+    const cur = computed[i].total;
+    computed[i].deltaTotal = cur - prev;
+    computed[i].deltaPct = prev > 0 ? ((cur - prev) / prev) * 100 : null;
+  }
+
+  return computed;
+}
+
+function isoWeekNumber(d: Date): number {
+  const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNr = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setUTCMonth(0, 1);
+  if (target.getUTCDay() !== 4) {
+    target.setUTCMonth(0, 1 + ((4 - target.getUTCDay() + 7) % 7));
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+}
+
+function formatDM(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// =====================================================
+// Monthly cost timeline (for charts) — legacy alias of periodCostTimeline
 // =====================================================
 
 export type MonthBucket = {
@@ -333,7 +595,8 @@ export function monthlyCostTimeline(
   profilesById: Map<string, Profile>,
   expenses: OperatingExpense[],
   months = 6,
-  projectId?: string
+  projectId?: string,
+  salaryHistory: SalaryHistory[] = []
 ): MonthBucket[] {
   const now = new Date();
   const buckets: MonthBucket[] = [];
@@ -350,7 +613,7 @@ export function monthlyCostTimeline(
       if (projectId && a.project_id !== projectId) continue;
       const p = profilesById.get(a.user_id);
       if (!p) continue;
-      labor += allocationCostForMonth(a, p, y, m);
+      labor += allocationCostForMonth(a, p, y, m, salaryHistory);
     }
 
     let ops = 0;

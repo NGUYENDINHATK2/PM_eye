@@ -52,25 +52,34 @@ import {
   humanizeSupabaseError,
   toDateInput,
 } from "@/lib/utils";
-import type { Allocation, Profile } from "@/types/database";
+import type { Allocation, Profile, SalaryHistory } from "@/types/database";
 import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 export function EmployeesClient({
   initialProfiles,
   initialAllocations,
+  initialSalaryHistory,
 }: {
   initialProfiles: Profile[];
   initialAllocations: Allocation[];
+  initialSalaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
   const [profiles, setProfiles] = useState(initialProfiles);
   const [allocations] = useState(initialAllocations);
+  const [salaryHistory, setSalaryHistory] = useState(initialSalaryHistory);
   const [editing, setEditing] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<string>("BA");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Lương sẽ áp dụng từ ngày — chỉ hiện khi đổi mức lương
+  const [salaryEffectiveFrom, setSalaryEffectiveFrom] = useState<string>(
+    new Date().toISOString().slice(0, 10)
+  );
+  // Track giá trị salary input để detect thay đổi
+  const [salaryInput, setSalaryInput] = useState<number>(0);
 
   const today = new Date();
 
@@ -78,6 +87,8 @@ export function EmployeesClient({
     setEditing(null);
     setRole("BA");
     setError(null);
+    setSalaryInput(0);
+    setSalaryEffectiveFrom(new Date().toISOString().slice(0, 10));
     setOpen(true);
   }
 
@@ -85,7 +96,14 @@ export function EmployeesClient({
     setEditing(p);
     setRole(p.role);
     setError(null);
+    setSalaryInput(Number(p.base_salary));
+    setSalaryEffectiveFrom(new Date().toISOString().slice(0, 10));
     setOpen(true);
+  }
+
+  // Lấy số entries lịch sử lương của 1 profile
+  function historyCount(profileId: string): number {
+    return salaryHistory.filter((h) => h.profile_id === profileId).length;
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -93,14 +111,16 @@ export function EmployeesClient({
     setError(null);
     setSaving(true);
     const fd = new FormData(e.currentTarget);
+    const newSalary = Number(fd.get("base_salary") || 0);
+    const startDateValue =
+      (fd.get("start_date") as string) ||
+      new Date().toISOString().slice(0, 10);
     const payload = {
       full_name: fd.get("full_name") as string,
       email: (fd.get("email") as string) || null,
       role,
-      base_salary: Number(fd.get("base_salary") || 0),
-      start_date:
-        (fd.get("start_date") as string) ||
-        new Date().toISOString().slice(0, 10),
+      base_salary: newSalary,
+      start_date: startDateValue,
       is_active: fd.get("is_active") === "on",
     };
 
@@ -111,11 +131,41 @@ export function EmployeesClient({
         .eq("id", editing.id)
         .select()
         .single();
-      setSaving(false);
       if (err) {
+        setSaving(false);
         setError(humanizeSupabaseError(err.message));
         return;
       }
+
+      // Nếu mức lương thay đổi → ghi 1 entry mới vào salary_history
+      if (data && newSalary !== Number(editing.base_salary) && newSalary > 0) {
+        const histPayload = {
+          profile_id: editing.id,
+          monthly_amount: newSalary,
+          effective_from: salaryEffectiveFrom,
+          note:
+            newSalary > Number(editing.base_salary)
+              ? `Tăng từ ${Number(editing.base_salary).toLocaleString("vi-VN")}`
+              : `Giảm từ ${Number(editing.base_salary).toLocaleString("vi-VN")}`,
+        };
+        const { data: hist, error: histErr } = await supabase
+          .from("salary_history")
+          .insert(histPayload)
+          .select()
+          .single();
+        if (histErr) {
+          setSaving(false);
+          setError(
+            "Cập nhật lương thành công nhưng không ghi được lịch sử: " +
+              humanizeSupabaseError(histErr.message)
+          );
+          return;
+        }
+        if (hist)
+          setSalaryHistory((arr) => [hist as SalaryHistory, ...arr]);
+      }
+
+      setSaving(false);
       if (data) {
         setProfiles((arr) =>
           arr.map((p) => (p.id === editing.id ? (data as Profile) : p))
@@ -123,16 +173,36 @@ export function EmployeesClient({
         setOpen(false);
       }
     } else {
+      // Tạo mới
       const { data, error: err } = await supabase
         .from("profiles")
         .insert(payload)
         .select()
         .single();
-      setSaving(false);
       if (err) {
+        setSaving(false);
         setError(humanizeSupabaseError(err.message));
         return;
       }
+
+      // Tạo entry lịch sử lương đầu tiên
+      if (data && newSalary > 0) {
+        const histPayload = {
+          profile_id: (data as Profile).id,
+          monthly_amount: newSalary,
+          effective_from: startDateValue,
+          note: "Mức lương ban đầu",
+        };
+        const { data: hist } = await supabase
+          .from("salary_history")
+          .insert(histPayload)
+          .select()
+          .single();
+        if (hist)
+          setSalaryHistory((arr) => [hist as SalaryHistory, ...arr]);
+      }
+
+      setSaving(false);
       if (data) {
         setProfiles((arr) => [data as Profile, ...arr]);
         setOpen(false);
@@ -381,7 +451,14 @@ export function EmployeesClient({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="base_salary">Lương / tháng (VND)</Label>
+                <Label htmlFor="base_salary">
+                  Lương / tháng (VND)
+                  {editing && historyCount(editing.id) > 0 && (
+                    <span className="ml-2 text-[10px] font-normal text-muted-foreground">
+                      · {historyCount(editing.id)} lần đổi trong lịch sử
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="base_salary"
                   name="base_salary"
@@ -389,7 +466,8 @@ export function EmployeesClient({
                   min="0"
                   step="100000"
                   required
-                  defaultValue={editing?.base_salary ?? 0}
+                  value={salaryInput || ""}
+                  onChange={(e) => setSalaryInput(Number(e.target.value || 0))}
                 />
               </div>
               <div className="space-y-2">
@@ -405,6 +483,32 @@ export function EmployeesClient({
                 />
               </div>
             </div>
+
+            {/* Effective_from prompt — chỉ hiện khi đang edit và lương đã đổi */}
+            {editing &&
+              salaryInput > 0 &&
+              salaryInput !== Number(editing.base_salary) && (
+                <div className="rounded-xl border bg-gradient-to-br from-amber-500/[0.06] to-transparent p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-3.5 rounded-full bg-amber-500" />
+                    <Label className="mb-0 text-xs">
+                      Mức lương mới có hiệu lực từ ngày
+                    </Label>
+                  </div>
+                  <Input
+                    type="date"
+                    value={salaryEffectiveFrom}
+                    onChange={(e) => setSalaryEffectiveFrom(e.target.value)}
+                    required
+                  />
+                  <div className="text-[11px] text-muted-foreground">
+                    Chi phí lương trước ngày này vẫn dùng mức cũ (
+                    {formatCurrency(editing.base_salary)}
+                    ); từ ngày này trở đi dùng mức mới (
+                    {formatCurrency(salaryInput)}). Lịch sử sẽ được ghi lại.
+                  </div>
+                </div>
+              )}
             <label className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"

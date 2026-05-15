@@ -26,8 +26,8 @@ import { Slider } from "@/components/ui/slider";
 import {
   loadStatus,
   loadStatusLabel,
-  userLoadForMonth,
   userLoadToday,
+  userPeakLoad,
 } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -54,7 +54,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export function AllocationsClient({
   profiles,
@@ -88,25 +88,30 @@ export function AllocationsClient({
   );
   const [note, setNote] = useState("");
 
-  // Projects the user is already allocated to — excluded from picker
-  // (except the one being edited, so the dropdown keeps showing it)
-  const availableProjects = useMemo(() => {
-    if (!userId) return projects;
-    const taken = new Set(
-      allocations
-        .filter((a) => a.user_id === userId && a.id !== editing?.id)
-        .map((a) => a.project_id)
-    );
-    return projects.filter((p) => !taken.has(p.id));
-  }, [projects, allocations, userId, editing?.id]);
+  // Allocations sẵn có cho cặp user + project hiện đang chọn (trừ cái đang edit)
+  // → dùng để hiển thị hint + check overlap thời gian
+  const existingForCombo = useMemo(() => {
+    if (!userId || !projectId) return [];
+    return allocations
+      .filter(
+        (a) =>
+          a.user_id === userId &&
+          a.project_id === projectId &&
+          a.id !== editing?.id
+      )
+      .sort((a, b) => a.start_date.localeCompare(b.start_date));
+  }, [allocations, userId, projectId, editing?.id]);
 
-  // If user changes and current selected project is no longer available, reset
-  useEffect(() => {
-    if (!projectId) return;
-    if (availableProjects.some((p) => p.id === projectId)) return;
-    setProjectId(availableProjects[0]?.id ?? "");
-    setPhaseId("");
-  }, [availableProjects, projectId]);
+  // Trả về allocation đầu tiên bị overlap với khoảng [start, end], hoặc null nếu ok
+  function findOverlap(start: string, end: string): Allocation | null {
+    for (const a of existingForCombo) {
+      // overlap rule: start <= a.end_date && end >= a.start_date
+      if (start <= a.end_date && end >= a.start_date) {
+        return a;
+      }
+    }
+    return null;
+  }
 
   const projectPhases = phases.filter((ph) => ph.project_id === projectId);
 
@@ -161,6 +166,30 @@ export function AllocationsClient({
     e.preventDefault();
     if (!userId || !projectId) return;
     setError(null);
+
+    // Validate dates
+    if (!startDate || !endDate) {
+      setError("Vui lòng chọn ngày bắt đầu và kết thúc.");
+      return;
+    }
+    if (startDate > endDate) {
+      setError("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.");
+      return;
+    }
+
+    // Check overlap với các đợt phân bổ khác cùng user + project
+    const conflict = findOverlap(startDate, endDate);
+    if (conflict) {
+      setError(
+        `Khoảng thời gian này chồng với đợt đã có: ${formatDate(
+          conflict.start_date
+        )} → ${formatDate(conflict.end_date)} (${formatPercent(
+          conflict.percent
+        )}). Đổi ngày để không trùng.`
+      );
+      return;
+    }
+
     setSaving(true);
     const payload = {
       user_id: userId,
@@ -215,25 +244,17 @@ export function AllocationsClient({
     setAllocations((arr) => arr.filter((x) => x.id !== id));
   }
 
+  // Peak load của user trong khoảng allocation đang gõ — loại trừ allocation đang edit
+  // để không bị double-count với bản cũ. Tính theo NGÀY (concurrent load) thay vì
+  // trung bình tháng cho chuẩn.
   const overloadHint = useMemo(() => {
     if (!userId) return null;
+    if (!startDate || !endDate) return null;
     const s = new Date(startDate);
     const e = new Date(endDate);
     if (e < s) return null;
-    const months: { y: number; m: number; load: number }[] = [];
-    const cur = new Date(s.getFullYear(), s.getMonth(), 1);
-    while (cur <= e) {
-      const y = cur.getFullYear();
-      const m = cur.getMonth() + 1;
-      const existing = userLoadForMonth(userId, allocations, y, m);
-      months.push({ y, m, load: existing + percent });
-      cur.setMonth(cur.getMonth() + 1);
-    }
-    return months.reduce(
-      (max, x) => (x.load > max.load ? x : max),
-      months[0]
-    );
-  }, [userId, startDate, endDate, percent, allocations]);
+    return userPeakLoad(userId, allocations, s, e, percent, editing?.id);
+  }, [userId, startDate, endDate, percent, allocations, editing?.id]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Allocation[]>();
@@ -609,29 +630,42 @@ export function AllocationsClient({
                     setProjectId(v);
                     setPhaseId("");
                   }}
-                  disabled={availableProjects.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        availableProjects.length === 0
-                          ? "Người này đã ở mọi dự án"
-                          : "Chọn dự án"
-                      }
-                    />
+                    <SelectValue placeholder="Chọn dự án" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableProjects.map((p) => (
+                    {projects.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {availableProjects.length < projects.length && (
-                  <div className="text-[11px] text-muted-foreground">
-                    Đã ẩn {projects.length - availableProjects.length} dự án
-                    người này đang tham gia.
+                {existingForCombo.length > 0 && (
+                  <div className="text-[11px] text-muted-foreground space-y-1">
+                    <div>
+                      Người này đã có{" "}
+                      <strong>{existingForCombo.length}</strong> đợt phân bổ
+                      trong dự án này:
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {existingForCombo.map((a) => (
+                        <span
+                          key={a.id}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-foreground/80 text-[10px] tnum"
+                          title={a.note ?? undefined}
+                        >
+                          {formatDate(a.start_date)} → {formatDate(a.end_date)}
+                          <span className="font-semibold ml-1">
+                            {formatPercent(a.percent)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-[10px] italic">
+                      Có thể thêm đợt mới — chỉ cần khoảng ngày không chồng các đợt trên.
+                    </div>
                   </div>
                 )}
               </div>
@@ -683,8 +717,10 @@ export function AllocationsClient({
                 <div className="mt-4 flex items-start gap-2 text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
                   <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                   <div>
-                    Tháng T{overloadHint.m}/{overloadHint.y} sẽ tổng load{" "}
-                    <strong>{formatPercent(overloadHint.load)}</strong> — vượt 100%.
+                    Ngày <strong>{formatDate(overloadHint.date)}</strong> sẽ
+                    tổng load{" "}
+                    <strong>{formatPercent(overloadHint.load)}</strong> — vượt
+                    100%.
                   </div>
                 </div>
               )}
