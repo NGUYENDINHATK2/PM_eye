@@ -30,7 +30,13 @@ import {
   userLoadToday,
 } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
-import { cn, formatDate, formatPercent } from "@/lib/utils";
+import {
+  cn,
+  formatDate,
+  formatPercent,
+  humanizeSupabaseError,
+  toDateInput,
+} from "@/lib/utils";
 import type {
   Allocation,
   Profile,
@@ -56,6 +62,8 @@ export function AllocationsClient({
   const [allocations, setAllocations] = useState(initialAllocations);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Allocation | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [percent, setPercent] = useState(0.5);
   const [userId, setUserId] = useState(profiles[0]?.id ?? "");
@@ -123,6 +131,7 @@ export function AllocationsClient({
 
   function openNew() {
     resetForm();
+    setError(null);
     setOpen(true);
   }
 
@@ -132,15 +141,18 @@ export function AllocationsClient({
     setProjectId(a.project_id);
     setPhaseId(a.phase_id ?? "");
     setPercent(Number(a.percent));
-    setStartDate(a.start_date);
-    setEndDate(a.end_date);
+    setStartDate(toDateInput(a.start_date));
+    setEndDate(toDateInput(a.end_date));
     setNote(a.note ?? "");
+    setError(null);
     setOpen(true);
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!userId || !projectId) return;
+    setError(null);
+    setSaving(true);
     const payload = {
       user_id: userId,
       project_id: projectId,
@@ -151,12 +163,17 @@ export function AllocationsClient({
       note: note || null,
     };
     if (editing) {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("allocations")
         .update(payload)
         .eq("id", editing.id)
         .select()
         .single();
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
       if (data) {
         setAllocations((arr) =>
           arr.map((x) => (x.id === editing.id ? (data as Allocation) : x))
@@ -165,11 +182,16 @@ export function AllocationsClient({
         resetForm();
       }
     } else {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("allocations")
         .insert(payload)
         .select()
         .single();
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
       if (data) {
         setAllocations((a) => [...a, data as Allocation]);
         setOpen(false);
@@ -615,16 +637,31 @@ export function AllocationsClient({
               />
             </div>
 
+            {error && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
+                disabled={saving}
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand" disabled={!projectId}>
-                {editing ? "Lưu thay đổi" : "Phân bổ"}
+              <Button
+                type="submit"
+                variant="brand"
+                disabled={!projectId || saving}
+              >
+                {saving
+                  ? "Đang lưu..."
+                  : editing
+                  ? "Lưu thay đổi"
+                  : "Phân bổ"}
               </Button>
             </DialogFooter>
           </form>

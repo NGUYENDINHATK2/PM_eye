@@ -292,19 +292,28 @@ export function phaseRoleGaps(
     ? phase.required_roles
     : [];
 
+  // Dedupe required by role name (sum counts) — tránh trùng key trên UI
+  const requiredByRole = new Map<string, number>();
+  for (const r of required) {
+    if (!r?.role) continue;
+    requiredByRole.set(r.role, (requiredByRole.get(r.role) ?? 0) + Number(r.count || 0));
+  }
+
   const assignedByRole = new Map<string, number>();
   for (const a of allocations) {
     if (a.phase_id !== phase.id) continue;
     const p = profilesById.get(a.user_id);
     if (!p) continue;
-    assignedByRole.set(p.role, (assignedByRole.get(p.role) ?? 0) + a.percent);
+    assignedByRole.set(p.role, (assignedByRole.get(p.role) ?? 0) + Number(a.percent));
   }
 
-  return required.map((r) => {
-    const assigned = assignedByRole.get(r.role) ?? 0;
-    const missing = Math.max(0, r.count - assigned);
-    return { role: r.role, required: r.count, assigned, missing };
-  });
+  const result: RoleGap[] = [];
+  for (const [role, count] of requiredByRole) {
+    const assigned = assignedByRole.get(role) ?? 0;
+    const missing = Math.max(0, count - assigned);
+    result.push({ role, required: count, assigned, missing });
+  }
+  return result;
 }
 
 // =====================================================

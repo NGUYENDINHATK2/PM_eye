@@ -31,7 +31,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { projectFinance, type ProjectFinance } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
-import { cn, formatCurrency, formatDate, formatPercent } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  humanizeSupabaseError,
+  toDateInput,
+} from "@/lib/utils";
 import type {
   Allocation,
   OperatingExpense,
@@ -97,6 +104,8 @@ export function ProjectsClient({
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [status, setStatus] = useState<string>("planned");
   const [billingType, setBillingType] = useState<string>("fixed");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
@@ -108,6 +117,7 @@ export function ProjectsClient({
     setColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
     setStatus("planned");
     setBillingType("fixed");
+    setError(null);
     setOpen(true);
   }
 
@@ -116,11 +126,14 @@ export function ProjectsClient({
     setColor(p.color);
     setStatus(p.status);
     setBillingType(p.billing_type ?? "fixed");
+    setError(null);
     setOpen(true);
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(null);
+    setSaving(true);
     const fd = new FormData(e.currentTarget);
     const payload = {
       name: fd.get("name") as string,
@@ -136,26 +149,41 @@ export function ProjectsClient({
       description: (fd.get("description") as string) || null,
       color,
     };
+
     if (editing) {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("projects")
         .update(payload)
         .eq("id", editing.id)
         .select()
         .single();
-      if (data)
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
+      if (data) {
         setProjects((arr) =>
           arr.map((p) => (p.id === editing.id ? (data as Project) : p))
         );
+        setOpen(false);
+      }
     } else {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("projects")
         .insert(payload)
         .select()
         .single();
-      if (data) setProjects((arr) => [data as Project, ...arr]);
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
+      if (data) {
+        setProjects((arr) => [data as Project, ...arr]);
+        setOpen(false);
+      }
     }
-    setOpen(false);
   }
 
   async function remove(p: Project) {
@@ -355,7 +383,11 @@ export function ProjectsClient({
               Tạo dự án mới và bắt đầu chia giai đoạn để theo dõi.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form
+            onSubmit={onSubmit}
+            className="space-y-4"
+            key={editing?.id ?? "new-project"}
+          >
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="name">Tên dự án</Label>
@@ -513,7 +545,7 @@ export function ProjectsClient({
                   id="start_date"
                   name="start_date"
                   type="date"
-                  defaultValue={editing?.start_date ?? ""}
+                  defaultValue={toDateInput(editing?.start_date)}
                 />
               </div>
               <div className="space-y-2">
@@ -522,7 +554,7 @@ export function ProjectsClient({
                   id="end_date"
                   name="end_date"
                   type="date"
-                  defaultValue={editing?.end_date ?? ""}
+                  defaultValue={toDateInput(editing?.end_date)}
                 />
                 <div className="text-[11px] text-muted-foreground">
                   Để trống nếu dự án vận hành liên tục.
@@ -537,16 +569,24 @@ export function ProjectsClient({
                 defaultValue={editing?.description ?? ""}
               />
             </div>
+
+            {error && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
+                disabled={saving}
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand">
-                Lưu
+              <Button type="submit" variant="brand" disabled={saving}>
+                {saving ? "Đang lưu..." : "Lưu"}
               </Button>
             </DialogFooter>
           </form>

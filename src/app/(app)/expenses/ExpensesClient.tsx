@@ -37,7 +37,13 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency, formatDate, monthKey } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  humanizeSupabaseError,
+  monthKey,
+  toDateInput,
+} from "@/lib/utils";
 import type { OperatingExpense, Project } from "@/types/database";
 import { Pencil, Plus, Receipt, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -81,6 +87,8 @@ export function ExpensesClient({
   const [editing, setEditing] = useState<OperatingExpense | null>(null);
   const [category, setCategory] = useState<string>("other");
   const [projectId, setProjectId] = useState<string>("none");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   function resetForm() {
     setEditing(null);
@@ -90,6 +98,7 @@ export function ExpensesClient({
 
   function openNew() {
     resetForm();
+    setError(null);
     setOpen(true);
   }
 
@@ -97,11 +106,14 @@ export function ExpensesClient({
     setEditing(e);
     setCategory(e.category);
     setProjectId(e.project_id ?? "none");
+    setError(null);
     setOpen(true);
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(null);
+    setSaving(true);
     const fd = new FormData(e.currentTarget);
     const payload = {
       project_id: projectId === "none" ? null : projectId,
@@ -113,25 +125,37 @@ export function ExpensesClient({
         new Date().toISOString().slice(0, 10),
     };
     if (editing) {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("operating_expenses")
         .update(payload)
         .eq("id", editing.id)
         .select()
         .single();
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
       if (data) {
         setExpenses((arr) =>
-          arr.map((x) => (x.id === editing.id ? (data as OperatingExpense) : x))
+          arr.map((x) =>
+            x.id === editing.id ? (data as OperatingExpense) : x
+          )
         );
         setOpen(false);
         resetForm();
       }
     } else {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("operating_expenses")
         .insert(payload)
         .select()
         .single();
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
       if (data) {
         setExpenses((arr) => [data as OperatingExpense, ...arr]);
         setOpen(false);
@@ -430,7 +454,8 @@ export function ExpensesClient({
                   name="spent_date"
                   type="date"
                   defaultValue={
-                    editing?.spent_date ?? new Date().toISOString().slice(0, 10)
+                    toDateInput(editing?.spent_date) ||
+                    new Date().toISOString().slice(0, 10)
                   }
                   required
                 />
@@ -469,16 +494,27 @@ export function ExpensesClient({
                 </Select>
               </div>
             </div>
+            {error && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
+                disabled={saving}
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand">
-                {editing ? "Lưu thay đổi" : "Lưu"}
+              <Button type="submit" variant="brand" disabled={saving}>
+                {saving
+                  ? "Đang lưu..."
+                  : editing
+                  ? "Lưu thay đổi"
+                  : "Lưu"}
               </Button>
             </DialogFooter>
           </form>

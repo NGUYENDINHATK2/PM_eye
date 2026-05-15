@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ROLE_GROUPS } from "@/lib/roles";
+import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import {
   monthlyCostTimeline,
   paymentSummary,
@@ -39,7 +39,13 @@ import {
   projectFinance,
 } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency, formatDate, formatPercent } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  formatPercent,
+  humanizeSupabaseError,
+  toDateInput,
+} from "@/lib/utils";
 import type {
   Allocation,
   OperatingExpense,
@@ -98,12 +104,16 @@ export function ProjectDetailClient({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
   const [reqRoles, setReqRoles] = useState<RequiredRole[]>([]);
+  const [phaseError, setPhaseError] = useState<string | null>(null);
+  const [phaseSaving, setPhaseSaving] = useState(false);
 
   // Payments
   const [payments, setPayments] = useState(initialPayments);
   const [payOpen, setPayOpen] = useState(false);
   const [payEditing, setPayEditing] = useState<ProjectPayment | null>(null);
   const [payStatus, setPayStatus] = useState<PaymentStatus>("planned");
+  const [payError, setPayError] = useState<string | null>(null);
+  const [paySaving, setPaySaving] = useState(false);
 
   const arSummary = useMemo(() => paymentSummary(payments), [payments]);
 
@@ -173,17 +183,21 @@ export function ProjectDetailClient({
   function openNew() {
     setEditing(null);
     setReqRoles([]);
+    setPhaseError(null);
     setOpen(true);
   }
 
   function openEdit(ph: ProjectPhase) {
     setEditing(ph);
     setReqRoles(Array.isArray(ph.required_roles) ? ph.required_roles : []);
+    setPhaseError(null);
     setOpen(true);
   }
 
   async function savePhase(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setPhaseError(null);
+    setPhaseSaving(true);
     const fd = new FormData(e.currentTarget);
     const payload = {
       project_id: project.id,
@@ -194,27 +208,39 @@ export function ProjectDetailClient({
       required_roles: reqRoles,
     };
     if (editing) {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("project_phases")
         .update(payload)
         .eq("id", editing.id)
         .select()
         .single();
-      if (data)
+      setPhaseSaving(false);
+      if (err) {
+        setPhaseError(humanizeSupabaseError(err.message));
+        return;
+      }
+      if (data) {
         setPhases((arr) =>
-          arr.map((p) =>
-            p.id === editing.id ? (data as ProjectPhase) : p
-          )
+          arr.map((p) => (p.id === editing.id ? (data as ProjectPhase) : p))
         );
+        setOpen(false);
+      }
     } else {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("project_phases")
         .insert(payload)
         .select()
         .single();
-      if (data) setPhases((arr) => [...arr, data as ProjectPhase]);
+      setPhaseSaving(false);
+      if (err) {
+        setPhaseError(humanizeSupabaseError(err.message));
+        return;
+      }
+      if (data) {
+        setPhases((arr) => [...arr, data as ProjectPhase]);
+        setOpen(false);
+      }
     }
-    setOpen(false);
   }
 
   async function removePhase(ph: ProjectPhase) {
@@ -226,17 +252,21 @@ export function ProjectDetailClient({
   function openNewPayment() {
     setPayEditing(null);
     setPayStatus("planned");
+    setPayError(null);
     setPayOpen(true);
   }
 
   function openEditPayment(p: ProjectPayment) {
     setPayEditing(p);
     setPayStatus(p.status);
+    setPayError(null);
     setPayOpen(true);
   }
 
   async function savePayment(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setPayError(null);
+    setPaySaving(true);
     const fd = new FormData(e.currentTarget);
     const payload = {
       project_id: project.id,
@@ -248,24 +278,36 @@ export function ProjectDetailClient({
       note: (fd.get("note") as string) || null,
     };
     if (payEditing) {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("project_payments")
         .update(payload)
         .eq("id", payEditing.id)
         .select()
         .single();
+      setPaySaving(false);
+      if (err) {
+        setPayError(humanizeSupabaseError(err.message));
+        return;
+      }
       if (data) {
         setPayments((arr) =>
-          arr.map((x) => (x.id === payEditing.id ? (data as ProjectPayment) : x))
+          arr.map((x) =>
+            x.id === payEditing.id ? (data as ProjectPayment) : x
+          )
         );
         setPayOpen(false);
       }
     } else {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("project_payments")
         .insert(payload)
         .select()
         .single();
+      setPaySaving(false);
+      if (err) {
+        setPayError(humanizeSupabaseError(err.message));
+        return;
+      }
       if (data) {
         setPayments((arr) => [...arr, data as ProjectPayment]);
         setPayOpen(false);
@@ -280,11 +322,26 @@ export function ProjectDetailClient({
   }
 
   function addRole() {
-    setReqRoles((r) => [...r, { role: "BA", count: 1 }]);
+    setReqRoles((r) => {
+      const used = new Set(r.map((x) => x.role));
+      const next = ROLE_OPTIONS.find((o) => !used.has(o)) ?? "Other";
+      return [...r, { role: next, count: 1 }];
+    });
   }
   function updateRole(i: number, patch: Partial<RequiredRole>) {
     setReqRoles((r) =>
-      r.map((x, idx) => (idx === i ? { ...x, ...patch } : x))
+      r.map((x, idx) => {
+        if (idx !== i) return x;
+        const merged = { ...x, ...patch };
+        // không cho phép trùng role với entry khác
+        if (
+          patch.role !== undefined &&
+          r.some((y, yi) => yi !== i && y.role === patch.role)
+        ) {
+          return x; // bỏ qua nếu trùng
+        }
+        return merged;
+      })
     );
   }
   function removeRole(i: number) {
@@ -787,7 +844,11 @@ export function ProjectDetailClient({
               báo nếu thiếu người.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={savePhase} className="space-y-4">
+          <form
+            onSubmit={savePhase}
+            className="space-y-4"
+            key={editing?.id ?? "new-phase"}
+          >
             <div className="space-y-2">
               <Label htmlFor="phase_name">Tên giai đoạn</Label>
               <Input
@@ -806,7 +867,7 @@ export function ProjectDetailClient({
                   name="start_date"
                   type="date"
                   required
-                  defaultValue={editing?.start_date ?? ""}
+                  defaultValue={toDateInput(editing?.start_date)}
                 />
               </div>
               <div className="space-y-2">
@@ -816,7 +877,7 @@ export function ProjectDetailClient({
                   name="end_date"
                   type="date"
                   required
-                  defaultValue={editing?.end_date ?? ""}
+                  defaultValue={toDateInput(editing?.end_date)}
                 />
               </div>
               <div className="space-y-2">
@@ -899,16 +960,23 @@ export function ProjectDetailClient({
               </div>
             </div>
 
+            {phaseError && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                {phaseError}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
+                disabled={phaseSaving}
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand">
-                Lưu
+              <Button type="submit" variant="brand" disabled={phaseSaving}>
+                {phaseSaving ? "Đang lưu..." : "Lưu"}
               </Button>
             </DialogFooter>
           </form>
@@ -977,7 +1045,7 @@ export function ProjectDetailClient({
                   id="due_date"
                   name="due_date"
                   type="date"
-                  defaultValue={payEditing?.due_date ?? ""}
+                  defaultValue={toDateInput(payEditing?.due_date)}
                 />
               </div>
               <div className="space-y-2">
@@ -986,7 +1054,7 @@ export function ProjectDetailClient({
                   id="paid_date"
                   name="paid_date"
                   type="date"
-                  defaultValue={payEditing?.paid_date ?? ""}
+                  defaultValue={toDateInput(payEditing?.paid_date)}
                   disabled={payStatus !== "paid"}
                 />
               </div>
@@ -1000,16 +1068,28 @@ export function ProjectDetailClient({
                 defaultValue={payEditing?.note ?? ""}
               />
             </div>
+
+            {payError && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                {payError}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setPayOpen(false)}
+                disabled={paySaving}
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand">
-                {payEditing ? "Lưu thay đổi" : "Thêm"}
+              <Button type="submit" variant="brand" disabled={paySaving}>
+                {paySaving
+                  ? "Đang lưu..."
+                  : payEditing
+                  ? "Lưu thay đổi"
+                  : "Thêm"}
               </Button>
             </DialogFooter>
           </form>

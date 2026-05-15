@@ -46,7 +46,12 @@ import {
   userLoadToday,
 } from "@/lib/calculations";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency, formatPercent } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatPercent,
+  humanizeSupabaseError,
+  toDateInput,
+} from "@/lib/utils";
 import type { Allocation, Profile } from "@/types/database";
 import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
@@ -64,23 +69,29 @@ export function EmployeesClient({
   const [editing, setEditing] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<string>("BA");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const today = new Date();
 
   function openNew() {
     setEditing(null);
     setRole("BA");
+    setError(null);
     setOpen(true);
   }
 
   function openEdit(p: Profile) {
     setEditing(p);
     setRole(p.role);
+    setError(null);
     setOpen(true);
   }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(null);
+    setSaving(true);
     const fd = new FormData(e.currentTarget);
     const payload = {
       full_name: fd.get("full_name") as string,
@@ -94,25 +105,39 @@ export function EmployeesClient({
     };
 
     if (editing) {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("profiles")
         .update(payload)
         .eq("id", editing.id)
         .select()
         .single();
-      if (data)
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
+      if (data) {
         setProfiles((arr) =>
           arr.map((p) => (p.id === editing.id ? (data as Profile) : p))
         );
+        setOpen(false);
+      }
     } else {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from("profiles")
         .insert(payload)
         .select()
         .single();
-      if (data) setProfiles((arr) => [data as Profile, ...arr]);
+      setSaving(false);
+      if (err) {
+        setError(humanizeSupabaseError(err.message));
+        return;
+      }
+      if (data) {
+        setProfiles((arr) => [data as Profile, ...arr]);
+        setOpen(false);
+      }
     }
-    setOpen(false);
   }
 
   async function remove(p: Profile) {
@@ -306,7 +331,11 @@ export function EmployeesClient({
               Lưu thông tin lương và vị trí để hệ thống tính chi phí.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={onSubmit} className="space-y-4">
+          <form
+            onSubmit={onSubmit}
+            className="space-y-4"
+            key={editing?.id ?? "new-emp"}
+          >
             <div className="space-y-2">
               <Label htmlFor="full_name">Họ và tên</Label>
               <Input
@@ -370,7 +399,8 @@ export function EmployeesClient({
                   name="start_date"
                   type="date"
                   defaultValue={
-                    editing?.start_date ?? new Date().toISOString().slice(0, 10)
+                    toDateInput(editing?.start_date) ||
+                    new Date().toISOString().slice(0, 10)
                   }
                 />
               </div>
@@ -384,16 +414,24 @@ export function EmployeesClient({
               />
               Đang làm việc
             </label>
+
+            {error && (
+              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                {error}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
+                disabled={saving}
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand">
-                Lưu
+              <Button type="submit" variant="brand" disabled={saving}>
+                {saving ? "Đang lưu..." : "Lưu"}
               </Button>
             </DialogFooter>
           </form>
