@@ -460,14 +460,16 @@ export function EmployeesClient({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="base_salary">
-                  Lương / tháng (VND)
+                <div className="flex items-center justify-between gap-2 min-h-[18px]">
+                  <Label htmlFor="base_salary" className="!mb-0">
+                    Lương / tháng (VND)
+                  </Label>
                   {editing && historyCount(editing.id) > 0 && (
-                    <span className="ml-2 text-[10px] font-normal text-muted-foreground">
-                      · {historyCount(editing.id)} lần đổi trong lịch sử
-                    </span>
+                    <Badge variant="info" className="text-[9px] !py-0">
+                      {historyCount(editing.id)} lần đổi
+                    </Badge>
                   )}
-                </Label>
+                </div>
                 <Input
                   id="base_salary"
                   name="base_salary"
