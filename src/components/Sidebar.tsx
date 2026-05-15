@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   ChevronsUpDown,
+  Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ type Item = {
 
 const NAV: Item[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/capacity", label: "Capacity team", icon: Activity },
   { href: "/employees", label: "Nhân sự", icon: Users },
   { href: "/projects", label: "Dự án", icon: Briefcase },
   { href: "/allocations", label: "Phân bổ", icon: Sliders },

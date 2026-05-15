@@ -44,7 +44,16 @@ import type {
   ProjectPhase,
 } from "@/types/database";
 import { AllocationTimeline } from "@/components/allocations/AllocationTimeline";
-import { AlertTriangle, CalendarRange, List, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarRange,
+  FolderKanban,
+  List,
+  Pencil,
+  Plus,
+  Trash2,
+  User as UserIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 export function AllocationsClient({
@@ -241,24 +250,32 @@ export function AllocationsClient({
   // View toggle: timeline (Gantt) vs list
   const [view, setView] = useState<"timeline" | "list">("timeline");
 
-  // Timeline range: "EOY" = đến cuối năm, "12mo" = 12 tháng tới, "6mo" = 6 tháng tới
-  const [range, setRange] = useState<"6mo" | "12mo" | "EOY">("EOY");
+  // Timeline range
+  const [range, setRange] = useState<"3mo" | "6mo" | "12mo" | "EOY" | "year">("EOY");
+  // Group rows by person or by project
+  const [groupBy, setGroupBy] = useState<"person" | "project">("person");
+  // Density / zoom level
+  const [density, setDensity] = useState<"compact" | "normal" | "comfy">("normal");
   const timelineRange = useMemo(() => {
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     let end: Date;
     if (range === "EOY") {
       end = new Date(today.getFullYear(), 11, 31);
-      // nếu đã gần cuối năm, kéo dài thêm 6 tháng
       if (
         (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30) <
         3
       ) {
         end = new Date(today.getFullYear() + 1, 5, 30);
       }
+    } else if (range === "year") {
+      end = new Date(today.getFullYear() + 1, today.getMonth(), 0);
     } else if (range === "12mo") {
       end = new Date(today.getFullYear(), today.getMonth() + 12, 0);
-    } else {
+    } else if (range === "6mo") {
       end = new Date(today.getFullYear(), today.getMonth() + 6, 0);
+    } else {
+      // 3mo
+      end = new Date(today.getFullYear(), today.getMonth() + 3, 0);
     }
     return { start, end };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,57 +298,124 @@ export function AllocationsClient({
       />
 
       {/* View toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
-          <button
-            type="button"
-            onClick={() => setView("timeline")}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
-              view === "timeline"
-                ? "bg-accent text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <CalendarRange size={13} />
-            Timeline
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("list")}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
-              view === "list"
-                ? "bg-accent text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <List size={13} />
-            List
-          </button>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* View tabs */}
+          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setView("timeline")}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
+                view === "timeline"
+                  ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <CalendarRange size={13} />
+              Timeline
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
+                view === "list"
+                  ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <List size={13} />
+              List
+            </button>
+          </div>
+
+          {view === "timeline" && (
+            <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+              {(["3mo", "6mo", "12mo", "EOY", "year"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRange(r)}
+                  className={cn(
+                    "px-3 h-8 rounded-md text-xs font-medium transition",
+                    range === r
+                      ? "bg-accent text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {r === "3mo"
+                    ? "3 tháng"
+                    : r === "6mo"
+                    ? "6 tháng"
+                    : r === "12mo"
+                    ? "12 tháng"
+                    : r === "year"
+                    ? "1 năm"
+                    : "Cuối năm"}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {view === "timeline" && (
-          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
-            {(["6mo", "12mo", "EOY"] as const).map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRange(r)}
-                className={cn(
-                  "px-3 h-8 rounded-md text-xs font-medium transition",
-                  range === r
-                    ? "bg-accent text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {r === "6mo"
-                  ? "6 tháng tới"
-                  : r === "12mo"
-                  ? "12 tháng tới"
-                  : "Đến cuối năm"}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            {/* Group by */}
+            <div className="inline-flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+                Nhóm theo
+              </span>
+              <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+                {(["person", "project"] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGroupBy(g)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition",
+                      groupBy === g
+                        ? "bg-accent text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {g === "person" ? (
+                      <>
+                        <UserIcon size={11} /> Nhân sự
+                      </>
+                    ) : (
+                      <>
+                        <FolderKanban size={11} /> Dự án
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Density / zoom */}
+            <div className="inline-flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+                Mật độ
+              </span>
+              <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+                {(["compact", "normal", "comfy"] as const).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDensity(d)}
+                    className={cn(
+                      "px-3 h-7 rounded-md text-xs font-medium transition",
+                      density === d
+                        ? "bg-accent text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {d === "compact" ? "Gọn" : d === "normal" ? "Vừa" : "To"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -356,6 +440,8 @@ export function AllocationsClient({
           startDate={timelineRange.start}
           endDate={timelineRange.end}
           onEditAllocation={openEdit}
+          groupBy={groupBy}
+          density={density}
         />
       ) : null}
 

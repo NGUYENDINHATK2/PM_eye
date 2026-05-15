@@ -20,6 +20,49 @@ import { useMemo } from "react";
 
 type Lane = Allocation[];
 
+// Distinct vibrant palette — dùng cho người khi group-by-project.
+const PERSON_PALETTE = [
+  "#6366f1", // indigo
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#ef4444", // rose
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#84cc16", // lime
+  "#f97316", // orange
+  "#14b8a6", // teal
+  "#a855f7", // purple
+  "#3b82f6", // blue
+  "#22c55e", // green
+  "#eab308", // yellow
+];
+
+function colorForUser(userId: string): string {
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) {
+    h = (h * 31 + userId.charCodeAt(i)) >>> 0;
+  }
+  return PERSON_PALETTE[h % PERSON_PALETTE.length];
+}
+
+// Darken/lighten a hex color by percent (-100..100).
+function shade(hex: string, percent: number): string {
+  const m = hex.replace("#", "");
+  if (m.length !== 6) return hex;
+  const num = parseInt(m, 16);
+  let r = (num >> 16) & 0xff;
+  let g = (num >> 8) & 0xff;
+  let b = num & 0xff;
+  const t = percent < 0 ? 0 : 255;
+  const p = Math.abs(percent) / 100;
+  r = Math.round((t - r) * p + r);
+  g = Math.round((t - g) * p + g);
+  b = Math.round((t - b) * p + b);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
 function packIntoLanes(allocs: Allocation[]): Lane[] {
   const sorted = [...allocs].sort((a, b) =>
     a.start_date.localeCompare(b.start_date)
@@ -40,6 +83,9 @@ function packIntoLanes(allocs: Allocation[]): Lane[] {
   return lanes;
 }
 
+export type GroupBy = "person" | "project";
+export type Density = "compact" | "normal" | "comfy";
+
 export function AllocationTimeline({
   profiles,
   allocations,
@@ -48,6 +94,8 @@ export function AllocationTimeline({
   startDate,
   endDate,
   onEditAllocation,
+  groupBy = "person",
+  density = "normal",
 }: {
   profiles: Profile[];
   allocations: Allocation[];
@@ -56,6 +104,8 @@ export function AllocationTimeline({
   startDate: Date;
   endDate: Date;
   onEditAllocation: (a: Allocation) => void;
+  groupBy?: GroupBy;
+  density?: Density;
 }) {
   const startMs = startDate.getTime();
   const endMs = endDate.getTime();
@@ -68,6 +118,10 @@ export function AllocationTimeline({
   const phasesById = useMemo(
     () => new Map(phases.map((p) => [p.id, p])),
     [phases]
+  );
+  const profilesById = useMemo(
+    () => new Map(profiles.map((p) => [p.id, p])),
+    [profiles]
   );
 
   const months = useMemo(() => {
@@ -104,47 +158,85 @@ export function AllocationTimeline({
   const todayPct =
     today >= startDate && today <= endDate ? pctFromDate(today) : null;
 
-  const userLanes = useMemo(() => {
-    const map = new Map<string, Lane[]>();
-    for (const p of profiles) {
-      const allocs = allocations.filter((a) => a.user_id === p.id);
-      map.set(p.id, packIntoLanes(allocs));
-    }
-    return map;
-  }, [profiles, allocations]);
+  // Density tunings — padTop/padBot là khoảng đệm trên/dưới row
+  const sizes = {
+    compact: { left: 200, barH: 22, laneStep: 28, rowMin: 56, monthMinW: 70, headerH: 50, padTop: 10, padBot: 12 },
+    normal: { left: 240, barH: 30, laneStep: 36, rowMin: 76, monthMinW: 96, headerH: 64, padTop: 14, padBot: 16 },
+    comfy: { left: 260, barH: 36, laneStep: 44, rowMin: 92, monthMinW: 120, headerH: 72, padTop: 18, padBot: 20 },
+  }[density];
 
-  const LEFT_W = 220;
-  const MONTH_MIN_W = 88;
-  const totalMinW = LEFT_W + months.length * MONTH_MIN_W;
+  // ─── ROW MODEL ───
+  type Row =
+    | {
+        kind: "person";
+        profile: Profile;
+        lanes: Lane[];
+      }
+    | {
+        kind: "project";
+        project: Project;
+        lanes: Lane[];
+      };
+
+  const rows = useMemo<Row[]>(() => {
+    if (groupBy === "person") {
+      return profiles.map((p) => ({
+        kind: "person" as const,
+        profile: p,
+        lanes: packIntoLanes(allocations.filter((a) => a.user_id === p.id)),
+      }));
+    }
+    return projects.map((proj) => ({
+      kind: "project" as const,
+      project: proj,
+      lanes: packIntoLanes(
+        allocations.filter((a) => a.project_id === proj.id)
+      ),
+    }));
+  }, [groupBy, profiles, projects, allocations]);
+
+  const totalMinW = sizes.left + months.length * sizes.monthMinW;
 
   return (
     <TooltipProvider delayDuration={50}>
       <div className="rounded-2xl border bg-card overflow-x-auto">
         <div style={{ minWidth: totalMinW }}>
-          {/* Header row */}
-          <div className="flex border-b bg-muted/30 sticky top-0 z-20">
+          {/* Header */}
+          <div className="flex border-b bg-muted/30 sticky top-0 z-30" style={{ height: sizes.headerH }}>
             <div
-              className="shrink-0 sticky left-0 bg-muted/40 backdrop-blur-sm border-r z-10 px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground"
-              style={{ width: LEFT_W }}
+              className="shrink-0 sticky left-0 bg-muted/40 backdrop-blur-sm border-r z-20 px-4 flex flex-col justify-center"
+              style={{ width: sizes.left }}
             >
-              Nhân sự · {profiles.length}
+              <div className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+                {groupBy === "person" ? "Nhân sự" : "Dự án"} · {rows.length}
+              </div>
+              <div className="text-[10px] text-muted-foreground/70">
+                {density === "compact" && "Compact"}
+                {density === "normal" && "Normal"}
+                {density === "comfy" && "Comfortable"} · {months.length} tháng
+              </div>
             </div>
             <div className="flex flex-1">
               {months.map((m) => (
                 <div
                   key={m.key}
                   className={cn(
-                    "flex-1 py-3 text-xs text-center border-l border-border/60",
+                    "flex-1 flex flex-col justify-center items-center border-l border-border/60 text-center",
                     m.isCurrent
-                      ? "text-indigo-500 font-semibold bg-indigo-500/10"
+                      ? "text-indigo-500 bg-indigo-500/[0.06]"
                       : "text-muted-foreground"
                   )}
-                  style={{ minWidth: MONTH_MIN_W }}
+                  style={{ minWidth: sizes.monthMinW }}
                 >
-                  <div>{m.label}</div>
-                  <div className="text-[9px] opacity-60">
-                    {String(m.year).slice(2)}
+                  <div className={cn("text-sm font-semibold", m.isCurrent && "text-indigo-500")}>
+                    {m.label}
                   </div>
+                  <div className="text-[10px] opacity-70">{m.year}</div>
+                  {m.isCurrent && (
+                    <div className="text-[9px] mt-0.5 font-medium uppercase tracking-wider">
+                      Hiện tại
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -152,58 +244,45 @@ export function AllocationTimeline({
 
           {/* Rows */}
           <div className="divide-y">
-            {profiles.map((p) => {
-              const lanes = userLanes.get(p.id) ?? [];
-              const rowHeight = Math.max(60, lanes.length * 30 + 20);
-              const load = userLoadToday(p.id, allocations, today);
+            {rows.map((row, idx) => {
+              const rowHeight = Math.max(
+                sizes.rowMin,
+                sizes.padTop +
+                  Math.max(1, row.lanes.length) * sizes.laneStep +
+                  (sizes.padBot - (sizes.laneStep - sizes.barH))
+              );
               return (
                 <div
-                  key={p.id}
-                  className="flex items-stretch hover:bg-muted/20 transition-colors"
+                  key={
+                    row.kind === "person" ? row.profile.id : row.project.id
+                  }
+                  className="flex items-stretch hover:bg-muted/15 transition-colors animate-fade-up"
+                  style={{ animationDelay: `${idx * 25}ms` }}
                 >
-                  {/* Left: person info */}
+                  {/* Left rail */}
                   <div
-                    className="shrink-0 sticky left-0 bg-card/95 backdrop-blur-sm border-r z-10 px-4 py-3 flex items-center gap-3"
-                    style={{ width: LEFT_W, minHeight: rowHeight }}
+                    className="shrink-0 sticky left-0 bg-card/95 backdrop-blur-sm border-r z-10 px-4 flex items-center gap-3"
+                    style={{ width: sizes.left, minHeight: rowHeight }}
                   >
-                    <Avatar className="h-9 w-9 shrink-0">
-                      <AvatarFallback className="text-xs">
-                        {p.full_name?.[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-sm truncate">
-                        {p.full_name}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground truncate">
-                        {p.role}
-                      </div>
-                    </div>
-                    {load > 0 && (
-                      <Badge
-                        variant={
-                          load > 1.2
-                            ? "destructive"
-                            : load > 1
-                            ? "warning"
-                            : load < 0.5
-                            ? "info"
-                            : "success"
-                        }
-                        className="shrink-0 text-[10px]"
-                      >
-                        {formatPercent(load)}
-                      </Badge>
+                    {row.kind === "person" ? (
+                      <PersonRail
+                        profile={row.profile}
+                        allocations={allocations}
+                        today={today}
+                      />
+                    ) : (
+                      <ProjectRail
+                        project={row.project}
+                        allocations={allocations}
+                        profilesById={profilesById}
+                      />
                     )}
                   </div>
 
-                  {/* Right: timeline */}
+                  {/* Timeline */}
                   <div className="flex-1 relative">
-                    <div
-                      className="relative"
-                      style={{ height: rowHeight }}
-                    >
-                      {/* Month gridlines */}
+                    <div className="relative" style={{ height: rowHeight }}>
+                      {/* Month columns */}
                       {months.map((m, i) => (
                         <div
                           key={m.key}
@@ -224,28 +303,48 @@ export function AllocationTimeline({
                           className="absolute top-0 bottom-0 z-10 pointer-events-none"
                           style={{ left: `${todayPct}%` }}
                         >
-                          <div className="w-px h-full bg-rose-500/70" />
                           <div
-                            className="absolute top-1 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-rose-500"
-                            style={{ left: 0.5 }}
+                            className="w-0.5 h-full"
+                            style={{
+                              background:
+                                "linear-gradient(to bottom, #f43f5e, #be123c)",
+                              boxShadow: "0 0 8px rgb(244 63 94 / 0.5)",
+                            }}
                           />
+                          <div className="absolute -top-1.5 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgb(244_63_94_/_0.8)] ring-2 ring-background" />
                         </div>
                       )}
 
                       {/* Bars */}
-                      {lanes.map((lane, laneIdx) =>
+                      {row.lanes.map((lane, laneIdx) =>
                         lane.map((a) => {
                           const s = new Date(a.start_date);
                           const e = new Date(a.end_date);
                           if (e.getTime() < startMs || s.getTime() > endMs)
                             return null;
                           const left = pctFromDate(s);
-                          const width = Math.max(2, pctFromDate(e) - left);
+                          const width = Math.max(1.5, pctFromDate(e) - left);
                           const proj = projectsById.get(a.project_id);
+                          const profile = profilesById.get(a.user_id);
                           const phase = a.phase_id
                             ? phasesById.get(a.phase_id)
                             : null;
-                          const projColor = proj?.color ?? "#6366f1";
+                          const color =
+                            row.kind === "project"
+                              ? colorForUser(profile?.id ?? "?")
+                              : proj?.color ?? "#6366f1";
+
+                          // primary label depends on grouping
+                          const primary =
+                            row.kind === "person"
+                              ? proj?.name ?? "?"
+                              : profile?.full_name ?? "?";
+
+                          // initial for chip
+                          const initial =
+                            row.kind === "person"
+                              ? proj?.name?.[0]?.toUpperCase() ?? "?"
+                              : profile?.full_name?.[0]?.toUpperCase() ?? "?";
 
                           return (
                             <Tooltip key={a.id}>
@@ -253,46 +352,63 @@ export function AllocationTimeline({
                                 <button
                                   type="button"
                                   onClick={() => onEditAllocation(a)}
-                                  className="absolute rounded-md text-[11px] text-white font-medium px-2 truncate hover:ring-2 hover:ring-foreground/40 hover:z-20 transition-all shadow-sm flex items-center gap-1 text-left"
+                                  className="absolute rounded-lg text-xs text-white font-semibold px-2 hover:ring-2 hover:ring-white/60 hover:z-20 transition-all flex items-center gap-1.5 text-left ring-1 ring-black/10 overflow-hidden"
                                   style={{
                                     left: `${left}%`,
                                     width: `${width}%`,
-                                    top: laneIdx * 30 + 10,
-                                    height: 24,
-                                    background: `linear-gradient(135deg, ${projColor}, ${projColor}cc)`,
-                                    boxShadow: `0 2px 8px -2px ${projColor}66`,
+                                    top: sizes.padTop + laneIdx * sizes.laneStep,
+                                    height: sizes.barH,
+                                    background: `linear-gradient(135deg, ${color} 0%, ${shade(color, -12)} 100%)`,
+                                    boxShadow: `0 4px 14px -2px ${color}80, 0 0 0 1px ${color}30 inset`,
+                                    textShadow: "0 1px 2px rgb(0 0 0 / 0.25)",
                                   }}
                                 >
-                                  <span className="truncate flex-1">
-                                    {proj?.name ?? "?"}
+                                  <span
+                                    className="shrink-0 w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px]"
+                                    style={{
+                                      background: "rgb(255 255 255 / 0.25)",
+                                      backdropFilter: "blur(2px)",
+                                    }}
+                                  >
+                                    {initial}
                                   </span>
-                                  <span className="opacity-80 shrink-0 tabular-nums">
+                                  <span className="truncate flex-1">
+                                    {primary}
+                                  </span>
+                                  <span
+                                    className="shrink-0 tabular-nums text-[11px] px-1 rounded"
+                                    style={{
+                                      background: "rgb(0 0 0 / 0.15)",
+                                    }}
+                                  >
                                     {Math.round(a.percent * 100)}%
                                   </span>
                                 </button>
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent className="max-w-[260px]">
                                 <div className="font-medium flex items-center gap-1.5">
                                   <span
                                     className="w-2 h-2 rounded-full"
-                                    style={{ background: projColor }}
+                                    style={{ background: proj?.color }}
                                   />
                                   {proj?.name}
                                 </div>
+                                <div className="text-[11px] text-foreground mt-0.5">
+                                  {profile?.full_name} · {profile?.role}
+                                </div>
                                 {phase && (
-                                  <div className="text-[10px] text-muted-foreground">
-                                    {phase.phase_name}
+                                  <div className="text-[10px] text-muted-foreground mt-1">
+                                    Phase: {phase.phase_name}
                                   </div>
                                 )}
                                 <div className="text-[10px] text-muted-foreground mt-1">
-                                  {formatDate(a.start_date)} →{" "}
-                                  {formatDate(a.end_date)}
+                                  {formatDate(a.start_date)} → {formatDate(a.end_date)}
                                 </div>
-                                <div className="text-[11px] font-medium mt-0.5">
+                                <div className="text-xs font-semibold mt-1">
                                   {formatPercent(a.percent)}
                                 </div>
                                 {a.note && (
-                                  <div className="text-[10px] text-muted-foreground mt-1 max-w-[200px]">
+                                  <div className="text-[10px] text-muted-foreground mt-1 italic">
                                     {a.note}
                                   </div>
                                 )}
@@ -301,20 +417,118 @@ export function AllocationTimeline({
                           );
                         })
                       )}
+
+                      {/* Empty state for row */}
+                      {row.lanes.length === 0 && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-[10px] text-muted-foreground italic">
+                            {row.kind === "person"
+                              ? "Chưa có allocation"
+                              : "Chưa có người"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               );
             })}
 
-            {profiles.length === 0 && (
+            {rows.length === 0 && (
               <div className="text-sm text-muted-foreground text-center py-10">
-                Chưa có nhân sự nào.
+                Không có dữ liệu.
               </div>
             )}
           </div>
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+function PersonRail({
+  profile,
+  allocations,
+  today,
+}: {
+  profile: Profile;
+  allocations: Allocation[];
+  today: Date;
+}) {
+  const load = userLoadToday(profile.id, allocations, today);
+  return (
+    <>
+      <Avatar className="h-10 w-10 shrink-0">
+        <AvatarFallback className="text-xs">
+          {profile.full_name?.[0]?.toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="font-medium text-sm truncate">{profile.full_name}</div>
+        <div className="text-[10px] text-muted-foreground truncate">
+          {profile.role}
+        </div>
+      </div>
+      {load > 0 && (
+        <Badge
+          variant={
+            load > 1.2
+              ? "destructive"
+              : load > 1
+              ? "warning"
+              : load < 0.5
+              ? "info"
+              : "success"
+          }
+          className="shrink-0 text-[10px]"
+        >
+          {formatPercent(load)}
+        </Badge>
+      )}
+    </>
+  );
+}
+
+function ProjectRail({
+  project,
+  allocations,
+  profilesById,
+}: {
+  project: Project;
+  allocations: Allocation[];
+  profilesById: Map<string, Profile>;
+}) {
+  const today = new Date();
+  const activeMembers = new Set<string>();
+  for (const a of allocations) {
+    if (a.project_id !== project.id) continue;
+    const s = new Date(a.start_date);
+    const e = new Date(a.end_date);
+    if (today >= s && today <= e) activeMembers.add(a.user_id);
+  }
+  const roles = new Set<string>();
+  for (const uid of activeMembers) {
+    const p = profilesById.get(uid);
+    if (p) roles.add(p.role);
+  }
+  return (
+    <>
+      <div
+        className="w-1.5 h-12 rounded-full shrink-0"
+        style={{
+          background: `linear-gradient(to bottom, ${project.color}, ${shade(project.color, -20)})`,
+          boxShadow: `0 0 12px ${project.color}80, 0 0 0 1px ${project.color}`,
+        }}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold text-sm truncate">{project.name}</div>
+        <div className="text-[10px] text-muted-foreground truncate">
+          {activeMembers.size} người · {roles.size} role
+        </div>
+      </div>
+      <Badge variant="secondary" className="shrink-0 text-[10px]">
+        {project.status}
+      </Badge>
+    </>
   );
 }
