@@ -21,7 +21,7 @@ export default async function AppLayout({
         <TopProgressBar />
         <Sidebar userEmail={user.email ?? undefined} />
         <main
-          className="flex-1 min-w-0 p-4 lg:p-6 w-full animate-fade-up"
+          className="flex-1 min-w-0 p-4 lg:p-6 w-full max-w-full overflow-x-hidden animate-fade-up"
           style={{ animationDuration: "0.35s" }}
         >
           {children}

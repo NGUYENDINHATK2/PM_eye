@@ -148,27 +148,29 @@ export function StatCards({
               }}
             />
 
-            <div className="relative p-5">
+            <div className="relative p-4 sm:p-5 min-w-0">
               {/* header */}
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
                 <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-white shadow-md shrink-0"
                   style={{
                     background: `linear-gradient(135deg, ${s.gradientFrom}, ${s.gradientTo})`,
                     boxShadow: `0 6px 16px -4px ${s.gradientFrom}66`,
                   }}
                 >
-                  <s.icon size={15} strokeWidth={2.4} />
+                  <s.icon size={14} strokeWidth={2.4} />
                 </div>
                 <ArrowUpRight
                   size={14}
-                  className="text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all"
+                  className="text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0"
                 />
               </div>
 
-              {/* number */}
-              <div className="eyebrow">{s.title}</div>
-              <div className={`text-3xl font-semibold tracking-tight tnum mt-1.5 ${s.textClass}`}>
+              {/* number — responsive size + truncate */}
+              <div className="eyebrow truncate">{s.title}</div>
+              <div
+                className={`text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight tnum mt-1.5 truncate ${s.textClass}`}
+              >
                 {typeof s.value === "number" && s.value > 1000 ? (
                   <AnimatedValue value={s.value} formatter={(n) => formatCurrency(n)} />
                 ) : (

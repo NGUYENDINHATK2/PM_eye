@@ -62,7 +62,7 @@ export function WelcomeHero({
           <span className="capitalize">{dateStr}</span>
         </div>
 
-        <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight break-words">
           {greet}, <span className="gradient-text">{userName}</span> 👋
         </h1>
         <p className="text-sm lg:text-base text-muted-foreground mt-2 max-w-xl">
@@ -70,12 +70,12 @@ export function WelcomeHero({
         </p>
 
         {/* Hero stats inline — sales lead perspective */}
-        <div className="mt-6 flex flex-wrap gap-x-8 gap-y-4 items-end">
+        <div className="mt-6 flex flex-wrap gap-x-5 sm:gap-x-8 gap-y-4 items-end">
           <div>
             <div className="eyebrow flex items-center gap-1.5">
               <Wallet size={11} /> Tổng doanh thu
             </div>
-            <div className="text-2xl lg:text-3xl font-semibold tracking-tight tnum gradient-text-emerald mt-1">
+            <div className="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight tnum break-words gradient-text-emerald mt-1">
               {formatCurrency(totalRevenue)}
             </div>
           </div>
@@ -92,7 +92,7 @@ export function WelcomeHero({
               Lợi nhuận
             </div>
             <div
-              className={`text-2xl lg:text-3xl font-semibold tracking-tight tnum mt-1 ${
+              className={`text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight tnum break-words mt-1 ${
                 profitable ? "gradient-text-emerald" : "gradient-text-rose"
               }`}
             >
@@ -108,7 +108,7 @@ export function WelcomeHero({
               <div className="h-10 w-px bg-border self-end mb-1" />
               <div>
                 <div className="eyebrow">Chưa thu</div>
-                <div className="text-2xl lg:text-3xl font-semibold tracking-tight tnum gradient-text-amber mt-1">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight tnum break-words gradient-text-amber mt-1">
                   {formatCurrency(arOutstanding)}
                 </div>
               </div>

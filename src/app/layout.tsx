@@ -6,18 +6,20 @@ export const metadata: Metadata = {
   description: "Tool quản lý dự án, nhân sự, chi phí vận hành cho PM/leader.",
 };
 
-// FOUC-safe theme init — default LIGHT (clean SaaS aesthetic)
+// FOUC-safe theme init — default DARK (cosmic liquid-glass aesthetic)
 const themeScript = `
 (function() {
   try {
-    var t = localStorage.getItem('pm-eye-theme') || 'light';
+    var t = localStorage.getItem('pm-eye-theme') || 'dark';
     if (t === 'system') {
       var d = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (d) document.documentElement.classList.add('dark');
     } else if (t === 'dark') {
       document.documentElement.classList.add('dark');
     }
-  } catch(e) {}
+  } catch(e) {
+    document.documentElement.classList.add('dark');
+  }
 })();
 `;
 
