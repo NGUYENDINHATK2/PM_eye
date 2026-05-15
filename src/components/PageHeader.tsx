@@ -55,8 +55,8 @@ export function PageHeader({
         </nav>
       )}
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
           {eyebrow && (
             <div className="eyebrow text-[10px] mb-1.5 flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full bg-indigo-500" />
@@ -65,20 +65,22 @@ export function PageHeader({
           )}
           <h1
             className={cn(
-              "text-3xl lg:text-4xl font-semibold tracking-tight",
+              "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-tight",
               highlight && "gradient-text"
             )}
           >
             {title}
           </h1>
           {subtitle && (
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
               {subtitle}
             </p>
           )}
         </div>
         {actions && (
-          <div className="flex items-center gap-2 shrink-0">{actions}</div>
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+            {actions}
+          </div>
         )}
       </div>
     </div>

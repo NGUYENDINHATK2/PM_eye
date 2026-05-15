@@ -321,7 +321,7 @@ export function ProjectsClient({
       {/* Filter toolbar */}
       {projects.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
+          <div className="relative w-full sm:flex-1 sm:w-auto sm:min-w-[200px] sm:max-w-md">
             <Search
               size={14}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
@@ -335,7 +335,7 @@ export function ProjectsClient({
             />
           </div>
 
-          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm overflow-x-auto max-w-full">
             {(["all", "ongoing", "planned", "paused", "completed"] as const).map(
               (s) => (
                 <button
@@ -628,7 +628,7 @@ export function ProjectsClient({
             className="space-y-4"
             key={editing?.id ?? "new-project"}
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="name">Tên dự án</Label>
                 <Input
@@ -647,7 +647,7 @@ export function ProjectsClient({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="total_budget">Ngân sách / Cap (VND)</Label>
                 <Input
@@ -688,7 +688,7 @@ export function ProjectsClient({
                 <div className="w-1 h-4 rounded-full bg-emerald-500" />
                 <Label className="mb-0">Doanh thu (khách trả)</Label>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="revenue" className="text-xs">
                     Doanh thu dự kiến (VND)
@@ -742,7 +742,7 @@ export function ProjectsClient({
                 Profit = Doanh thu − (Lương team + Vận hành + Đã tiêu trước).
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Trạng thái</Label>
                 <Select value={status} onValueChange={setStatus}>
@@ -778,7 +778,7 @@ export function ProjectsClient({
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="start_date">Ngày bắt đầu</Label>
                 <Input

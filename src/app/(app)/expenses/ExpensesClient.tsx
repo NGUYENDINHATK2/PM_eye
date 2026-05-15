@@ -439,7 +439,7 @@ export function ExpensesClient({
                 defaultValue={editing?.description ?? ""}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="amount">Số tiền (VND)</Label>
                 <Input
@@ -466,7 +466,7 @@ export function ExpensesClient({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Loại</Label>
                 <Select value={category} onValueChange={setCategory}>

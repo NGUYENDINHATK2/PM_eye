@@ -928,7 +928,7 @@ export function ProjectDetailClient({
                 defaultValue={payEditing?.milestone_name ?? ""}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="amount">Số tiền (VND)</Label>
                 <Input
@@ -958,7 +958,7 @@ export function ProjectDetailClient({
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="due_date">Ngày đáo hạn</Label>
                 <Input

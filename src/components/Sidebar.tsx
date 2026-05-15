@@ -146,17 +146,28 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
         <div className="px-4 pt-5 pb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="relative shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-violet-500 to-sky-500 blur-lg opacity-60 rounded-2xl animate-float" />
-              <div className="relative w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-sky-500 flex items-center justify-center text-white shadow-lg">
-                <Eye size={18} strokeWidth={2.5} />
+              {/* Outer glow */}
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-500 opacity-50 blur-md animate-float" />
+              {/* Rotating conic border ring */}
+              <div
+                className="absolute inset-0 rounded-2xl opacity-70"
+                style={{
+                  background:
+                    "conic-gradient(from 0deg, hsl(258 90% 60%), hsl(220 90% 60%), hsl(320 85% 65%), hsl(258 90% 60%))",
+                  animation: "spinSlow 8s linear infinite",
+                }}
+              />
+              <div className="relative w-10 h-10 m-[1px] rounded-[14px] bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-600 flex items-center justify-center text-white shadow-lg">
+                <Eye size={17} strokeWidth={2.5} />
               </div>
             </div>
             <div className="min-w-0 flex-1">
               <div className="font-semibold tracking-tight">
                 PM<span className="gradient-text">_Eye</span>
               </div>
-              <div className="text-[10px] text-muted-foreground tnum">
-                v1.0 · Internal
+              <div className="text-[10px] text-muted-foreground tnum flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                v1.0 · Online
               </div>
             </div>
           </div>
@@ -268,24 +279,34 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        "group relative flex items-center gap-3 h-10 mx-1 px-3 rounded-lg text-sm transition-all",
+        "group relative flex items-center gap-3 h-10 mx-1 px-3 rounded-xl text-sm transition-all overflow-hidden",
         active
-          ? "text-foreground font-medium shadow-[0_1px_0_0_hsl(0_0%_100%/0.06)_inset,0_1px_2px_hsl(0_0%_0%/0.05)] bg-gradient-to-r from-indigo-500/[0.12] via-indigo-500/[0.08] to-transparent border border-indigo-500/20"
+          ? "text-foreground font-medium bg-gradient-to-r from-violet-500/[0.18] via-violet-500/[0.10] to-transparent border border-violet-500/30 shadow-[0_2px_12px_-2px_hsl(258_90%_60%/0.25),0_1px_0_0_hsl(0_0%_100%/0.08)_inset]"
           : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-gradient-to-b from-indigo-400 to-violet-500" />
+        <>
+          <span
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-gradient-to-b from-violet-400 via-fuchsia-500 to-sky-500"
+            style={{ boxShadow: "0 0 12px hsl(258 90% 60%)" }}
+          />
+          {/* shimmer overlay */}
+          <span
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent pointer-events-none"
+            style={{ animation: "shimmerMove 4s linear infinite" }}
+          />
+        </>
       )}
       <span
         className={cn(
-          "relative flex items-center justify-center w-5 h-5 rounded-md transition-all shrink-0",
-          active && "text-indigo-500"
+          "relative flex items-center justify-center w-5 h-5 rounded-md transition-all shrink-0 z-10",
+          active && "text-violet-500"
         )}
       >
         <Icon size={15} strokeWidth={active ? 2.4 : 2} />
       </span>
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className="flex-1 truncate relative z-10">{item.label}</span>
       {item.badge !== undefined && item.badge > 0 && (
         <span className="text-[10px] tnum font-semibold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20">
           {item.badge}
