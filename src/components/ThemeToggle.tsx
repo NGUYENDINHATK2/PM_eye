@@ -19,12 +19,11 @@ function applyTheme(t: Theme) {
 }
 
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Default to dark mode for new users — cosmic vibe
-    const saved = (localStorage.getItem("pm-eye-theme") as Theme) || "dark";
+    const saved = (localStorage.getItem("pm-eye-theme") as Theme) || "light";
     setTheme(saved);
     applyTheme(saved);
     setMounted(true);

@@ -2,18 +2,18 @@
 
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard,
-  Users,
-  Briefcase,
-  Sliders,
-  Receipt,
-  Eye,
-  LogOut,
-  Search,
-  Settings,
-  ChevronsUpDown,
   Activity,
+  Briefcase,
+  ChevronRight,
+  Eye,
+  LayoutDashboard,
+  LogOut,
   Menu,
+  Receipt,
+  Settings,
+  Sliders,
+  User as UserIcon,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -22,23 +22,14 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 type Item = {
   href: string;
   label: string;
   icon: typeof Briefcase;
-  badge?: number;
 };
 
-const NAV: Item[] = [
+const MENU_ITEMS: Item[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/capacity", label: "Capacity team", icon: Activity },
   { href: "/employees", label: "Nhân sự", icon: Users },
@@ -47,26 +38,20 @@ const NAV: Item[] = [
   { href: "/expenses", label: "Chi phí", icon: Receipt },
 ];
 
+const ACCOUNT_ITEMS: Item[] = [
+  { href: "#profile", label: "Profile", icon: UserIcon },
+  { href: "#settings", label: "Cài đặt", icon: Settings },
+];
+
 export function Sidebar({ userEmail }: { userEmail?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  // Close drawer when route changes
+  useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  // Lock body scroll when drawer open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   async function signOut() {
@@ -76,54 +61,40 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
     router.refresh();
   }
 
+  const userName = userEmail?.split("@")[0] ?? "Admin";
+  const displayName =
+    userName.charAt(0).toUpperCase() + userName.slice(1, 16);
+
   return (
     <>
-      {/* Mobile top bar — only visible on small screens */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 h-14 bg-card/85 backdrop-blur-xl border-b">
+      {/* ============ Mobile top bar ============ */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 h-14 bg-card/90 backdrop-blur-xl border-b">
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="w-9 h-9 rounded-lg inline-flex items-center justify-center hover:bg-accent transition"
-          aria-label="Mở menu"
+          className="w-9 h-9 rounded-xl inline-flex items-center justify-center hover:bg-accent transition"
         >
           <Menu size={18} />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 via-violet-500 to-sky-500 flex items-center justify-center text-white shadow-md">
-            <Eye size={14} strokeWidth={2.5} />
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+            <Eye size={13} strokeWidth={2.5} />
           </div>
           <div className="font-semibold tracking-tight text-sm">
             PM<span className="gradient-text">_Eye</span>
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger className="rounded-full focus:outline-none">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">
-                {userEmail?.[0]?.toUpperCase() ?? "?"}
-              </AvatarFallback>
-            </Avatar>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
-              {userEmail}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={signOut}
-              className="text-rose-600 focus:text-rose-600"
-            >
-              <LogOut size={14} />
-              Đăng xuất
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Avatar className="h-8 w-8 ring-2 ring-violet-500/20">
+          <AvatarFallback className="text-xs bg-gradient-to-br from-violet-500 to-indigo-600 text-white">
+            {userName?.[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
       </header>
 
-      {/* Spacer to push content below mobile header */}
+      {/* Spacer */}
       <div className="lg:hidden h-14 shrink-0" />
 
-      {/* Mobile backdrop */}
+      {/* ============ Backdrop ============ */}
       {open && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in-0"
@@ -131,78 +102,59 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
         />
       )}
 
-      {/* Sidebar — drawer on mobile, fixed on desktop */}
+      {/* ============ Sidebar — clean SaaS, user card top + Menu/Account ============ */}
       <aside
         className={cn(
-          "z-50 glass border-r flex flex-col",
-          // Mobile: slide-in drawer
-          "fixed inset-y-0 left-0 w-[280px] transition-transform duration-300 ease-out",
+          "z-50 bg-card flex flex-col border-r",
+          "fixed inset-y-0 left-0 w-[272px] transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
-          // Desktop: sticky inline
           "lg:sticky lg:top-0 lg:translate-x-0 lg:w-[260px] lg:h-screen lg:shrink-0"
         )}
       >
-        {/* Brand */}
-        <div className="px-4 pt-5 pb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="relative shrink-0">
-              {/* Outer glow */}
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-sky-500 opacity-50 blur-md animate-float" />
-              {/* Rotating conic border ring */}
-              <div
-                className="absolute inset-0 rounded-2xl opacity-70"
-                style={{
-                  background:
-                    "conic-gradient(from 0deg, hsl(258 90% 60%), hsl(220 90% 60%), hsl(320 85% 65%), hsl(258 90% 60%))",
-                  animation: "spinSlow 8s linear infinite",
-                }}
-              />
-              <div className="relative w-10 h-10 m-[1px] rounded-[14px] bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-600 flex items-center justify-center text-white shadow-lg">
-                <Eye size={17} strokeWidth={2.5} />
-              </div>
+        {/* Top: logo + close on mobile */}
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-md group-hover:shadow-lg group-hover:shadow-violet-500/30 transition-all">
+              <Eye size={16} strokeWidth={2.5} />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="font-semibold tracking-tight">
-                PM<span className="gradient-text">_Eye</span>
-              </div>
-              <div className="text-[10px] text-muted-foreground tnum flex items-center gap-1">
-                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                v1.0 · Online
-              </div>
+            <div className="font-bold tracking-tight text-lg">
+              PM<span className="gradient-text">_Eye</span>
             </div>
-          </div>
-          {/* Close button on mobile */}
+          </Link>
           <button
             type="button"
             onClick={() => setOpen(false)}
-            className="lg:hidden w-8 h-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition"
-            aria-label="Đóng menu"
+            className="lg:hidden w-8 h-8 rounded-lg inline-flex items-center justify-center text-muted-foreground hover:bg-accent transition"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Command search hint */}
-        <div className="px-3 pb-3">
-          <button
-            type="button"
-            className="w-full flex items-center gap-2 h-9 px-3 rounded-lg border bg-background/40 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition group"
-          >
-            <Search size={13} />
-            <span className="flex-1 text-left">Tìm kiếm...</span>
-            <kbd className="hidden md:inline-flex h-5 items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
-              ⌘K
-            </kbd>
-          </button>
+        {/* User card */}
+        <div className="px-3 pb-4">
+          <div className="rounded-2xl border bg-card p-2.5 flex items-center gap-3 shadow-sm">
+            <Avatar className="h-10 w-10 ring-2 ring-violet-500/30">
+              <AvatarFallback className="text-sm bg-gradient-to-br from-violet-500 to-indigo-600 text-white font-semibold">
+                {displayName?.[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-sm truncate">
+                {displayName}
+              </div>
+              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Admin
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 overflow-y-auto no-scrollbar">
-          <div className="px-3 py-2">
-            <div className="eyebrow text-[10px]">Workspace</div>
-          </div>
-          <div className="space-y-0.5">
-            {NAV.map((item) => {
+        <nav className="flex-1 px-3 overflow-y-auto no-scrollbar">
+          <SectionLabel>Menu</SectionLabel>
+          <div className="space-y-0.5 mb-6">
+            {MENU_ITEMS.map((item) => {
               const active =
                 item.href === "/"
                   ? pathname === "/"
@@ -211,65 +163,48 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
             })}
           </div>
 
-          <div className="px-3 pt-6 pb-2">
-            <div className="eyebrow text-[10px]">General</div>
-          </div>
+          <SectionLabel>Account</SectionLabel>
           <div className="space-y-0.5">
-            <NavLink
-              item={{ href: "#", label: "Cài đặt", icon: Settings }}
-              active={false}
-            />
+            {ACCOUNT_ITEMS.map((item) => (
+              <NavLink key={item.href} item={item} active={false} />
+            ))}
+            <button
+              type="button"
+              onClick={signOut}
+              className="group w-full flex items-center gap-3 h-10 px-3 rounded-xl text-sm text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/[0.08] transition-colors text-left"
+            >
+              <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0">
+                <LogOut size={15} strokeWidth={2} />
+              </span>
+              <span className="flex-1 truncate">Đăng xuất</span>
+            </button>
           </div>
         </nav>
 
-        {/* Footer: theme toggle + tip */}
-        <div className="hidden lg:block px-3 pb-2 pt-3">
-          <div className="flex items-center justify-between mb-2.5 px-1">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-              Giao diện
+        {/* Footer: theme + email */}
+        <div className="px-4 pb-4 pt-3 space-y-3 border-t">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              Theme
             </span>
             <ThemeToggle />
           </div>
-        </div>
-
-        {/* User — desktop only (mobile has dropdown in header) */}
-        <div className="hidden lg:block px-2 pb-3 pt-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-accent/60 transition focus:outline-none border border-transparent hover:border-border">
-              <Avatar className="h-8 w-8 ring-2 ring-indigo-500/20">
-                <AvatarFallback>
-                  {userEmail?.[0]?.toUpperCase() ?? "?"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0 text-left">
-                <div className="text-xs font-medium truncate">{userEmail}</div>
-                <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Online · Admin
-                </div>
-              </div>
-              <ChevronsUpDown
-                size={13}
-                className="text-muted-foreground shrink-0"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="top" align="end" className="w-56">
-              <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
-                {userEmail}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={signOut}
-                className="text-rose-600 focus:text-rose-600"
-              >
-                <LogOut size={14} />
-                Đăng xuất
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {userEmail && (
+            <div className="text-[10px] text-muted-foreground/70 truncate">
+              {userEmail}
+            </div>
+          )}
         </div>
       </aside>
     </>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-muted-foreground/80 font-semibold">
+      {children}
+    </div>
   );
 }
 
@@ -279,39 +214,22 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        "group relative flex items-center gap-3 h-10 mx-1 px-3 rounded-xl text-sm transition-all overflow-hidden",
+        "group relative flex items-center gap-3 h-10 px-3 rounded-xl text-sm transition-colors",
         active
-          ? "text-foreground font-medium bg-gradient-to-r from-violet-500/[0.18] via-violet-500/[0.10] to-transparent border border-violet-500/30 shadow-[0_2px_12px_-2px_hsl(258_90%_60%/0.25),0_1px_0_0_hsl(0_0%_100%/0.08)_inset]"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+          ? "chip-violet font-medium"
+          : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
       )}
     >
-      {active && (
-        <>
-          <span
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-gradient-to-b from-violet-400 via-fuchsia-500 to-sky-500"
-            style={{ boxShadow: "0 0 12px hsl(258 90% 60%)" }}
-          />
-          {/* shimmer overlay */}
-          <span
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.05] to-transparent pointer-events-none"
-            style={{ animation: "shimmerMove 4s linear infinite" }}
-          />
-        </>
-      )}
       <span
         className={cn(
-          "relative flex items-center justify-center w-5 h-5 rounded-md transition-all shrink-0 z-10",
-          active && "text-violet-500"
+          "flex items-center justify-center w-5 h-5 rounded-md shrink-0",
+          active ? "text-white" : "text-muted-foreground group-hover:text-foreground"
         )}
       >
         <Icon size={15} strokeWidth={active ? 2.4 : 2} />
       </span>
-      <span className="flex-1 truncate relative z-10">{item.label}</span>
-      {item.badge !== undefined && item.badge > 0 && (
-        <span className="text-[10px] tnum font-semibold px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20">
-          {item.badge}
-        </span>
-      )}
+      <span className="flex-1 truncate">{item.label}</span>
+      {active && <ChevronRight size={12} className="opacity-80" />}
     </Link>
   );
 }
