@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -274,8 +275,9 @@ export function ProjectsClient({
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Dự án"
-        subtitle="Theo dõi ngân sách, tiến độ và sức khỏe từng dự án."
+        eyebrow="Workspace · Dự án"
+        title="Portfolio dự án"
+        subtitle="Theo dõi ngân sách, doanh thu, lợi nhuận và sức khỏe từng dự án trong portfolio."
         actions={
           <Button variant="brand" onClick={openNew}>
             <Plus /> Thêm dự án
@@ -371,28 +373,39 @@ export function ProjectsClient({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {projects.length === 0 && (
           <Card className="col-span-full">
-            <CardContent className="text-center py-20 text-muted-foreground">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500/20 to-violet-500/10 flex items-center justify-center mb-4">
-                <Briefcase size={22} className="text-indigo-500" />
-              </div>
-              <div className="text-base font-medium text-foreground">
-                Chưa có dự án nào
-              </div>
-              <div className="text-sm mt-1">
-                Tạo dự án đầu tiên để bắt đầu track P&L + team.
-              </div>
-              <Button variant="brand" onClick={openNew} className="mt-4">
-                <Plus /> Tạo dự án đầu tiên
-              </Button>
-            </CardContent>
+            <EmptyState
+              icon={Briefcase}
+              tone="indigo"
+              title="Chưa có dự án nào"
+              description="Tạo dự án đầu tiên để bắt đầu track P&L, team và dòng tiền cho phòng ban."
+              action={
+                <Button variant="brand" onClick={openNew}>
+                  <Plus /> Tạo dự án đầu tiên
+                </Button>
+              }
+            />
           </Card>
         )}
 
         {projects.length > 0 && filteredProjects.length === 0 && (
           <Card className="col-span-full">
-            <CardContent className="text-center py-12 text-muted-foreground text-sm">
-              Không có dự án nào khớp bộ lọc.
-            </CardContent>
+            <EmptyState
+              icon={Search}
+              tone="sky"
+              title="Không tìm thấy dự án"
+              description={`Không có dự án nào khớp với bộ lọc hiện tại. Thử bỏ filter hoặc đổi từ khoá tìm kiếm.`}
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSearch("");
+                    setStatusFilter("all");
+                  }}
+                >
+                  Reset bộ lọc
+                </Button>
+              }
+            />
           </Card>
         )}
 

@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ROLE_GROUPS } from "@/lib/roles";
 import {
   Table,
@@ -226,8 +227,9 @@ export function EmployeesClient({
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Nhân sự"
-        subtitle="Quản lý team, lương và trạng thái phân bổ tháng này."
+        eyebrow="Workspace · Team"
+        title="Quản lý nhân sự"
+        subtitle="Thành viên team, lương theo lịch sử, trạng thái phân bổ và tải hiện tại."
         actions={
           <Button variant="brand" onClick={openNew}>
             <UserPlus />
@@ -289,11 +291,18 @@ export function EmployeesClient({
             <TableBody>
               {profiles.length === 0 && (
                 <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-12 text-muted-foreground"
-                  >
-                    Chưa có ai. Bấm "Thêm người" để bắt đầu.
+                  <TableCell colSpan={6} className="p-0">
+                    <EmptyState
+                      icon={UserPlus}
+                      tone="emerald"
+                      title="Chưa có nhân sự nào"
+                      description="Thêm thành viên đầu tiên để bắt đầu phân bổ vào dự án và tính chi phí lương."
+                      action={
+                        <Button variant="brand" onClick={openNew}>
+                          <UserPlus /> Thêm người đầu tiên
+                        </Button>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               )}

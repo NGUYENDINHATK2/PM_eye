@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import {
   formatCurrency,
@@ -200,8 +201,9 @@ export function ExpensesClient({
   return (
     <div className="space-y-8">
       <PageHeader
+        eyebrow="Workspace · Chi phí"
         title="Chi phí vận hành"
-        subtitle="Server, license, outsource và các khoản phát sinh ngoài lương."
+        subtitle="Server, license, outsource, marketing — track tất cả chi phí ngoài lương."
         actions={
           <Button variant="brand" onClick={openNew}>
             <Plus /> Thêm chi phí
@@ -335,15 +337,18 @@ export function ExpensesClient({
               <TableBody>
                 {expenses.length === 0 && (
                   <TableRow>
-                    <TableCell
-                      colSpan={6}
-                      className="text-center py-12 text-muted-foreground"
-                    >
-                      <Receipt
-                        size={20}
-                        className="mx-auto mb-2 text-muted-foreground"
+                    <TableCell colSpan={6} className="p-0">
+                      <EmptyState
+                        icon={Receipt}
+                        tone="amber"
+                        title="Chưa có chi phí ghi nhận"
+                        description="Server, license, outsource, marketing — track tất cả khoản chi ngoài lương ở đây để có P&L chuẩn."
+                        action={
+                          <Button variant="brand" onClick={openNew}>
+                            <Plus /> Thêm khoản đầu tiên
+                          </Button>
+                        }
                       />
-                      Chưa có khoản chi nào.
                     </TableCell>
                   </TableRow>
                 )}

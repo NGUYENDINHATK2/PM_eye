@@ -305,8 +305,9 @@ export function AllocationsClient({
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Workspace · Phân bổ"
         title="Phân bổ nhân sự"
-        subtitle="Gán % thời gian của mỗi người vào dự án/giai đoạn theo khoảng thời gian."
+        subtitle="Gán % thời gian từng người vào dự án/giai đoạn — xem theo Timeline (Gantt) hoặc List."
         actions={
           <Button
             variant="brand"

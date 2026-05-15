@@ -86,8 +86,9 @@ export function CapacityClient({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Capacity team"
-        subtitle="Năng lực team theo thời gian — biết ai burn, ai rảnh, role nào sắp full để báo sếp."
+        eyebrow="Workspace · Capacity"
+        title="Năng lực team"
+        subtitle="Heatmap & analytics theo thời gian — biết ai burn, ai rảnh, role nào sắp full để chốt deal hay rebalance."
       />
 
       <CapacityStats profiles={profiles} allocations={allocations} />

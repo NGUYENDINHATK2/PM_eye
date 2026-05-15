@@ -59,7 +59,6 @@ import type {
 } from "@/types/database";
 import {
   AlertCircle,
-  ArrowLeft,
   CheckCircle2,
   Clock,
   FileText,
@@ -340,14 +339,11 @@ export function ProjectDetailClient({
 
   return (
     <div className="space-y-8">
-      <Link
-        href="/projects"
-        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition"
-      >
-        <ArrowLeft size={12} /> Tất cả dự án
-      </Link>
-
       <PageHeader
+        crumbs={[
+          { label: "Dự án", href: "/projects" },
+          { label: project.name },
+        ]}
         title={project.name}
         subtitle={project.client ?? project.description ?? ""}
         actions={
