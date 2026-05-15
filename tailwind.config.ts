@@ -54,14 +54,7 @@ const config: Config = {
         amber: { brand: "hsl(var(--amber))" },
         rose: { brand: "hsl(var(--rose))" },
         violet: { brand: "hsl(var(--violet))" },
-        neon: {
-          cyan: "hsl(var(--neon-cyan))",
-          fuchsia: "hsl(var(--neon-fuchsia))",
-          violet: "hsl(var(--neon-violet))",
-          lime: "hsl(var(--neon-lime))",
-          amber: "hsl(var(--neon-amber))",
-          rose: "hsl(var(--neon-rose))",
-        },
+        teal: { brand: "hsl(var(--teal))" },
       },
       borderRadius: {
         lg: "var(--radius)",

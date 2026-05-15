@@ -58,15 +58,14 @@ export function TopProgressBar() {
   if (!visible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] h-[2px] pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-[100] h-0.5 pointer-events-none">
       <div
         className="h-full transition-all duration-200 ease-out"
         style={{
           width: `${progress}%`,
           background:
-            "linear-gradient(90deg, hsl(var(--neon-cyan)), hsl(var(--neon-violet)), hsl(var(--neon-fuchsia)))",
-          boxShadow:
-            "0 0 12px hsl(var(--neon-cyan) / 0.8), 0 0 24px hsl(var(--neon-violet) / 0.5)",
+            "linear-gradient(90deg, hsl(var(--indigo)), hsl(var(--violet)))",
+          boxShadow: "0 0 12px hsl(var(--indigo) / 0.5)",
         }}
       />
     </div>

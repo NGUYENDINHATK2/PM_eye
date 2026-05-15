@@ -10,13 +10,12 @@ type SparkPoint = { x: number; y: number };
 
 type Stat = {
   title: string;
-  code: string;
   value: number;
   display: string;
   hint?: string;
   href: string;
   icon: typeof Briefcase;
-  neonVar: string;
+  color: string;
   textClass: string;
   spark: SparkPoint[];
 };
@@ -82,50 +81,46 @@ export function StatCards({
   const stats: Stat[] = [
     {
       title: "Dự án đang chạy",
-      code: "PRJ.ACTIVE",
       value: ongoingProjects,
       display: ongoingProjects.toString(),
       hint: "ongoing",
       href: "/projects",
       icon: Briefcase,
-      neonVar: "--neon-cyan",
+      color: "hsl(var(--indigo))",
       textClass: "gradient-text-indigo",
       spark: fakeSpark(1),
     },
     {
       title: "Đang phân bổ",
-      code: "HR.ALLOC",
       value: activePeople,
       display: activePeople.toString(),
       hint: "người",
       href: "/employees",
       icon: Users,
-      neonVar: "--neon-violet",
+      color: "hsl(var(--violet))",
       textClass: "gradient-text-indigo",
       spark: fakeSpark(3),
     },
     {
       title: "Burn tháng này",
-      code: "FIN.BURN",
       value: burnThisMonth,
       display: formatCurrency(burnThisMonth),
       hint: "lương + vận hành",
       href: "/expenses",
       icon: TrendingUp,
-      neonVar: "--neon-lime",
+      color: "hsl(var(--emerald))",
       textClass: "gradient-text-emerald",
       spark: burnPoints,
     },
     {
       title: "Cảnh báo",
-      code: "SYS.ALERT",
       value: warnings,
       display: warnings.toString(),
       hint: warnings > 0 ? "cần xử lý" : "ổn áp",
       href: "/",
       icon: AlertTriangle,
-      neonVar: warnings > 0 ? "--neon-rose" : "--neon-cyan",
-      textClass: warnings > 0 ? "gradient-text-rose" : "gradient-text-indigo",
+      color: warnings > 0 ? "hsl(var(--rose))" : "hsl(var(--muted-foreground))",
+      textClass: warnings > 0 ? "gradient-text-rose" : "text-foreground",
       spark: fakeSpark(5),
     },
   ];
@@ -137,65 +132,38 @@ export function StatCards({
           key={s.title}
           href={s.href}
           className="group animate-fade-up"
-          style={{ animationDelay: `${i * 80}ms` }}
+          style={{ animationDelay: `${i * 70}ms` }}
         >
-          <div
-            className="relative cyber-card hud-frame rounded-2xl overflow-hidden h-full scanlines"
-            style={{
-              ["--card-neon" as string]: `hsl(var(${s.neonVar}))`,
-            }}
-          >
-            <span className="hud-corner-bl" aria-hidden />
-            <span className="hud-corner-br" aria-hidden />
-
-            {/* corner glow */}
+          <div className="relative card-premium rounded-2xl overflow-hidden h-full shine">
+            {/* corner accent */}
             <div
               aria-hidden
-              className="absolute -top-14 -right-14 w-40 h-40 rounded-full blur-3xl opacity-50 group-hover:opacity-90 transition-opacity duration-500"
-              style={{
-                background: `hsl(var(${s.neonVar}) / 0.4)`,
-              }}
-            />
-            {/* top neon line */}
-            <div
-              aria-hidden
-              className="absolute top-0 left-4 right-4 h-px opacity-60 group-hover:opacity-100 transition"
-              style={{
-                background: `linear-gradient(90deg, transparent, hsl(var(${s.neonVar}) / 0.9), transparent)`,
-              }}
+              className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity duration-500"
+              style={{ background: s.color }}
             />
 
             <div className="relative p-4 sm:p-5 min-w-0">
-              {/* header */}
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0 relative"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0"
                   style={{
-                    background: `linear-gradient(135deg, hsl(var(${s.neonVar})), hsl(var(${s.neonVar}) / 0.6))`,
-                    boxShadow: `0 0 0 1px hsl(var(${s.neonVar}) / 0.4), 0 6px 18px -4px hsl(var(${s.neonVar}) / 0.5), 0 0 18px -2px hsl(var(${s.neonVar}) / 0.45)`,
+                    background: `linear-gradient(135deg, ${s.color}, ${s.color})`,
+                    boxShadow: `0 6px 16px -4px ${s.color}66`,
                   }}
                 >
                   <s.icon size={15} strokeWidth={2.4} />
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="text-[9px] font-mono tracking-[0.18em] opacity-80"
-                    style={{ color: `hsl(var(${s.neonVar}))` }}
-                  >
-                    {s.code}
-                  </span>
-                  <ArrowUpRight
-                    size={13}
-                    className="text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0"
-                  />
-                </div>
+                <ArrowUpRight
+                  size={14}
+                  className="text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-all shrink-0"
+                />
               </div>
 
-              <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground truncate">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate">
                 {s.title}
               </div>
               <div
-                className={`font-mono text-2xl sm:text-3xl lg:text-[34px] font-semibold tracking-tight tnum mt-1.5 truncate ${s.textClass}`}
+                className={`text-2xl sm:text-3xl lg:text-[32px] font-semibold tracking-tight tnum mt-1.5 truncate ${s.textClass}`}
               >
                 {typeof s.value === "number" && s.value > 1000 ? (
                   <AnimatedValue value={s.value} formatter={(n) => formatCurrency(n)} />
@@ -204,26 +172,23 @@ export function StatCards({
                 )}
               </div>
               {s.hint && (
-                <div className="text-[10px] font-mono tracking-wider text-muted-foreground/80 mt-1 uppercase">
-                  {s.hint}
-                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">{s.hint}</div>
               )}
 
-              {/* sparkline */}
               <div className="h-10 -mx-1 mt-3">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={s.spark}>
                     <defs>
                       <linearGradient id={`sp-${i}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={`hsl(var(${s.neonVar}))`} stopOpacity={0.55} />
-                        <stop offset="100%" stopColor={`hsl(var(${s.neonVar}))`} stopOpacity={0} />
+                        <stop offset="0%" stopColor={s.color} stopOpacity={0.4} />
+                        <stop offset="100%" stopColor={s.color} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <Area
                       type="monotone"
                       dataKey="y"
-                      stroke={`hsl(var(${s.neonVar}))`}
-                      strokeWidth={2}
+                      stroke={s.color}
+                      strokeWidth={1.8}
                       fill={`url(#sp-${i})`}
                       isAnimationActive={true}
                       animationDuration={900}

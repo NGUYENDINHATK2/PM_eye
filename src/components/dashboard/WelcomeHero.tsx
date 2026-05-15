@@ -2,14 +2,13 @@
 
 import { formatCurrency } from "@/lib/utils";
 import {
-  ActivitySquare,
-  AlertOctagon,
   Calendar,
+  CircleAlert,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 const WEEKDAYS = [
   "Chủ nhật",
@@ -44,121 +43,92 @@ export function WelcomeHero({
   arOutstanding: number;
   warningsCount: number;
 }) {
-  const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => {
-    setNow(new Date());
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  const reference = now ?? new Date();
-  const greet = greeting(reference.getHours());
-  const weekday = WEEKDAYS[reference.getDay()];
-  const dateStr = `${weekday}, ${reference.getDate()}/${reference.getMonth() + 1}/${reference.getFullYear()}`;
-  const timeStr = now
-    ? `${String(now.getHours()).padStart(2, "0")}:${String(
-        now.getMinutes()
-      ).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`
-    : "--:--:--";
+  const now = new Date();
+  const greet = greeting(now.getHours());
+  const weekday = WEEKDAYS[now.getDay()];
+  const dateStr = `${weekday}, ${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
 
   const statusOk = warningsCount === 0;
   const headline = statusOk
-    ? "ALL SYSTEMS NOMINAL · không có cảnh báo."
+    ? "Mọi thứ đang vận hành ổn định."
     : warningsCount <= 3
-    ? `${warningsCount} điểm cần để ý — review HUD bên dưới.`
-    : `${warningsCount} CẢNH BÁO ACTIVE — yêu cầu xử lý ngay.`;
+    ? `${warningsCount} điểm cần để ý trong portfolio.`
+    : `${warningsCount} cảnh báo đang chờ xử lý.`;
 
   const profitable = totalProfit > 0;
 
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl cyber-card hud-frame shine animate-fade-up scanlines"
-      style={{ minHeight: 240 }}
-    >
-      <span className="hud-corner-bl" aria-hidden />
-      <span className="hud-corner-br" aria-hidden />
-
-      {/* Aurora blobs */}
+    <div className="relative overflow-hidden rounded-2xl card-premium shine animate-fade-up">
+      {/* Soft accent blobs */}
       <div
         aria-hidden
-        className="absolute -top-32 -right-24 w-[28rem] h-[28rem] rounded-full blur-3xl pointer-events-none"
+        className="absolute -top-32 -right-24 w-[24rem] h-[24rem] rounded-full blur-3xl pointer-events-none opacity-70"
         style={{
           background:
-            "radial-gradient(circle, hsl(var(--neon-cyan) / 0.35), transparent 60%)",
+            "radial-gradient(circle, hsl(var(--indigo) / 0.18), transparent 60%)",
         }}
       />
       <div
         aria-hidden
-        className="absolute -bottom-32 -left-20 w-[24rem] h-[24rem] rounded-full blur-3xl pointer-events-none"
+        className="absolute -bottom-32 -left-20 w-[20rem] h-[20rem] rounded-full blur-3xl pointer-events-none opacity-70"
         style={{
           background:
-            "radial-gradient(circle, hsl(var(--neon-fuchsia) / 0.28), transparent 60%)",
+            "radial-gradient(circle, hsl(var(--violet) / 0.14), transparent 60%)",
         }}
       />
-      <div
-        aria-hidden
-        className="absolute inset-0 cyber-grid opacity-40 pointer-events-none"
-        style={{
-          maskImage:
-            "radial-gradient(ellipse 80% 100% at 50% 50%, black 30%, transparent 80%)",
-        }}
-      />
-
-      {/* HUD top strip */}
-      <div className="relative flex items-center justify-between border-b border-neon-cyan/15 px-6 lg:px-8 py-2.5 font-mono text-[10px] tracking-[0.22em] uppercase">
-        <div className="flex items-center gap-3 text-neon-cyan/80">
-          <span className="status-dot" />
-          <span>LIVE · NEURAL OPS</span>
-          <span className="hidden sm:inline text-muted-foreground/70">
-            // BRIEFING_001
-          </span>
-        </div>
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <Calendar size={11} className="text-neon-cyan/70" />
-          <span className="hidden sm:inline">{dateStr}</span>
-          <span className="text-neon-cyan tabular-nums">{timeStr}</span>
-        </div>
-      </div>
 
       <div className="relative p-6 lg:p-9">
-        <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-[1.05] break-words">
+        {/* Date + status pill */}
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar size={13} />
+            <span className="capitalize">{dateStr}</span>
+          </div>
+          <div
+            className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full border text-[11px] font-medium ${
+              statusOk
+                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            }`}
+          >
+            {statusOk ? (
+              <Sparkles size={12} />
+            ) : (
+              <CircleAlert size={12} />
+            )}
+            {headline}
+          </div>
+        </div>
+
+        <h1 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-tight leading-[1.05] break-words">
           {greet},{" "}
-          <span className="holo-text">{userName}</span>
-          <span className="text-neon-cyan ml-1 animate-blink">_</span>
+          <span className="gradient-text">{userName}</span>{" "}
+          <span aria-hidden>👋</span>
         </h1>
-        <p
-          className={`text-xs sm:text-sm font-mono mt-3 max-w-2xl tracking-wider ${
-            statusOk ? "text-neon-lime" : "text-neon-amber"
-          }`}
-        >
-          {statusOk ? (
-            <ActivitySquare size={13} className="inline mr-2 -mt-0.5" />
-          ) : (
-            <AlertOctagon size={13} className="inline mr-2 -mt-0.5" />
-          )}
-          {headline}
+        <p className="text-sm lg:text-[15px] text-muted-foreground mt-3 max-w-xl leading-relaxed">
+          Tổng quan doanh thu, lợi nhuận và dòng tiền của portfolio trong tháng.
         </p>
 
-        {/* KPI HUD tiles */}
-        <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <HudTile
-            label="DOANH THU · REVENUE"
+        {/* KPI tiles */}
+        <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <KpiTile
+            label="Tổng doanh thu"
             value={formatCurrency(totalRevenue)}
             icon={<Wallet size={14} />}
-            color="cyan"
+            tone="indigo"
           />
-          <HudTile
-            label={profitable ? "LỢI NHUẬN · PROFIT" : "THUA LỖ · LOSS"}
+          <KpiTile
+            label={profitable ? "Lợi nhuận" : "Đang lỗ"}
             value={formatCurrency(totalProfit)}
-            sub={`MARGIN ${Math.round(avgMargin * 100)}%`}
+            sub={`Margin ${Math.round(avgMargin * 100)}%`}
             icon={profitable ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-            color={profitable ? "lime" : "rose"}
+            tone={profitable ? "emerald" : "rose"}
           />
-          <HudTile
-            label={arOutstanding > 0 ? "CHƯA THU · A/R" : "AR · CLEAR"}
+          <KpiTile
+            label={arOutstanding > 0 ? "Chưa thu" : "Đã thu đủ"}
             value={formatCurrency(arOutstanding)}
             icon={<Wallet size={14} />}
-            color={arOutstanding > 0 ? "amber" : "lime"}
+            tone={arOutstanding > 0 ? "amber" : "emerald"}
           />
         </div>
       </div>
@@ -166,65 +136,60 @@ export function WelcomeHero({
   );
 }
 
-type HudColor = "cyan" | "lime" | "rose" | "amber" | "violet";
+type Tone = "indigo" | "emerald" | "rose" | "amber";
 
-function HudTile({
+function KpiTile({
   label,
   value,
   sub,
   icon,
-  color,
+  tone,
 }: {
   label: string;
   value: string;
   sub?: string;
   icon?: React.ReactNode;
-  color: HudColor;
+  tone: Tone;
 }) {
-  const colorMap: Record<HudColor, { var: string; text: string }> = {
-    cyan: { var: "--neon-cyan", text: "gradient-text-indigo" },
-    lime: { var: "--neon-lime", text: "gradient-text-emerald" },
-    rose: { var: "--neon-rose", text: "gradient-text-rose" },
-    amber: { var: "--neon-amber", text: "gradient-text-amber" },
-    violet: { var: "--neon-violet", text: "gradient-text-indigo" },
+  const toneMap: Record<Tone, { border: string; bg: string; iconText: string; valueText: string }> = {
+    indigo: {
+      border: "border-indigo-500/20",
+      bg: "bg-indigo-500/5",
+      iconText: "text-indigo-600 dark:text-indigo-400",
+      valueText: "gradient-text-indigo",
+    },
+    emerald: {
+      border: "border-emerald-500/20",
+      bg: "bg-emerald-500/5",
+      iconText: "text-emerald-600 dark:text-emerald-400",
+      valueText: "gradient-text-emerald",
+    },
+    rose: {
+      border: "border-rose-500/20",
+      bg: "bg-rose-500/5",
+      iconText: "text-rose-600 dark:text-rose-400",
+      valueText: "gradient-text-rose",
+    },
+    amber: {
+      border: "border-amber-500/20",
+      bg: "bg-amber-500/5",
+      iconText: "text-amber-600 dark:text-amber-400",
+      valueText: "gradient-text-amber",
+    },
   };
-  const c = colorMap[color];
+  const t = toneMap[tone];
   return (
-    <div
-      className="relative rounded-xl border bg-card/40 backdrop-blur-md p-3.5 overflow-hidden group"
-      style={{ borderColor: `hsl(var(${c.var}) / 0.25)` }}
-    >
-      <div
-        aria-hidden
-        className="absolute top-0 left-3 right-3 h-px"
-        style={{
-          background: `linear-gradient(90deg, transparent, hsl(var(${c.var}) / 0.7), transparent)`,
-        }}
-      />
-      <div
-        aria-hidden
-        className="absolute -bottom-10 -right-10 w-28 h-28 rounded-full blur-2xl opacity-50 group-hover:opacity-80 transition"
-        style={{ background: `hsl(var(${c.var}) / 0.35)` }}
-      />
-      <div className="relative">
-        <div
-          className="flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] uppercase mb-2"
-          style={{ color: `hsl(var(${c.var}) / 0.9)` }}
-        >
-          {icon}
-          <span className="truncate">{label}</span>
-        </div>
-        <div
-          className={`font-mono text-xl sm:text-2xl lg:text-[26px] font-semibold tracking-tight tnum break-words ${c.text}`}
-        >
-          {value}
-        </div>
-        {sub && (
-          <div className="text-[10px] font-mono tracking-wider text-muted-foreground mt-1">
-            {sub}
-          </div>
-        )}
+    <div className={`relative rounded-xl border ${t.border} ${t.bg} p-3.5 overflow-hidden`}>
+      <div className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-medium ${t.iconText} mb-1.5`}>
+        {icon}
+        <span className="truncate">{label}</span>
       </div>
+      <div className={`text-xl sm:text-2xl lg:text-[26px] font-semibold tracking-tight tnum break-words ${t.valueText}`}>
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[11px] text-muted-foreground mt-1">{sub}</div>
+      )}
     </div>
   );
 }

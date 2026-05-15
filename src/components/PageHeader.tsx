@@ -25,7 +25,7 @@ export function PageHeader({
   return (
     <div className={cn("animate-fade-up mb-8", className)}>
       {crumbs && crumbs.length > 0 && (
-        <nav className="flex items-center gap-1 text-[11px] font-mono tracking-wider text-muted-foreground mb-3">
+        <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
           {crumbs.map((c, i) => {
             const isLast = i === crumbs.length - 1;
             return (
@@ -33,7 +33,7 @@ export function PageHeader({
                 {c.href && !isLast ? (
                   <Link
                     href={c.href}
-                    className="hover:text-neon-cyan transition"
+                    className="hover:text-foreground transition"
                   >
                     {c.label}
                   </Link>
@@ -45,7 +45,7 @@ export function PageHeader({
                 {!isLast && (
                   <ChevronRight
                     size={11}
-                    className="text-neon-cyan/40"
+                    className="text-muted-foreground/50"
                   />
                 )}
               </span>
@@ -57,15 +57,15 @@ export function PageHeader({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
           {eyebrow && (
-            <div className="font-mono text-[10px] tracking-[0.22em] uppercase mb-2 flex items-center gap-2 text-neon-cyan">
-              <span className="status-dot" />
-              <span>// {eyebrow}</span>
+            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-indigo-500" />
+              {eyebrow}
             </div>
           )}
           <h1
             className={cn(
               "font-display text-3xl sm:text-4xl lg:text-[40px] font-semibold tracking-tight leading-[1.05]",
-              highlight && "holo-text"
+              highlight && "gradient-text"
             )}
           >
             {title}
@@ -75,7 +75,6 @@ export function PageHeader({
               {subtitle}
             </p>
           )}
-          <div className="neon-divider mt-4 max-w-xl" />
         </div>
         {actions && (
           <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
