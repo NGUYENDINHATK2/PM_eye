@@ -1,0 +1,15 @@
+node_modules
+.next
+
+# Env — KHÔNG commit secrets
+.env
+.env.*
+!.env.local.example
+
+.DS_Store
+*.log
+dist
+build
+.vercel
+next-env.d.ts
+tsconfig.tsbuildinfo
