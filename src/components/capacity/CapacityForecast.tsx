@@ -2,7 +2,11 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { userLoadForMonth } from "@/lib/calculations";
+import {
+  userLoadCurrentMonth,
+  userLoadForMonth,
+  userLoadToday,
+} from "@/lib/calculations";
 import { cn, monthLabel } from "@/lib/utils";
 import type { Allocation, Profile } from "@/types/database";
 import { AlertTriangle, Flame, Sparkles, TrendingUp } from "lucide-react";
@@ -46,19 +50,26 @@ export function CapacityForecast({
 
   const capacity = profiles.length;
 
-  // Per-month aggregate
+  // Per-month aggregate. Cột "isCurrent" dùng TODAY load để khớp các màn
+  // khác; các tháng tới dùng monthly avg (forecast bản chất là monthly).
   const monthSummary = useMemo(() => {
     return months.map((m) => {
       let totalLoad = 0;
       let benchCount = 0;
       let overloadedCount = 0;
       let underusedCount = 0;
+      const useToday = m.isCurrent;
       for (const p of profiles) {
-        const load = userLoadForMonth(p.id, allocations, m.year, m.month);
+        const load = useToday
+          ? userLoadToday(p.id, allocations, today)
+          : userLoadForMonth(p.id, allocations, m.year, m.month);
+        const monthLoad = useToday
+          ? userLoadForMonth(p.id, allocations, m.year, m.month)
+          : load;
         totalLoad += load;
-        if (load === 0) benchCount++;
-        else if (load > 1.0) overloadedCount++;
-        else if (load < 0.5) underusedCount++;
+        if (load > 1.0) overloadedCount++;
+        else if (load === 0 && monthLoad === 0) benchCount++;
+        else if (load > 0 && load < 0.5) underusedCount++;
       }
       const utilization = capacity > 0 ? totalLoad / capacity : 0;
       const available = Math.max(0, capacity - totalLoad);
@@ -72,28 +83,23 @@ export function CapacityForecast({
         available,
       };
     });
-  }, [months, profiles, allocations, capacity]);
+  }, [months, profiles, allocations, capacity, today]);
 
   const current = monthSummary.find((m) => m.isCurrent) ?? monthSummary[0];
 
-  // Per-person for current month — danh sách bench & overload
+  // Per-person ngay hôm nay — danh sách bench thực sự & overload hôm nay
   const peopleNow = useMemo(() => {
-    if (!current) return { bench: [], overload: [] };
     const bench: { profile: Profile; load: number }[] = [];
     const overload: { profile: Profile; load: number }[] = [];
     for (const p of profiles) {
-      const load = userLoadForMonth(
-        p.id,
-        allocations,
-        current.year,
-        current.month
-      );
-      if (load === 0) bench.push({ profile: p, load });
+      const load = userLoadToday(p.id, allocations, today);
+      const monthLoad = userLoadCurrentMonth(p.id, allocations, today);
+      if (load === 0 && monthLoad === 0) bench.push({ profile: p, load });
       else if (load > 1.0) overload.push({ profile: p, load });
     }
     overload.sort((a, b) => b.load - a.load);
     return { bench, overload };
-  }, [current, profiles, allocations]);
+  }, [profiles, allocations, today]);
 
   if (!current) {
     return (

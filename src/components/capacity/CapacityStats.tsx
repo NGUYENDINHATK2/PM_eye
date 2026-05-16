@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { userLoadCurrentMonth } from "@/lib/calculations";
+import { userLoadCurrentMonth, userLoadToday } from "@/lib/calculations";
 import { formatPercent } from "@/lib/utils";
 import type { Allocation, Profile } from "@/types/database";
 import { Activity, Flame, Sparkles, Users } from "lucide-react";
@@ -19,12 +19,15 @@ export function CapacityStats({
   let benchCount = 0;
   let underusedCount = 0;
   let totalLoad = 0;
+  // TODAY load để khớp với /allocations badges + /employees grid.
+  // monthLoad cho smart-bench (chỉ tính bench khi today=0 VÀ tháng=0).
   for (const p of active) {
-    const load = userLoadCurrentMonth(p.id, allocations, today);
+    const load = userLoadToday(p.id, allocations, today);
+    const monthLoad = userLoadCurrentMonth(p.id, allocations, today);
     totalLoad += load;
     if (load > 1.0) burnoutCount++;
-    else if (load === 0) benchCount++;
-    else if (load < 0.5) underusedCount++;
+    else if (load === 0 && monthLoad === 0) benchCount++;
+    else if (load > 0 && load < 0.5) underusedCount++;
   }
   const avgLoad = active.length > 0 ? totalLoad / active.length : 0;
   const totalAvailable = active.length - totalLoad; // FTE available
@@ -39,7 +42,7 @@ export function CapacityStats({
       iconTone: "bg-indigo-500/10 text-indigo-500",
     },
     {
-      label: "Tải trung bình",
+      label: "Tải hôm nay",
       value: formatPercent(avgLoad),
       hint: `${totalLoad.toFixed(1)} / ${active.length} FTE đang dùng`,
       icon: Activity,

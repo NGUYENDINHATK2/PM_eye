@@ -127,8 +127,9 @@ function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppDat
     }
 
     for (const p of profiles) {
-      // Burnout dùng point-in-time (hôm nay đang quá tải mới đáng cảnh báo).
-      // Bench dùng tải tháng (tránh báo nhầm khi allocation chỉ chưa khởi động hôm nay).
+      // Burnout: today's load (đang quá tải ngay bây giờ).
+      // Bench: today=0 VÀ tháng=0 (không phải chỉ chưa bắt đầu) để tránh
+      // báo nhầm người có allocation bắt đầu trong tháng.
       const loadNow = userLoadToday(p.id, allocations, today);
       const loadMonth = userLoadCurrentMonth(p.id, allocations, today);
       if (loadNow > 1.0) {
@@ -138,12 +139,12 @@ function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppDat
           title: `${p.full_name} đang ${Math.round(loadNow * 100)}% tải`,
           detail: `Quá tải so với 100%. Cân nhắc giảm scope hoặc rebalance team.`,
         });
-      } else if (loadMonth === 0 && p.is_active) {
+      } else if (loadNow === 0 && loadMonth === 0 && p.is_active) {
         alerts.push({
           id: `idle-${p.id}`,
           kind: "idle",
           title: `${p.full_name} đang bench`,
-          detail: `Chưa được phân bổ tháng này — có thể đẩy vào dự án mới hoặc cho học/upskill.`,
+          detail: `Không có allocation tháng này — có thể đẩy vào dự án mới hoặc cho học/upskill.`,
         });
       }
     }
