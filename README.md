@@ -56,24 +56,30 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ```
 
 ### B4. Tạo tài khoản admin + siết RLS
-1. Trong Supabase Dashboard → **Authentication → Users → Add user** (manual).
+
+> **Policy**: PM_Eye là tool 1-người-dùng (admin). Mọi bảng đều admin-only.
+> User đăng nhập mà không phải admin sẽ thấy trang "Không có quyền" + nút
+> đăng xuất, không request data nào được gọi.
+
+1. Trong Supabase Dashboard → **Authentication → Users → Add user** (manual). Bật **auto-confirm** để khỏi xác minh email.
 2. Vào **SQL Editor** → paste [supabase/migrations/20260516_rls_admin_split.sql](supabase/migrations/20260516_rls_admin_split.sql) → **Run**. Migration này:
    - Tạo function `is_app_admin()` đọc `auth.jwt().app_metadata.role`.
-   - Bảng **operating_expenses / project_payments / salary_history** chỉ admin được đọc & ghi.
-   - Bảng còn lại: ai đã auth đều đọc được, chỉ admin ghi.
-3. Gán role admin: ở Dashboard → **Authentication → Users → chọn user** → tab **User App Metadata** → paste:
+   - Drop mọi policy cũ → tạo `admin_all_*` cho TẤT CẢ bảng.
+   - Kết quả: chỉ user có `app_metadata.role = 'admin'` mới SELECT/INSERT/UPDATE/DELETE bất kỳ bảng nào.
+3. Gán role admin cho user vừa tạo: Dashboard → **Authentication → Users → chọn user** → tab **User App Metadata** → paste:
    ```json
    { "role": "admin" }
    ```
-   User Metadata thì user tự sửa được — phải set ở **App** Metadata mới an toàn.
+   ⚠ Phải là **App Metadata** (user không tự sửa được), **không phải** User Metadata.
 
 ### B5. Env vars cho RBAC ở Next.js
-Trong [.env.local](.env.local) (và Vercel project settings) thêm danh sách email admin để API layer biết redact:
+Trong [.env.local](.env.local) (và Vercel project settings) — đồng bộ với DB:
 ```
 ADMIN_EMAILS=ban@cong-ty.com,leader@cong-ty.com
 ```
-- Không có `ADMIN_EMAILS` thì non-admin sẽ thấy data đã redact (lương = 0, revenue = 0, không vào được endpoint chi phí/payments).
-- Có thêm tầng RLS trên DB nên dù bypass API layer cũng không query trực tiếp được.
+- `ADMIN_EMAILS` là email allowlist cho **API layer** (CSV).
+- Hoặc set qua `app_metadata.role = 'admin'` ở Supabase — Next.js layer cũng đọc cờ này.
+- BẮT BUỘC set ít nhất một trong hai để có ai vào được app.
 
 ### B6. Chạy
 ```bash

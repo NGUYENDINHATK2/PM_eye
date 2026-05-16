@@ -1,8 +1,10 @@
 import { Sidebar } from "@/components/Sidebar";
 import { TopProgressBar } from "@/components/TopProgressBar";
 import { AppDataProvider } from "@/lib/hooks/useAppData";
+import { isAppAdmin } from "@/lib/api-auth";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { NoAccess } from "./_no-access";
 
 export default async function AppLayout({
   children,
@@ -14,6 +16,13 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  // Chặn ngay từ layout — non-admin không vào được dashboard ngay cả khi đã
+  // đăng nhập. Họ thấy trang "Không có quyền" + nút đăng xuất, không có
+  // request data nào được gọi.
+  if (!isAppAdmin(user)) {
+    return <NoAccess email={user.email ?? null} />;
+  }
 
   return (
     <AppDataProvider>

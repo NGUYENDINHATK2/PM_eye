@@ -1,15 +1,12 @@
-import { PRIVATE_CACHE_HEADERS, requireApiUser } from "@/lib/api-auth";
+import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
 import type { Profile } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/profiles
- * Trả danh sách nhân sự. Với non-admin: redact `base_salary` (set = 0).
- */
+/** GET /api/profiles — admin only. */
 export async function GET() {
-  const ctx = await requireApiUser();
+  const ctx = await requireApiAdmin();
   if (ctx instanceof NextResponse) return ctx;
 
   const { data, error } = await ctx.supabase
@@ -24,10 +21,7 @@ export async function GET() {
     );
   }
 
-  const profiles = (data ?? []) as Profile[];
-  const redacted = ctx.isAdmin
-    ? profiles
-    : profiles.map((p) => ({ ...p, base_salary: 0 }));
-
-  return NextResponse.json(redacted, { headers: PRIVATE_CACHE_HEADERS });
+  return NextResponse.json((data ?? []) as Profile[], {
+    headers: PRIVATE_CACHE_HEADERS,
+  });
 }

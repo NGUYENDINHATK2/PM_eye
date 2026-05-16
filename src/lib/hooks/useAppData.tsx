@@ -28,11 +28,8 @@ export type AppData = {
   projects: Project[];
   phases: ProjectPhase[];
   allocations: Allocation[];
-  /** Admin-only — non-admin nhận empty array */
   expenses: OperatingExpense[];
-  /** Admin-only — non-admin nhận empty array */
   payments: ProjectPayment[];
-  /** Admin-only — non-admin nhận empty array */
   salaryHistory: SalaryHistory[];
 };
 
@@ -71,50 +68,54 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
     const run = async () => {
       try {
-        // 1. /api/me — biết isAdmin trước khi quyết định fetch endpoint nào.
-        const me = await fetchJson<MeResponse>("/api/me");
-        if (!me.ok) {
-          if (me.status === 401) {
-            router.push("/login");
-            return;
-          }
-          throw new Error(`HTTP ${me.status} khi gọi /api/me`);
-        }
-
-        // 2. Parallel-fetch các tài nguyên (admin-only endpoints chỉ gọi khi
-        //    user là admin — non-admin sẽ có array rỗng).
+        // Provider chỉ mount khi user là admin (gate ở app/(app)/layout.tsx).
+        // Parallel-fetch tất cả resource.
         const [
+          me,
           profiles,
           projects,
           phases,
           allocations,
+          expenses,
+          payments,
+          salaryHistory,
         ] = await Promise.all([
+          fetchJson<MeResponse>("/api/me"),
           fetchJson<Profile[]>("/api/profiles"),
           fetchJson<Project[]>("/api/projects"),
           fetchJson<ProjectPhase[]>("/api/project-phases"),
           fetchJson<Allocation[]>("/api/allocations"),
+          fetchJson<OperatingExpense[]>("/api/operating-expenses"),
+          fetchJson<ProjectPayment[]>("/api/project-payments"),
+          fetchJson<SalaryHistory[]>("/api/salary-history"),
         ]);
 
-        // Nếu một resource bất kỳ trả 401 → session hết hạn giữa flow.
-        for (const r of [profiles, projects, phases, allocations]) {
+        // Bất kỳ resource trả 401 → session hết hạn.
+        const allResults = [
+          me,
+          profiles,
+          projects,
+          phases,
+          allocations,
+          expenses,
+          payments,
+          salaryHistory,
+        ];
+        for (const r of allResults) {
           if (!r.ok && r.status === 401) {
             router.push("/login");
             return;
           }
+          // 403 trên data endpoint = user mất quyền admin giữa session →
+          // đuổi về layout để hiển thị "Không có quyền".
+          if (!r.ok && r.status === 403) {
+            router.refresh();
+            return;
+          }
         }
 
-        let expenses: FetchResult<OperatingExpense[]> = { ok: true, data: [] };
-        let payments: FetchResult<ProjectPayment[]> = { ok: true, data: [] };
-        let salaryHistory: FetchResult<SalaryHistory[]> = {
-          ok: true,
-          data: [],
-        };
-        if (me.data.isAdmin) {
-          [expenses, payments, salaryHistory] = await Promise.all([
-            fetchJson<OperatingExpense[]>("/api/operating-expenses"),
-            fetchJson<ProjectPayment[]>("/api/project-payments"),
-            fetchJson<SalaryHistory[]>("/api/salary-history"),
-          ]);
+        if (!me.ok) {
+          throw new Error(`HTTP ${me.status} khi gọi /api/me`);
         }
 
         setData({

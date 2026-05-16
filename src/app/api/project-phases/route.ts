@@ -1,11 +1,12 @@
-import { PRIVATE_CACHE_HEADERS, requireApiUser } from "@/lib/api-auth";
+import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
 import type { ProjectPhase } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+/** GET /api/project-phases — admin only. */
 export async function GET() {
-  const ctx = await requireApiUser();
+  const ctx = await requireApiAdmin();
   if (ctx instanceof NextResponse) return ctx;
 
   const { data, error } = await ctx.supabase
@@ -20,10 +21,7 @@ export async function GET() {
     );
   }
 
-  const phases = (data ?? []) as ProjectPhase[];
-  const redacted = ctx.isAdmin
-    ? phases
-    : phases.map((p) => ({ ...p, phase_budget: 0 }));
-
-  return NextResponse.json(redacted, { headers: PRIVATE_CACHE_HEADERS });
+  return NextResponse.json((data ?? []) as ProjectPhase[], {
+    headers: PRIVATE_CACHE_HEADERS,
+  });
 }

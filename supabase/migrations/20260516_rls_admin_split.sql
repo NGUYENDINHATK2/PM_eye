@@ -1,22 +1,25 @@
 -- =====================================================
--- PM_Eye — Siết RLS theo role admin/member
+-- PM_Eye — RLS admin-only
 -- Chạy migration này trên Supabase SQL Editor.
 -- =====================================================
 --
 -- Sau khi chạy:
---   - Bảng nhạy cảm (operating_expenses, project_payments, salary_history)
+--   - TẤT CẢ bảng (profiles, projects, project_phases, allocations,
+--     operating_expenses, project_payments, salary_history)
 --     CHỈ admin được SELECT/INSERT/UPDATE/DELETE.
---   - Các bảng còn lại (profiles, projects, project_phases, allocations):
---     mọi user đã đăng nhập có thể SELECT (đọc), chỉ admin được ghi.
+--   - User không phải admin (kể cả đã đăng nhập) sẽ KHÔNG đọc được
+--     bất kỳ bảng nào qua Supabase client.
 --
 -- Cách set admin:
 --   1) Vào Supabase Dashboard → Authentication → Users → chọn user
 --      → tab "User App Metadata" → set:
 --         { "role": "admin" }
---      App metadata KHÔNG cho user tự đổi → an toàn.
---   2) Hoặc dùng email allowlist trong Next.js env (ADMIN_EMAILS=a@x.com,b@y.com)
---      cho API layer; nhưng RLS chỉ dùng app_metadata nên BẮT BUỘC set ở
---      dashboard nếu muốn user đó query DB trực tiếp được.
+--      App metadata user KHÔNG tự đổi được → an toàn cho việc gate.
+--   2) Hoặc đồng bộ với Next.js layer (ADMIN_EMAILS env) — nhưng RLS
+--      bắt buộc đọc app_metadata.role nên BẮT BUỘC set ở dashboard
+--      để query DB pass.
+--
+-- Re-run an toàn: migration tự drop policy cũ trước khi tạo lại.
 
 -- 1. Helper function — đọc app_metadata.role từ JWT
 create or replace function public.is_app_admin()
@@ -34,34 +37,33 @@ $$;
 
 grant execute on function public.is_app_admin() to authenticated, anon;
 
--- 2. Xoá các policy "auth_all_*" cũ (cho phép mọi user authenticated full access)
+-- 2. Xoá MỌI policy có thể tồn tại trên các bảng này (auth_all_* từ
+--    schema.sql gốc, select_authed_* / admin_all_* từ các lần migrate
+--    trước). Đảm bảo state cuối cùng chỉ có admin_all_*.
 do $$
-declare t text;
+declare
+  t text;
+  pol record;
 begin
   foreach t in array array[
     'profiles','projects','project_phases','allocations',
     'operating_expenses','project_payments','salary_history'
   ] loop
-    execute format('drop policy if exists "auth_all_%s" on public.%I;', t, t);
-    -- xoá luôn các policy generated bởi migration này nếu re-run
-    execute format('drop policy if exists "select_authed_%s" on public.%I;', t, t);
-    execute format('drop policy if exists "admin_all_%s" on public.%I;', t, t);
+    for pol in
+      select policyname
+      from pg_policies
+      where schemaname = 'public' and tablename = t
+    loop
+      execute format(
+        'drop policy if exists %I on public.%I;',
+        pol.policyname, t
+      );
+    end loop;
   end loop;
 end$$;
 
--- 3. SELECT cho bảng không nhạy cảm — mọi user đã auth
-create policy "select_authed_profiles" on public.profiles
-  for select using (auth.role() = 'authenticated');
-create policy "select_authed_projects" on public.projects
-  for select using (auth.role() = 'authenticated');
-create policy "select_authed_project_phases" on public.project_phases
-  for select using (auth.role() = 'authenticated');
-create policy "select_authed_allocations" on public.allocations
-  for select using (auth.role() = 'authenticated');
-
--- 4. ALL (read+write) admin-only cho mọi bảng.
--- Với bảng không nhạy cảm: SELECT đi qua policy (3) (OR semantics) → vẫn cho read.
--- Với bảng nhạy cảm: KHÔNG có policy SELECT khác → chỉ admin đọc được.
+-- 3. ALL (read + write) admin-only cho TOÀN BỘ bảng.
+-- Không tạo bất kỳ policy SELECT nào khác → non-admin không đọc được.
 create policy "admin_all_profiles" on public.profiles
   for all using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "admin_all_projects" on public.projects

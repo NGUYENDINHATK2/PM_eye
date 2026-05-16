@@ -1,16 +1,12 @@
-import { PRIVATE_CACHE_HEADERS, requireApiUser } from "@/lib/api-auth";
+import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
 import type { Project } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/projects
- * Trả danh sách dự án. Non-admin: redact tài chính (revenue, total_budget,
- * consumed_before, mm_rate) để tránh lộ giá khách.
- */
+/** GET /api/projects — admin only. */
 export async function GET() {
-  const ctx = await requireApiUser();
+  const ctx = await requireApiAdmin();
   if (ctx instanceof NextResponse) return ctx;
 
   const { data, error } = await ctx.supabase
@@ -25,16 +21,7 @@ export async function GET() {
     );
   }
 
-  const projects = (data ?? []) as Project[];
-  const redacted = ctx.isAdmin
-    ? projects
-    : projects.map((p) => ({
-        ...p,
-        revenue: 0,
-        total_budget: 0,
-        consumed_before: 0,
-        mm_rate: 0,
-      }));
-
-  return NextResponse.json(redacted, { headers: PRIVATE_CACHE_HEADERS });
+  return NextResponse.json((data ?? []) as Project[], {
+    headers: PRIVATE_CACHE_HEADERS,
+  });
 }

@@ -1,11 +1,12 @@
-import { PRIVATE_CACHE_HEADERS, requireApiUser } from "@/lib/api-auth";
+import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
 import type { Allocation } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+/** GET /api/allocations — admin only. */
 export async function GET() {
-  const ctx = await requireApiUser();
+  const ctx = await requireApiAdmin();
   if (ctx instanceof NextResponse) return ctx;
 
   const { data, error } = await ctx.supabase
