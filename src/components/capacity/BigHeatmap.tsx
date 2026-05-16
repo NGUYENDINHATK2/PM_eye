@@ -9,17 +9,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  allocationCostForMonth,
   loadStatus,
   loadStatusLabel,
   userLoadForMonth,
+  userProjectBreakdownForMonth,
 } from "@/lib/calculations";
 import { cn, formatCurrency, formatPercent, monthLabel } from "@/lib/utils";
-import type {
-  Allocation,
-  Profile,
-  Project,
-} from "@/types/database";
+import type { Allocation, Profile, Project } from "@/types/database";
 import { useMemo } from "react";
 
 export function BigHeatmap({
@@ -184,9 +180,10 @@ export function BigHeatmap({
                     const isCritical = load > 1.2;
 
                     // Project breakdown for this cell
-                    const breakdown = projectBreakdown(
+                    const breakdown = userProjectBreakdownForMonth(
                       p.id,
                       allocations,
+                      profilesById.get(p.id),
                       projectsById,
                       m.year,
                       m.month
@@ -295,52 +292,4 @@ export function BigHeatmap({
       </div>
     </TooltipProvider>
   );
-
-  function projectBreakdown(
-    userId: string,
-    allocations: Allocation[],
-    projectsById: Map<string, Project>,
-    year: number,
-    month: number
-  ): { projectId: string; name: string; color: string; percent: number; cost: number }[] {
-    const profile = profilesById.get(userId);
-    if (!profile) return [];
-    const map = new Map<
-      string,
-      { name: string; color: string; percent: number; cost: number }
-    >();
-    for (const a of allocations) {
-      if (a.user_id !== userId) continue;
-      const dim = new Date(year, month, 0).getDate();
-      const monthStart = new Date(year, month - 1, 1);
-      const monthEnd = new Date(year, month - 1, dim);
-      const aStart = new Date(a.start_date);
-      const aEnd = new Date(a.end_date);
-      const start = aStart > monthStart ? aStart : monthStart;
-      const end = aEnd < monthEnd ? aEnd : monthEnd;
-      if (end < start) continue;
-      const overlap =
-        Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-      if (overlap <= 0) continue;
-      const pct = Number(a.percent) * (overlap / dim);
-      const cost = allocationCostForMonth(a, profile, year, month);
-      const proj = projectsById.get(a.project_id);
-      const key = a.project_id;
-      const existing = map.get(key);
-      if (existing) {
-        existing.percent += pct;
-        existing.cost += cost;
-      } else {
-        map.set(key, {
-          name: proj?.name ?? "?",
-          color: proj?.color ?? "#888",
-          percent: pct,
-          cost,
-        });
-      }
-    }
-    return Array.from(map.entries())
-      .map(([projectId, v]) => ({ projectId, ...v }))
-      .sort((a, b) => b.percent - a.percent);
-  }
 }

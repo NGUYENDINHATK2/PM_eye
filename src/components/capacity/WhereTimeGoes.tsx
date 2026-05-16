@@ -1,14 +1,18 @@
 "use client";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { userLoadForMonth, loadStatus, loadStatusLabel } from "@/lib/calculations";
+import {
+  loadStatus,
+  loadStatusLabel,
+  userLoadForMonth,
+  userProjectBreakdownForMonth,
+} from "@/lib/calculations";
 import { cn, formatPercent, monthLabel } from "@/lib/utils";
 import type { Allocation, Profile, Project } from "@/types/database";
 import { useMemo } from "react";
@@ -31,6 +35,10 @@ export function WhereTimeGoes({
   const projectsById = useMemo(
     () => new Map(projects.map((p) => [p.id, p])),
     [projects]
+  );
+  const profilesById = useMemo(
+    () => new Map(profiles.map((p) => [p.id, p])),
+    [profiles]
   );
 
   const months = useMemo(() => {
@@ -101,9 +109,10 @@ export function WhereTimeGoes({
                 </div>
                 <div className="flex flex-1">
                   {months.map((m) => {
-                    const breakdown = projectBreakdown(
+                    const breakdown = userProjectBreakdownForMonth(
                       p.id,
                       allocations,
+                      profilesById.get(p.id),
                       projectsById,
                       m.year,
                       m.month
@@ -204,44 +213,4 @@ export function WhereTimeGoes({
       </div>
     </TooltipProvider>
   );
-
-  function projectBreakdown(
-    userId: string,
-    allocations: Allocation[],
-    projectsById: Map<string, Project>,
-    year: number,
-    month: number
-  ): { projectId: string; name: string; color: string; percent: number }[] {
-    const map = new Map<string, { name: string; color: string; percent: number }>();
-    for (const a of allocations) {
-      if (a.user_id !== userId) continue;
-      const dim = new Date(year, month, 0).getDate();
-      const monthStart = new Date(year, month - 1, 1);
-      const monthEnd = new Date(year, month - 1, dim);
-      const aStart = new Date(a.start_date);
-      const aEnd = new Date(a.end_date);
-      const start = aStart > monthStart ? aStart : monthStart;
-      const end = aEnd < monthEnd ? aEnd : monthEnd;
-      if (end < start) continue;
-      const overlap =
-        Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-      if (overlap <= 0) continue;
-      const pct = Number(a.percent) * (overlap / dim);
-      const proj = projectsById.get(a.project_id);
-      const key = a.project_id;
-      const existing = map.get(key);
-      if (existing) {
-        existing.percent += pct;
-      } else {
-        map.set(key, {
-          name: proj?.name ?? "?",
-          color: proj?.color ?? "#888",
-          percent: pct,
-        });
-      }
-    }
-    return Array.from(map.entries())
-      .map(([projectId, v]) => ({ projectId, ...v }))
-      .sort((a, b) => b.percent - a.percent);
-  }
 }

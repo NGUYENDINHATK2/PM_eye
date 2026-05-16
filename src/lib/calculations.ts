@@ -64,8 +64,8 @@ export function allocationCostForMonth(
   const dim = daysInMonth(year, month);
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month - 1, dim);
-  const aStart = new Date(alloc.start_date);
-  const aEnd = new Date(alloc.end_date);
+  const aStart = parseLocalDate(alloc.start_date);
+  const aEnd = parseLocalDate(alloc.end_date);
 
   const start = aStart > monthStart ? aStart : monthStart;
   const end = aEnd < monthEnd ? aEnd : monthEnd;
@@ -119,6 +119,68 @@ export function userLoadCurrentMonth(
     asOf.getFullYear(),
     asOf.getMonth() + 1
   );
+}
+
+export type ProjectShare = {
+  projectId: string;
+  name: string;
+  color: string;
+  /** Tỷ lệ FTE quy đổi sang tháng (overlap_days/days_in_month × percent) */
+  percent: number;
+  /** Chi phí lương đóng góp vào tháng */
+  cost: number;
+};
+
+/**
+ * Breakdown 1 user theo project trong 1 tháng cụ thể.
+ * Trả về list đã sort percent desc, kèm cost (lương) cho từng project.
+ * Dùng parseLocalDate để consistent với load calc.
+ */
+export function userProjectBreakdownForMonth(
+  userId: string,
+  allocations: Allocation[],
+  profile: Profile | undefined,
+  projectsById: Map<string, Project>,
+  year: number,
+  month: number,
+  salaryHistory: SalaryHistory[] = []
+): ProjectShare[] {
+  const dim = daysInMonth(year, month);
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month - 1, dim);
+  const map = new Map<string, { name: string; color: string; percent: number; cost: number }>();
+
+  for (const a of allocations) {
+    if (a.user_id !== userId) continue;
+    const aStart = parseLocalDate(a.start_date);
+    const aEnd = parseLocalDate(a.end_date);
+    const start = aStart > monthStart ? aStart : monthStart;
+    const end = aEnd < monthEnd ? aEnd : monthEnd;
+    if (end < start) continue;
+    const overlap = rangeOverlapDays(monthStart, monthEnd, aStart, aEnd);
+    if (overlap <= 0) continue;
+    const pct = Number(a.percent) * (overlap / dim);
+    const cost = profile
+      ? allocationCostForMonth(a, profile, year, month, salaryHistory)
+      : 0;
+    const proj = projectsById.get(a.project_id);
+    const existing = map.get(a.project_id);
+    if (existing) {
+      existing.percent += pct;
+      existing.cost += cost;
+    } else {
+      map.set(a.project_id, {
+        name: proj?.name ?? "?",
+        color: proj?.color ?? "#888",
+        percent: pct,
+        cost,
+      });
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([projectId, v]) => ({ projectId, ...v }))
+    .sort((a, b) => b.percent - a.percent);
 }
 
 /**
@@ -474,8 +536,8 @@ function costInRange(
     if (projectId && a.project_id !== projectId) continue;
     const profile = profilesById.get(a.user_id);
     if (!profile) continue;
-    const aStart = new Date(a.start_date);
-    const aEnd = new Date(a.end_date);
+    const aStart = parseLocalDate(a.start_date);
+    const aEnd = parseLocalDate(a.end_date);
     const s = aStart > start ? aStart : start;
     const e = aEnd < end ? aEnd : end;
     if (e < s) continue;

@@ -3,8 +3,13 @@
 import { PageHeader } from "@/components/PageHeader";
 import { AvailableByRole } from "@/components/capacity/AvailableByRole";
 import { BigHeatmap } from "@/components/capacity/BigHeatmap";
+import { CapacityByProject } from "@/components/capacity/CapacityByProject";
+import { CapacityDistribution } from "@/components/capacity/CapacityDistribution";
+import { CapacityForecast } from "@/components/capacity/CapacityForecast";
 import { CapacityStats } from "@/components/capacity/CapacityStats";
+import { CapacityTrend } from "@/components/capacity/CapacityTrend";
 import { WhereTimeGoes } from "@/components/capacity/WhereTimeGoes";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,13 +17,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { userLoadCurrentMonth } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
 import type { Allocation, Profile, Project } from "@/types/database";
-import { CalendarRange, Layers, PieChart } from "lucide-react";
+import {
+  Activity,
+  BarChart3,
+  CalendarRange,
+  Gauge,
+  Layers,
+  PieChart,
+  Search,
+  TrendingUp,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
-type View = "heatmap" | "breakdown" | "available";
+type View =
+  | "heatmap"
+  | "breakdown"
+  | "available"
+  | "trend"
+  | "distribution"
+  | "forecast"
+  | "projects";
 type Range = "6mo" | "12mo" | "EOY" | "year";
+type Sort = "default" | "load_desc" | "load_asc" | "name" | "role";
 
 export function CapacityClient({
   profiles,
@@ -29,17 +52,47 @@ export function CapacityClient({
   allocations: Allocation[];
   projects: Project[];
 }) {
-  const [view, setView] = useState<View>("heatmap");
+  const [view, setView] = useState<View>("forecast");
   const [range, setRange] = useState<Range>("EOY");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [onlyActive, setOnlyActive] = useState(true);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<Sort>("default");
+
+  const today = useMemo(() => new Date(), []);
 
   const filteredProfiles = useMemo(() => {
     let list = profiles;
     if (onlyActive) list = list.filter((p) => p.is_active);
     if (roleFilter !== "all") list = list.filter((p) => p.role === roleFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.full_name.toLowerCase().includes(q) ||
+          p.role.toLowerCase().includes(q)
+      );
+    }
+    if (sort !== "default") {
+      list = [...list];
+      if (sort === "name") {
+        list.sort((a, b) => a.full_name.localeCompare(b.full_name, "vi"));
+      } else if (sort === "role") {
+        list.sort(
+          (a, b) =>
+            a.role.localeCompare(b.role, "vi") ||
+            a.full_name.localeCompare(b.full_name, "vi")
+        );
+      } else {
+        list.sort((a, b) => {
+          const la = userLoadCurrentMonth(a.id, allocations, today);
+          const lb = userLoadCurrentMonth(b.id, allocations, today);
+          return sort === "load_desc" ? lb - la : la - lb;
+        });
+      }
+    }
     return list;
-  }, [profiles, onlyActive, roleFilter]);
+  }, [profiles, onlyActive, roleFilter, search, sort, allocations, today]);
 
   const allRoles = useMemo(() => {
     const set = new Set<string>();
@@ -48,7 +101,6 @@ export function CapacityClient({
   }, [profiles]);
 
   const dateRange = useMemo(() => {
-    const today = new Date();
     const start = new Date(today.getFullYear(), today.getMonth(), 1);
     let end: Date;
     if (range === "6mo") {
@@ -58,7 +110,7 @@ export function CapacityClient({
     } else if (range === "year") {
       end = new Date(today.getFullYear() + 1, today.getMonth(), 0);
     } else {
-      // EOY
+      // EOY — but if we're near year-end, extend into next half
       end = new Date(today.getFullYear(), 11, 31);
       const monthsLeft =
         (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30);
@@ -67,26 +119,55 @@ export function CapacityClient({
       }
     }
     return { start, end };
-  }, [range]);
+  }, [range, today]);
 
-  const viewItems: { id: View; label: string; icon: typeof PieChart; desc: string }[] = [
+  const viewItems: {
+    id: View;
+    label: string;
+    icon: typeof PieChart;
+    desc: string;
+  }[] = [
+    {
+      id: "forecast",
+      label: "Forecast",
+      icon: Gauge,
+      desc: "Utilization tổng + bench / quá tải / dự báo tháng tới",
+    },
     {
       id: "heatmap",
       label: "Heatmap",
       icon: CalendarRange,
-      desc: "Nhiệt độ tải team theo tháng",
+      desc: "Nhiệt độ tải team theo tháng, click cell xem chi tiết dự án",
+    },
+    {
+      id: "trend",
+      label: "Trend",
+      icon: TrendingUp,
+      desc: "Stacked area FTE đang dùng qua thời gian, chia theo dự án",
+    },
+    {
+      id: "distribution",
+      label: "Phân bố",
+      icon: BarChart3,
+      desc: "Bao nhiêu người ở mỗi nhóm tải (bench/healthy/burnout) qua tháng",
     },
     {
       id: "breakdown",
-      label: "Chia theo dự án",
+      label: "Theo dự án",
       icon: Layers,
-      desc: "Mỗi người dành bao % cho dự án nào",
+      desc: "Mỗi người dành bao % cho dự án nào, mỗi tháng",
     },
     {
       id: "available",
-      label: "Capacity theo role",
+      label: "Theo role",
       icon: PieChart,
-      desc: "Còn bao nhiêu FTE rảnh để nhận deal",
+      desc: "Còn bao nhiêu FTE rảnh theo role để chốt deal",
+    },
+    {
+      id: "projects",
+      label: "Theo project",
+      icon: Activity,
+      desc: "Mỗi dự án ngốn FTE bao nhiêu, ai đang đóng góp",
     },
   ];
 
@@ -95,15 +176,15 @@ export function CapacityClient({
       <PageHeader
         eyebrow="Workspace · Capacity"
         title="Năng lực team"
-        subtitle="Heatmap & analytics theo thời gian — biết ai burn, ai rảnh, role nào sắp full để chốt deal hay rebalance."
+        subtitle="7 góc nhìn cho cùng 1 bộ data — chuyển nhanh giữa forecast, heatmap, trend, phân bố để tìm thông tin bạn cần."
       />
 
       <CapacityStats profiles={profiles} allocations={allocations} />
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        {/* View tabs (large) */}
-        <div className="inline-flex rounded-xl border bg-card p-1 shadow-sm">
+      <div className="space-y-3">
+        {/* View tabs (responsive, wraps on mobile) */}
+        <div className="inline-flex rounded-xl border bg-card p-1 shadow-sm flex-wrap">
           {viewItems.map((v) => {
             const active = view === v.id;
             const Icon = v.icon;
@@ -113,21 +194,36 @@ export function CapacityClient({
                 type="button"
                 onClick={() => setView(v.id)}
                 className={cn(
-                  "inline-flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-medium transition",
+                  "inline-flex items-center gap-2 px-3 lg:px-4 h-9 rounded-lg text-xs lg:text-sm font-medium transition",
                   active
                     ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Icon size={14} />
-                {v.label}
+                <span className="hidden sm:inline">{v.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Right side: range + filter */}
+        {/* Filters row */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search
+              size={13}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm tên / role…"
+              className="h-9 pl-7 pr-2 text-xs w-[180px] bg-card"
+            />
+          </div>
+
+          {/* Role filter */}
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-card shadow-sm">
               <SelectValue placeholder="Tất cả role" />
@@ -144,7 +240,31 @@ export function CapacityClient({
             </SelectContent>
           </Select>
 
-          <label className="inline-flex items-center gap-1.5 text-xs px-3 h-9 rounded-lg border bg-card shadow-sm cursor-pointer">
+          {/* Sort */}
+          <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+            <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-card shadow-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="text-xs">
+                Mặc định
+              </SelectItem>
+              <SelectItem value="load_desc" className="text-xs">
+                Tải cao → thấp
+              </SelectItem>
+              <SelectItem value="load_asc" className="text-xs">
+                Tải thấp → cao
+              </SelectItem>
+              <SelectItem value="name" className="text-xs">
+                Tên A → Z
+              </SelectItem>
+              <SelectItem value="role" className="text-xs">
+                Role A → Z
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          <label className="inline-flex items-center gap-1.5 text-xs px-3 h-9 rounded-lg border bg-card shadow-sm cursor-pointer hover:border-primary/40 transition-colors">
             <input
               type="checkbox"
               checked={onlyActive}
@@ -181,16 +301,45 @@ export function CapacityClient({
       </div>
 
       {/* View description */}
-      <div className="text-xs text-muted-foreground -mt-2">
+      <div className="text-xs text-muted-foreground -mt-2 flex items-center gap-2">
+        <span className="w-1 h-1 rounded-full bg-indigo-500" />
         {viewItems.find((v) => v.id === view)?.desc}
+        <span className="text-muted-foreground/60">
+          · {filteredProfiles.length} người
+        </span>
       </div>
 
       {/* Main view */}
+      {view === "forecast" && (
+        <CapacityForecast
+          profiles={filteredProfiles}
+          allocations={allocations}
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+        />
+      )}
       {view === "heatmap" && (
         <BigHeatmap
           profiles={filteredProfiles}
           allocations={allocations}
           projects={projects}
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+        />
+      )}
+      {view === "trend" && (
+        <CapacityTrend
+          profiles={filteredProfiles}
+          allocations={allocations}
+          projects={projects}
+          startDate={dateRange.start}
+          endDate={dateRange.end}
+        />
+      )}
+      {view === "distribution" && (
+        <CapacityDistribution
+          profiles={filteredProfiles}
+          allocations={allocations}
           startDate={dateRange.start}
           endDate={dateRange.end}
         />
@@ -212,9 +361,19 @@ export function CapacityClient({
           endDate={dateRange.end}
         />
       )}
+      {view === "projects" && (
+        <CapacityByProject
+          profiles={filteredProfiles}
+          allocations={allocations}
+          projects={projects}
+          startDate={dateRange.start}
+        />
+      )}
 
-      {/* Legend */}
-      <Legend view={view} />
+      {/* Legend — only for heatmap / breakdown / available */}
+      {(view === "heatmap" || view === "breakdown" || view === "available") && (
+        <Legend view={view} />
+      )}
     </div>
   );
 }
