@@ -5,6 +5,13 @@ import { AvailableByRole } from "@/components/capacity/AvailableByRole";
 import { BigHeatmap } from "@/components/capacity/BigHeatmap";
 import { CapacityStats } from "@/components/capacity/CapacityStats";
 import { WhereTimeGoes } from "@/components/capacity/WhereTimeGoes";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import type { Allocation, Profile, Project } from "@/types/database";
 import { CalendarRange, Layers, PieChart } from "lucide-react";
@@ -121,18 +128,21 @@ export function CapacityClient({
 
         {/* Right side: range + filter */}
         <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
-            className="h-9 rounded-lg border bg-card px-3 text-xs font-medium shadow-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="all">Tất cả role</option>
-            {allRoles.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
+          <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-card shadow-sm">
+              <SelectValue placeholder="Tất cả role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">
+                Tất cả role
+              </SelectItem>
+              {allRoles.map((r) => (
+                <SelectItem key={r} value={r} className="text-xs">
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <label className="inline-flex items-center gap-1.5 text-xs px-3 h-9 rounded-lg border bg-card shadow-sm cursor-pointer">
             <input
