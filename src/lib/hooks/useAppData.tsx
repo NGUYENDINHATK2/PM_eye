@@ -20,17 +20,19 @@ import {
   useState,
 } from "react";
 
-// Chỉ refetch on focus nếu dữ liệu cũ hơn ngưỡng này
-const STALE_AFTER_MS = 60_000; // 60 giây
+const STALE_AFTER_MS = 60_000;
 
 export type AppData = {
-  user: { email: string | null };
+  user: { email: string | null; isAdmin: boolean };
   profiles: Profile[];
   projects: Project[];
   phases: ProjectPhase[];
   allocations: Allocation[];
+  /** Admin-only — non-admin nhận empty array */
   expenses: OperatingExpense[];
+  /** Admin-only — non-admin nhận empty array */
   payments: ProjectPayment[];
+  /** Admin-only — non-admin nhận empty array */
   salaryHistory: SalaryHistory[];
 };
 
@@ -43,6 +45,19 @@ type Ctx = {
 
 const AppDataContext = createContext<Ctx | null>(null);
 
+type MeResponse = { email: string | null; id: string; isAdmin: boolean };
+type FetchResult<T> = { ok: true; data: T } | { ok: false; status: number };
+
+async function fetchJson<T>(url: string): Promise<FetchResult<T>> {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) return { ok: false, status: res.status };
+  return { ok: true, data: (await res.json()) as T };
+}
+
+function take<T>(r: FetchResult<T>, fallback: T): T {
+  return r.ok ? r.data : fallback;
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [data, setData] = useState<AppData | null>(null);
@@ -52,22 +67,66 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const inFlightRef = useRef<Promise<void> | null>(null);
 
   const fetchData = useCallback(async () => {
-    // Dedup: nếu đang có request đang chạy, return promise đó (tránh double-fetch)
     if (inFlightRef.current) return inFlightRef.current;
 
     const run = async () => {
       try {
-        const res = await fetch("/api/data", { cache: "no-store" });
-        if (res.status === 401) {
-          router.push("/login");
-          return;
+        // 1. /api/me — biết isAdmin trước khi quyết định fetch endpoint nào.
+        const me = await fetchJson<MeResponse>("/api/me");
+        if (!me.ok) {
+          if (me.status === 401) {
+            router.push("/login");
+            return;
+          }
+          throw new Error(`HTTP ${me.status} khi gọi /api/me`);
         }
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? `HTTP ${res.status}`);
+
+        // 2. Parallel-fetch các tài nguyên (admin-only endpoints chỉ gọi khi
+        //    user là admin — non-admin sẽ có array rỗng).
+        const [
+          profiles,
+          projects,
+          phases,
+          allocations,
+        ] = await Promise.all([
+          fetchJson<Profile[]>("/api/profiles"),
+          fetchJson<Project[]>("/api/projects"),
+          fetchJson<ProjectPhase[]>("/api/project-phases"),
+          fetchJson<Allocation[]>("/api/allocations"),
+        ]);
+
+        // Nếu một resource bất kỳ trả 401 → session hết hạn giữa flow.
+        for (const r of [profiles, projects, phases, allocations]) {
+          if (!r.ok && r.status === 401) {
+            router.push("/login");
+            return;
+          }
         }
-        const json: AppData = await res.json();
-        setData(json);
+
+        let expenses: FetchResult<OperatingExpense[]> = { ok: true, data: [] };
+        let payments: FetchResult<ProjectPayment[]> = { ok: true, data: [] };
+        let salaryHistory: FetchResult<SalaryHistory[]> = {
+          ok: true,
+          data: [],
+        };
+        if (me.data.isAdmin) {
+          [expenses, payments, salaryHistory] = await Promise.all([
+            fetchJson<OperatingExpense[]>("/api/operating-expenses"),
+            fetchJson<ProjectPayment[]>("/api/project-payments"),
+            fetchJson<SalaryHistory[]>("/api/salary-history"),
+          ]);
+        }
+
+        setData({
+          user: { email: me.data.email, isAdmin: me.data.isAdmin },
+          profiles: take(profiles, []),
+          projects: take(projects, []),
+          phases: take(phases, []),
+          allocations: take(allocations, []),
+          expenses: take(expenses, []),
+          payments: take(payments, []),
+          salaryHistory: take(salaryHistory, []),
+        });
         setError(null);
         lastFetchRef.current = Date.now();
       } catch (e) {
@@ -82,12 +141,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return inFlightRef.current;
   }, [router]);
 
-  // Initial fetch
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Refetch on focus chỉ khi data đã stale (> STALE_AFTER_MS từ lần fetch trước)
   useEffect(() => {
     const onFocus = () => {
       const elapsed = Date.now() - lastFetchRef.current;

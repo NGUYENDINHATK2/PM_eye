@@ -32,12 +32,33 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login");
+  const path = request.nextUrl.pathname;
+  const isAuthPage = path.startsWith("/login");
+  const isApi = path.startsWith("/api/");
 
-  if (!user && !isAuthPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+  if (!user) {
+    // API routes: trả 401 JSON, không redirect (client cần biết để xử lý).
+    if (isApi) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "unauthenticated",
+          message: "Bạn cần đăng nhập.",
+        }),
+        {
+          status: 401,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "private, no-store",
+          },
+        }
+      );
+    }
+    // Page routes: redirect như cũ (trừ trang login).
+    if (!isAuthPage) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
   }
 
   if (user && isAuthPage) {

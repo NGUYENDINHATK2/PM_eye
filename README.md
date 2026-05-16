@@ -55,14 +55,27 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ```
 
-### B4. Tạo tài khoản admin
+### B4. Tạo tài khoản admin + siết RLS
 1. Trong Supabase Dashboard → **Authentication → Users → Add user** (manual).
-2. Hoặc bật **Authentication → Providers → Email** rồi đăng ký từ trang `/login` trong app.
+2. Vào **SQL Editor** → paste [supabase/migrations/20260516_rls_admin_split.sql](supabase/migrations/20260516_rls_admin_split.sql) → **Run**. Migration này:
+   - Tạo function `is_app_admin()` đọc `auth.jwt().app_metadata.role`.
+   - Bảng **operating_expenses / project_payments / salary_history** chỉ admin được đọc & ghi.
+   - Bảng còn lại: ai đã auth đều đọc được, chỉ admin ghi.
+3. Gán role admin: ở Dashboard → **Authentication → Users → chọn user** → tab **User App Metadata** → paste:
+   ```json
+   { "role": "admin" }
+   ```
+   User Metadata thì user tự sửa được — phải set ở **App** Metadata mới an toàn.
 
-> Đây là **tool nội bộ** — RLS đã được cấu hình cho phép bất kỳ user đã auth full access.
-> Nếu không muốn ai khác đăng ký được, tắt **Sign-ups** trong Supabase Auth settings, hoặc thay policy bằng `auth.uid() = '<your-uid>'`.
+### B5. Env vars cho RBAC ở Next.js
+Trong [.env.local](.env.local) (và Vercel project settings) thêm danh sách email admin để API layer biết redact:
+```
+ADMIN_EMAILS=ban@cong-ty.com,leader@cong-ty.com
+```
+- Không có `ADMIN_EMAILS` thì non-admin sẽ thấy data đã redact (lương = 0, revenue = 0, không vào được endpoint chi phí/payments).
+- Có thêm tầng RLS trên DB nên dù bypass API layer cũng không query trực tiếp được.
 
-### B5. Chạy
+### B6. Chạy
 ```bash
 npm run dev
 ```
