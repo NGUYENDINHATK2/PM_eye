@@ -56,13 +56,17 @@ import type {
   SalaryHistory,
 } from "@/types/database";
 import {
+  AlertTriangle,
+  Activity,
   ArrowUpRight,
   Briefcase,
   MoreHorizontal,
   Pencil,
   Plus,
   Search,
+  TrendingUp,
   Trash2,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -260,17 +264,42 @@ export function ProjectsClient({
     const ongoing = projects.filter((p) => p.status === "ongoing").length;
     let totalRevenue = 0;
     let totalProfit = 0;
+    let totalSpent = 0;
     let lossCount = 0;
+    let overBudgetCount = 0;
+    let withRevenueCount = 0;
     for (const p of projects) {
-      const f = projectFinance(p, allocations, profilesById, expenses, undefined, salaryHistory);
+      const f = projectFinance(
+        p,
+        allocations,
+        profilesById,
+        expenses,
+        undefined,
+        salaryHistory
+      );
       totalRevenue += f.revenue;
+      totalSpent += f.totalSpent;
       if (f.hasRevenue) {
         totalProfit += f.profit;
+        withRevenueCount++;
         if (f.profit < 0) lossCount++;
       }
+      if (f.hasCap && f.overBudget) overBudgetCount++;
     }
-    return { total, ongoing, totalRevenue, totalProfit, lossCount };
-  }, [projects, allocations, profilesById, expenses]);
+    const avgMargin =
+      totalRevenue > 0 ? totalProfit / totalRevenue : 0;
+    return {
+      total,
+      ongoing,
+      totalRevenue,
+      totalProfit,
+      totalSpent,
+      avgMargin,
+      lossCount,
+      overBudgetCount,
+      withRevenueCount,
+    };
+  }, [projects, allocations, profilesById, expenses, salaryHistory]);
 
   return (
     <div className="space-y-8">
@@ -285,35 +314,65 @@ export function ProjectsClient({
         }
       />
 
-      {/* Summary strip */}
+      {/* Hero KPIs */}
       {projects.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <SummaryStat label="Tổng dự án" value={statsSummary.total.toString()} />
-          <SummaryStat
-            label="Đang chạy"
-            value={statsSummary.ongoing.toString()}
-            tone="success"
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <KpiCard
+            label="Tổng dự án"
+            value={statsSummary.total.toString()}
+            hint={`${statsSummary.ongoing} đang chạy`}
+            tone="indigo"
+            icon={<Briefcase size={14} />}
           />
-          <SummaryStat
+          <KpiCard
             label="Tổng doanh thu"
             value={formatCurrency(statsSummary.totalRevenue)}
-            tone="indigo"
+            hint={
+              statsSummary.withRevenueCount > 0
+                ? `${statsSummary.withRevenueCount} dự án có doanh thu`
+                : "Chưa có dự án nào ghi doanh thu"
+            }
+            tone="violet"
+            icon={<Wallet size={14} />}
           />
-          <SummaryStat
-            label={statsSummary.totalProfit >= 0 ? "Lợi nhuận" : "Đang lỗ"}
+          <KpiCard
+            label={
+              statsSummary.totalProfit >= 0 ? "Lợi nhuận" : "Đang lỗ"
+            }
             value={formatCurrency(statsSummary.totalProfit)}
+            hint={`Margin TB ${formatPercent(statsSummary.avgMargin)}`}
             tone={
               statsSummary.totalProfit >= 0
                 ? statsSummary.lossCount > 0
-                  ? "warning"
-                  : "success"
-                : "danger"
+                  ? "amber"
+                  : "emerald"
+                : "rose"
             }
+            icon={<TrendingUp size={14} />}
+          />
+          <KpiCard
+            label="Đã tiêu"
+            value={formatCurrency(statsSummary.totalSpent)}
+            hint="Lương + vận hành"
+            tone="sky"
+            icon={<Activity size={14} />}
+          />
+          <KpiCard
+            label="Cảnh báo"
+            value={(
+              statsSummary.lossCount + statsSummary.overBudgetCount
+            ).toString()}
             hint={
-              statsSummary.lossCount > 0
-                ? `${statsSummary.lossCount} dự án lỗ`
-                : undefined
+              statsSummary.lossCount > 0 || statsSummary.overBudgetCount > 0
+                ? `${statsSummary.lossCount} lỗ · ${statsSummary.overBudgetCount} vượt cap`
+                : "Tất cả OK"
             }
+            tone={
+              statsSummary.lossCount + statsSummary.overBudgetCount > 0
+                ? "rose"
+                : "emerald"
+            }
+            icon={<AlertTriangle size={14} />}
           />
         </div>
       )}
@@ -941,37 +1000,84 @@ function NoCapBlock({ fin }: { fin: ProjectFinance }) {
   );
 }
 
-function SummaryStat({
+type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
+const TONE_MAP: Record<Tone, { bg: string; text: string; iconBg: string }> = {
+  indigo: {
+    bg: "bg-indigo-500/5 border-indigo-500/15",
+    text: "text-indigo-600 dark:text-indigo-400",
+    iconBg: "bg-indigo-500/10",
+  },
+  violet: {
+    bg: "bg-violet-500/5 border-violet-500/15",
+    text: "text-violet-600 dark:text-violet-400",
+    iconBg: "bg-violet-500/10",
+  },
+  emerald: {
+    bg: "bg-emerald-500/5 border-emerald-500/15",
+    text: "text-emerald-600 dark:text-emerald-400",
+    iconBg: "bg-emerald-500/10",
+  },
+  rose: {
+    bg: "bg-rose-500/5 border-rose-500/15",
+    text: "text-rose-600 dark:text-rose-400",
+    iconBg: "bg-rose-500/10",
+  },
+  amber: {
+    bg: "bg-amber-500/5 border-amber-500/15",
+    text: "text-amber-600 dark:text-amber-400",
+    iconBg: "bg-amber-500/10",
+  },
+  sky: {
+    bg: "bg-sky-500/5 border-sky-500/15",
+    text: "text-sky-600 dark:text-sky-400",
+    iconBg: "bg-sky-500/10",
+  },
+};
+
+function KpiCard({
   label,
   value,
   hint,
-  tone = "default",
+  tone,
+  icon,
 }: {
   label: string;
   value: string;
   hint?: string;
-  tone?: "default" | "success" | "warning" | "danger" | "indigo";
+  tone: Tone;
+  icon: React.ReactNode;
 }) {
-  const toneClass =
-    tone === "success"
-      ? "text-emerald-500"
-      : tone === "warning"
-      ? "text-amber-500"
-      : tone === "danger"
-      ? "text-rose-500"
-      : tone === "indigo"
-      ? "gradient-text-indigo"
-      : "text-foreground";
+  const t = TONE_MAP[tone];
   return (
-    <div className="rounded-xl border bg-card px-4 py-3 shadow-sm">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-        {label}
+    <div
+      className={cn("rounded-xl border p-3 lg:p-4 relative overflow-hidden", t.bg)}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span
+          className={cn(
+            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+            t.iconBg,
+            t.text
+          )}
+        >
+          {icon}
+        </span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          {label}
+        </span>
       </div>
-      <div className={cn("text-lg font-semibold tnum mt-1", toneClass)}>
+      <div
+        className={cn(
+          "text-base lg:text-lg font-semibold tnum tracking-tight truncate",
+          t.text
+        )}
+      >
         {value}
       </div>
       {hint && (
-        <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>
+        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+          {hint}
+        </div>
       )}
     </div>
   );
