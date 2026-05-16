@@ -81,6 +81,22 @@ ADMIN_EMAILS=ban@cong-ty.com,leader@cong-ty.com
 - Hoặc set qua `app_metadata.role = 'admin'` ở Supabase — Next.js layer cũng đọc cờ này.
 - BẮT BUỘC set ít nhất một trong hai để có ai vào được app.
 
+### B5.1. (Optional) HTTP Basic Auth — pop dialog mật khẩu trước khi vào site
+
+Nếu muốn thêm 1 lớp gate ngoài (browser pop "Enter password" trước cả trang `/login`):
+
+Thêm env var:
+```
+SITE_BASIC_AUTH=team:supersecretpassword
+```
+Format `username:password`. Để trống → bỏ qua tầng này.
+
+- Áp dụng cho toàn site (cả `/login`, `/api/*`), nhưng skip static assets (`_next/static`, ảnh).
+- Browser cache credential cả session, không phải nhập lại mỗi request.
+- Vercel HTTPS bắt buộc nên password không lộ trên đường truyền.
+- Trên Vercel: **Project Settings → Environment Variables → Add `SITE_BASIC_AUTH`** → redeploy.
+- Đây là **lớp ngoài** của Supabase auth, không thay thế: sau khi pass basic auth, vẫn cần đăng nhập Supabase + admin role để xem data.
+
 ### B6. Chạy
 ```bash
 npm run dev
