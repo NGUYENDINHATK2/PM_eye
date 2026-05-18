@@ -20,6 +20,20 @@ export function toDateInput(s?: string | null): string {
  */
 export function humanizeSupabaseError(msg: string): string {
   if (!msg) return "Lỗi không xác định.";
+
+  // PGRST116 — RLS silently filtered all rows hoặc row không tồn tại.
+  // Common: user là admin ở Next.js layer (ADMIN_EMAILS) nhưng CHƯA set
+  // app_metadata.role='admin' trong Supabase Dashboard → RLS chặn ghi.
+  if (
+    /PGRST116|coerce the result to a single|result contains 0 rows/i.test(msg)
+  ) {
+    return (
+      "Không ghi được dữ liệu — có thể RLS đang chặn. Vào Supabase Dashboard → " +
+      "Authentication → Users → user của bạn → tab User App Metadata → " +
+      'set `{ "role": "admin" }` → đăng xuất rồi đăng nhập lại.'
+    );
+  }
+
   // Missing column → migration chưa chạy
   const colMatch = msg.match(/column "?([\w.]+)"? .*does not exist|Could not find the '([\w]+)' column/i);
   if (colMatch) {
@@ -38,8 +52,11 @@ export function humanizeSupabaseError(msg: string): string {
   if (/duplicate key|unique constraint/i.test(msg)) {
     return "Bản ghi này đã tồn tại.";
   }
-  if (/permission denied|row-level security/i.test(msg)) {
-    return "Không có quyền (RLS). Đảm bảo bạn đã đăng nhập và policy đúng.";
+  if (/permission denied|row-level security|new row violates row-level security/i.test(msg)) {
+    return (
+      'Không có quyền ghi (RLS). Đảm bảo đã set `{ "role": "admin" }` trong ' +
+      "Supabase → Authentication → Users → User App Metadata, rồi đăng nhập lại."
+    );
   }
   return msg;
 }
