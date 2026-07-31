@@ -86,8 +86,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             return;
           }
           if (res.status === 403) {
-            router.refresh();
-            return;
+            const body = (await res.json().catch(() => null)) as {
+              message?: string;
+            } | null;
+            throw new Error(
+              body?.message ?? "Không có quyền truy cập (403)."
+            );
           }
           if (!res.ok) {
             const body = (await res.json().catch(() => null)) as {

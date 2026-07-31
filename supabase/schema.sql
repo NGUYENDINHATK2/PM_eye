@@ -244,10 +244,13 @@ alter table public.operating_expenses enable row level security;
 alter table public.project_payments enable row level security;
 alter table public.salary_history enable row level security;
 
--- PROFILES: mọi role đã login đọc được roster (lương che bằng column grant)
+-- PROFILES: đọc được profile của chính + roster khi đã có app_role trong JWT
 create policy "profiles_select" on public.profiles
   for select to authenticated
-  using (public.app_role() in ('admin', 'manager', 'pm', 'member'));
+  using (
+    id = auth.uid()
+    or public.app_role() in ('admin', 'manager', 'pm', 'member')
+  );
 
 create policy "profiles_insert_admin" on public.profiles
   for insert to authenticated
@@ -368,8 +371,11 @@ grant update (
 
 grant delete on public.profiles to authenticated;
 
--- Admin lấy lương qua service_role (API) hoặc grant riêng:
--- service_role bypass RLS + full column access by default in Supabase.
+-- service_role: full access mọi bảng (API bootstrap / admin users)
+grant all on all tables in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant all on all routines in schema public to service_role;
+grant select (base_salary) on public.profiles to service_role;
 
 grant select, insert, update, delete on public.projects to authenticated;
 grant select, insert, update, delete on public.project_phases to authenticated;
@@ -413,3 +419,68 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- Đọc/tạo profile (security definer — bypass column GRANT / RLS)
+create or replace function public.get_or_create_profile(p_user_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  r public.profiles%rowtype;
+  u auth.users%rowtype;
+  v_role text;
+begin
+  if auth.role() = 'authenticated'
+     and (auth.uid() is null or p_user_id is distinct from auth.uid()) then
+    raise exception 'forbidden';
+  end if;
+
+  select * into r from public.profiles where id = p_user_id;
+  if found then
+    return to_jsonb(r);
+  end if;
+
+  select * into u from auth.users where id = p_user_id;
+  if not found then
+    return null;
+  end if;
+
+  v_role := coalesce(u.raw_app_meta_data->>'role', 'member');
+  if v_role not in ('admin', 'manager', 'pm', 'member') then
+    v_role := 'member';
+  end if;
+
+  insert into public.profiles (
+    id, full_name, email, job_role, app_role, base_salary, is_active
+  ) values (
+    u.id,
+    coalesce(split_part(u.email, '@', 1), 'User'),
+    u.email,
+    case when v_role = 'admin' then 'BU Lead' else 'Member' end,
+    v_role,
+    0,
+    true
+  )
+  on conflict (id) do update set email = excluded.email
+  returning * into r;
+
+  return to_jsonb(r);
+end;
+$$;
+
+grant execute on function public.get_or_create_profile(uuid)
+  to authenticated, service_role;
+
+create or replace function public.get_my_profile()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.get_or_create_profile(auth.uid());
+$$;
+
+grant execute on function public.get_my_profile() to authenticated, service_role, anon;
