@@ -37,10 +37,10 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg",
-        "translate-x-[-50%] translate-y-[-50%] gap-4",
-        "bg-card text-card-foreground p-6",
-        "rounded-2xl border ring-1 ring-black/5 dark:ring-white/10",
-        "shadow-[0_24px_56px_-12px_rgb(0_0_0_/_0.35),0_8px_16px_-8px_rgb(0_0_0_/_0.2)]",
+        "translate-x-[-50%] translate-y-[-50%] gap-0",
+        "overflow-hidden bg-card text-card-foreground p-0",
+        "rounded-[1.35rem] border-0 ring-1 ring-black/5 dark:ring-white/10",
+        "shadow-[0_32px_80px_-20px_rgb(15_23_42_/_0.45),0_12px_28px_-12px_rgb(15_23_42_/_0.25)]",
         "max-h-[92vh] overflow-y-auto",
         "duration-200",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -51,17 +51,15 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      {/* Top accent line */}
-      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent pointer-events-none" />
-
       {children}
 
       <DialogPrimitive.Close
         className={cn(
-          "absolute right-3 top-3 z-10",
-          "w-8 h-8 inline-flex items-center justify-center rounded-lg",
-          "text-muted-foreground hover:text-foreground hover:bg-accent",
-          "transition-colors",
+          "absolute right-4 top-4 z-10",
+          "w-9 h-9 inline-flex items-center justify-center rounded-xl",
+          "text-muted-foreground hover:text-foreground hover:bg-background/80",
+          "ring-1 ring-transparent hover:ring-border/80",
+          "transition-all",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           "disabled:pointer-events-none"
         )}
@@ -80,7 +78,8 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-left pr-8",
+      "relative flex flex-col gap-1.5 text-left px-6 pt-6 pb-5 pr-14",
+      "bg-[linear-gradient(180deg,hsl(var(--muted)/0.65)_0%,transparent_100%)]",
       className
     )}
     {...props}
@@ -94,7 +93,8 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2 -mx-6 -mb-6 px-6 py-4 border-t bg-muted/30 rounded-b-2xl",
+      "flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-6 py-4",
+      "border-t border-border/60 bg-muted/25",
       className
     )}
     {...props}
@@ -109,7 +109,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-tight tracking-tight",
+      "font-[family-name:var(--font-display)] text-xl font-semibold leading-tight tracking-tight",
       className
     )}
     {...props}
@@ -123,7 +123,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-xs text-muted-foreground leading-relaxed", className)}
+    className={cn("text-sm text-muted-foreground leading-relaxed", className)}
     {...props}
   />
 ));

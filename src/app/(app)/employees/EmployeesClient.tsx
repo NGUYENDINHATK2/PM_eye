@@ -59,14 +59,18 @@ import {
 import type { Allocation, Profile, SalaryHistory } from "@/types/database";
 import {
   Activity,
+  Briefcase,
+  CalendarDays,
   Flame,
   LayoutGrid,
   List as ListIcon,
+  Mail,
   Pencil,
   Search,
   Sparkles,
   Trash2,
   TrendingUp,
+  User,
   UserPlus,
   Users,
   Wallet,
@@ -812,119 +816,166 @@ export function EmployeesClient({
         </Card>
       )}
 
-      {/* Dialog (giữ nguyên) */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-xl sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {editing ? "Sửa nhân sự" : "Thêm nhân sự"}
-            </DialogTitle>
-            <DialogDescription>
-              {editing
-                ? "Cập nhật thông tin nhân sự."
-                : "Tạo tài khoản đăng nhập (member) + hồ sơ nhân sự. Đổi quyền tại Tài khoản."}
-            </DialogDescription>
+            <div className="flex items-start gap-3.5">
+              <div
+                className={cn(
+                  "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
+                  "bg-gradient-to-br from-teal-500/20 via-sky-500/10 to-transparent",
+                  "ring-1 ring-teal-500/25 text-teal-700 dark:text-teal-300",
+                  "font-[family-name:var(--font-display)] text-base font-semibold"
+                )}
+              >
+                {(editing?.full_name || "NS")
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w) => w[0]?.toUpperCase())
+                  .join("") || "NS"}
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-teal-500 ring-2 ring-card" />
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <DialogTitle>
+                  {editing ? "Sửa nhân sự" : "Thêm nhân sự"}
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  {editing
+                    ? "Chỉnh hồ sơ, vị trí và trạng thái làm việc."
+                    : "Tạo tài khoản đăng nhập (member) + hồ sơ. Đổi quyền tại Tài khoản."}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
+
           <form
             onSubmit={onSubmit}
-            className="space-y-4"
+            className="space-y-5 px-6 py-5"
             key={editing?.id ?? "new-emp"}
           >
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Họ và tên</Label>
-              <Input
-                id="full_name"
-                name="full_name"
-                required
-                defaultValue={editing?.full_name ?? ""}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-4 rounded-2xl bg-muted/35 p-4 ring-1 ring-border/50">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required={!editing}
-                  defaultValue={editing?.email ?? ""}
-                  disabled={!!editing}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Vị trí</Label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[320px]">
-                    {ROLE_GROUPS.map((group, gi) => (
-                      <SelectGroup key={group.label}>
-                        {gi > 0 && <SelectSeparator />}
-                        <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          {group.label}
-                        </SelectLabel>
-                        {group.roles.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            {r}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {!editing && (
-              <div className="space-y-2">
-                <Label htmlFor="password">Mật khẩu đăng nhập</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  minLength={6}
-                  required
-                  autoComplete="new-password"
-                  placeholder="Tối thiểu 6 ký tự"
-                />
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {canViewSalary && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2 min-h-[18px]">
-                    <Label htmlFor="base_salary" className="!mb-0">
-                      Lương / tháng (VND)
-                    </Label>
-                    {editing && historyCount(editing.id) > 0 && (
-                      <Badge variant="info" className="text-[9px] !py-0">
-                        {historyCount(editing.id)} lần đổi
-                      </Badge>
-                    )}
-                  </div>
+                <Label htmlFor="full_name">Họ và tên</Label>
+                <div className="relative">
+                  <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
                   <Input
-                    id="base_salary"
-                    name="base_salary"
-                    type="number"
-                    min="0"
-                    step="100000"
+                    id="full_name"
+                    name="full_name"
                     required
-                    value={salaryInput || ""}
-                    onChange={(e) => setSalaryInput(Number(e.target.value || 0))}
+                    placeholder="Nguyễn Văn A"
+                    defaultValue={editing?.full_name ?? ""}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required={!editing}
+                      placeholder="name@company.com"
+                      defaultValue={editing?.email ?? ""}
+                      disabled={!!editing}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Vị trí</Label>
+                  <Select value={role} onValueChange={setRole}>
+                    <SelectTrigger className="pl-10 relative">
+                      <Briefcase className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[320px]">
+                      {ROLE_GROUPS.map((group, gi) => (
+                        <SelectGroup key={group.label}>
+                          {gi > 0 && <SelectSeparator />}
+                          <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                            {group.label}
+                          </SelectLabel>
+                          {group.roles.map((r) => (
+                            <SelectItem key={r} value={r}>
+                              {r}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {!editing && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Mật khẩu đăng nhập</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    minLength={6}
+                    required
+                    autoComplete="new-password"
+                    placeholder="Tối thiểu 6 ký tự"
                   />
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Ngày vào</Label>
-                <Input
-                  id="start_date"
-                  name="start_date"
-                  type="date"
-                  defaultValue={
-                    toDateInput(editing?.start_date) ||
-                    new Date().toISOString().slice(0, 10)
-                  }
-                />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {canViewSalary && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="base_salary">Lương / tháng</Label>
+                      {editing && historyCount(editing.id) > 0 && (
+                        <Badge variant="info" className="text-[9px] !py-0">
+                          {historyCount(editing.id)} lần đổi
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Wallet className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                      <Input
+                        id="base_salary"
+                        name="base_salary"
+                        type="number"
+                        min="0"
+                        step="100000"
+                        required
+                        value={salaryInput || ""}
+                        onChange={(e) =>
+                          setSalaryInput(Number(e.target.value || 0))
+                        }
+                        className="pl-10 pr-14"
+                      />
+                      <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold tracking-wide text-muted-foreground">
+                        VND
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="start_date">Ngày vào</Label>
+                  <div className="relative">
+                    <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                    <Input
+                      id="start_date"
+                      name="start_date"
+                      type="date"
+                      defaultValue={
+                        toDateInput(editing?.start_date) ||
+                        new Date().toISOString().slice(0, 10)
+                      }
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -932,11 +983,11 @@ export function EmployeesClient({
               editing &&
               salaryInput > 0 &&
               salaryInput !== Number(editing.base_salary) && (
-                <div className="rounded-xl border bg-gradient-to-br from-amber-500/[0.06] to-transparent p-3 space-y-2">
+                <div className="space-y-3 rounded-2xl bg-amber-500/[0.07] p-4 ring-1 ring-amber-500/20">
                   <div className="flex items-center gap-2">
-                    <div className="w-1 h-3.5 rounded-full bg-amber-500" />
-                    <Label className="mb-0 text-xs">
-                      Mức lương mới có hiệu lực từ ngày
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    <Label className="normal-case tracking-normal text-amber-800 dark:text-amber-200">
+                      Mức mới có hiệu lực từ
                     </Label>
                   </div>
                   <Input
@@ -945,42 +996,73 @@ export function EmployeesClient({
                     onChange={(e) => setSalaryEffectiveFrom(e.target.value)}
                     required
                   />
-                  <div className="text-[11px] text-muted-foreground">
-                    Chi phí lương trước ngày này vẫn dùng mức cũ (
-                    {formatCurrency(editing.base_salary)}); từ ngày này trở đi
-                    dùng mức mới ({formatCurrency(salaryInput)}). Lịch sử sẽ
-                    được ghi lại.
-                  </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Trước ngày này giữ{" "}
+                    <span className="font-medium text-foreground tnum">
+                      {formatCurrency(editing.base_salary)}
+                    </span>
+                    ; từ ngày này dùng{" "}
+                    <span className="font-medium text-foreground tnum">
+                      {formatCurrency(salaryInput)}
+                    </span>
+                    . Lịch sử được ghi lại.
+                  </p>
                 </div>
               )}
 
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <label
+              className={cn(
+                "flex cursor-pointer items-center justify-between gap-4 rounded-2xl px-4 py-3.5",
+                "bg-background ring-1 ring-border/70 transition-colors",
+                "hover:ring-primary/30 hover:bg-muted/40"
+              )}
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium">Đang làm việc</div>
+                <div className="text-xs text-muted-foreground">
+                  Tắt khi nhân sự nghỉ / tạm ngưng
+                </div>
+              </div>
               <input
                 type="checkbox"
                 name="is_active"
                 defaultChecked={editing ? editing.is_active : true}
-                className="w-4 h-4 rounded border-input accent-teal-500"
+                className="peer sr-only"
               />
-              Đang làm việc
+              <span
+                className={cn(
+                  "relative h-7 w-12 shrink-0 rounded-full bg-muted transition-colors",
+                  "peer-checked:bg-teal-500",
+                  "after:absolute after:left-1 after:top-1 after:h-5 after:w-5",
+                  "after:rounded-full after:bg-white after:shadow-sm after:transition-transform",
+                  "peer-checked:after:translate-x-5"
+                )}
+              />
             </label>
 
             {error && (
-              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+              <div className="rounded-xl bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
                 {error}
               </div>
             )}
 
-            <DialogFooter>
+            <DialogFooter className="-mx-6 -mb-5 mt-1 border-t-0 bg-transparent px-0 pb-0 pt-1 sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={saving}
+                className="rounded-xl"
               >
                 Hủy
               </Button>
-              <Button type="submit" variant="brand" disabled={saving}>
-                {saving ? "Đang lưu..." : "Lưu"}
+              <Button
+                type="submit"
+                variant="brand"
+                disabled={saving}
+                className="min-w-[7.5rem] rounded-xl"
+              >
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </Button>
             </DialogFooter>
           </form>
