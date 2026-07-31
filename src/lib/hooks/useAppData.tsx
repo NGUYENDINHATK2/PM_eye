@@ -26,6 +26,7 @@ const STALE_AFTER_MS = 60_000;
 
 export type AppData = {
   user: {
+    id: string;
     email: string | null;
     role: AppRole;
     isAdmin: boolean;

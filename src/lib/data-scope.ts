@@ -18,6 +18,7 @@ import type {
 
 export type ScopedBootstrap = {
   user: {
+    id: string;
     email: string | null;
     role: AppRole;
     isAdmin: boolean;
@@ -64,9 +65,16 @@ export function scopeBootstrapData(input: {
     projectIds.has(a.project_id)
   );
 
-  // Manager/admin: all profiles. PM/member: profiles on visible projects + self
+  // Member: chỉ plan của chính mình (+ dự án liên quan đã lọc ở trên)
+  if (role === "member") {
+    allocations = allocations.filter((a) => a.user_id === userId);
+  }
+
+  // Manager/admin: all profiles. PM: teammates on visible projects. Member: self
   let profiles = input.profiles;
-  if (role === "pm" || role === "member") {
+  if (role === "member") {
+    profiles = profiles.filter((p) => p.id === userId);
+  } else if (role === "pm") {
     const userIds = new Set(allocations.map((a) => a.user_id));
     userIds.add(userId);
     for (const p of projects) {
@@ -96,6 +104,7 @@ export function scopeBootstrapData(input: {
 
   return {
     user: {
+      id: userId,
       email: input.email,
       role,
       isAdmin: role === "admin",

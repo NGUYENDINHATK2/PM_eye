@@ -30,6 +30,8 @@ import { toast } from "sonner";
 type Item = {
   href: string;
   label: string;
+  /** Label riêng theo role (vd. member xem plan của mình) */
+  labelByRole?: Partial<Record<AppRole, string>>;
   icon: typeof Briefcase;
   roles?: AppRole[]; // undefined = all
 };
@@ -42,19 +44,30 @@ const MENU_ITEMS: Item[] = [
     icon: LineChart,
     roles: ["admin", "manager", "pm"],
   },
-  { href: "/capacity", label: "Capacity team", icon: Activity },
+  {
+    href: "/capacity",
+    label: "Capacity team",
+    labelByRole: { member: "Capacity của tôi" },
+    icon: Activity,
+  },
   {
     href: "/employees",
     label: "Nhân sự",
     icon: Users,
     roles: ["admin", "manager", "pm"],
   },
-  { href: "/projects", label: "Dự án", icon: Briefcase },
+  {
+    href: "/projects",
+    label: "Dự án",
+    labelByRole: { member: "Dự án của tôi" },
+    icon: Briefcase,
+  },
   {
     href: "/allocations",
     label: "Phân bổ",
+    labelByRole: { member: "Kế hoạch của tôi" },
     icon: Sliders,
-    roles: ["admin", "manager", "pm"],
+    // member cũng xem được (read-only plan của mình)
   },
   {
     href: "/expenses",
@@ -220,7 +233,14 @@ export function Sidebar({
                 item.href === "/"
                   ? pathname === "/"
                   : pathname.startsWith(item.href);
-              return <NavLink key={item.href} item={item} active={active} />;
+              const label = item.labelByRole?.[appRole] ?? item.label;
+              return (
+                <NavLink
+                  key={item.href}
+                  item={{ ...item, label }}
+                  active={active}
+                />
+              );
             })}
           </div>
 

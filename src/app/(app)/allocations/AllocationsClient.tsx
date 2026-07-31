@@ -31,6 +31,7 @@ import {
   userLoadToday,
   userPeakLoad,
 } from "@/lib/calculations";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { createClient } from "@/lib/supabase/client";
 import {
   cn,
@@ -56,6 +57,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 export function AllocationsClient({
@@ -69,6 +71,9 @@ export function AllocationsClient({
   phases: ProjectPhase[];
   initialAllocations: Allocation[];
 }) {
+  const { data: appData } = useAppData();
+  const role = appData?.user.role;
+  const readOnly = role === "member";
   const supabase = createClient();
   const [allocations, setAllocations] = useState(initialAllocations);
   useEffect(() => setAllocations(initialAllocations), [initialAllocations]);
@@ -147,12 +152,14 @@ export function AllocationsClient({
   }
 
   function openNew() {
+    if (readOnly) return;
     resetForm();
     setError(null);
     setOpen(true);
   }
 
   function openEdit(a: Allocation) {
+    if (readOnly) return;
     setEditing(a);
     setUserId(a.user_id);
     setProjectId(a.project_id);
@@ -167,6 +174,7 @@ export function AllocationsClient({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (readOnly) return;
     if (!userId || !projectId) return;
     setError(null);
 
@@ -242,6 +250,7 @@ export function AllocationsClient({
   }
 
   async function remove(id: string) {
+    if (readOnly) return;
     if (!confirm("Xóa phân bổ này?")) return;
     await supabase.from("allocations").delete().eq("id", id);
     setAllocations((arr) => arr.filter((x) => x.id !== id));
@@ -308,17 +317,27 @@ export function AllocationsClient({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Workspace · Phân bổ"
-        title="Phân bổ nhân sự"
-        subtitle="Gán % thời gian từng người vào dự án/giai đoạn — xem theo Timeline (Gantt) hoặc List."
+        eyebrow={readOnly ? "Workspace · Của tôi" : "Workspace · Phân bổ"}
+        title={readOnly ? "Kế hoạch của tôi" : "Phân bổ nhân sự"}
+        subtitle={
+          readOnly
+            ? "Timeline phân bổ và các dự án bạn đang được gán. Chỉ xem — PM/admin sẽ cập nhật plan."
+            : "Gán % thời gian từng người vào dự án/giai đoạn — xem theo Timeline (Gantt) hoặc List."
+        }
         actions={
-          <Button
-            variant="brand"
-            onClick={openNew}
-            disabled={!profiles.length || !projects.length}
-          >
-            <Plus /> Phân bổ
-          </Button>
+          readOnly ? (
+            <Button variant="outline" asChild>
+              <Link href="/projects">Xem dự án liên quan</Link>
+            </Button>
+          ) : (
+            <Button
+              variant="brand"
+              onClick={openNew}
+              disabled={!profiles.length || !projects.length}
+            >
+              <Plus /> Phân bổ
+            </Button>
+          )
         }
       />
 
@@ -328,7 +347,9 @@ export function AllocationsClient({
           <div>
             <div className="text-sm font-semibold">Chế độ xem</div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              Timeline Gantt hoặc danh sách theo nhân sự
+              {readOnly
+                ? "Timeline hoặc danh sách các đợt phân bổ của bạn"
+                : "Timeline Gantt hoặc danh sách theo nhân sự"}
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -393,38 +414,45 @@ export function AllocationsClient({
 
         {view === "timeline" && (
           <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 sm:px-5">
-            <div className="inline-flex items-center gap-2">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Nhóm theo
-              </span>
-              <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
-                {(["person", "project"] as const).map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGroupBy(g)}
-                    className={cn(
-                      "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
-                      groupBy === g
-                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                    )}
-                  >
-                    {g === "person" ? (
-                      <>
-                        <UserIcon size={11} /> Nhân sự
-                      </>
-                    ) : (
-                      <>
-                        <FolderKanban size={11} /> Dự án
-                      </>
-                    )}
-                  </button>
-                ))}
+            {!readOnly && (
+              <div className="inline-flex items-center gap-2">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Nhóm theo
+                </span>
+                <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
+                  {(["person", "project"] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGroupBy(g)}
+                      className={cn(
+                        "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
+                        groupBy === g
+                          ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                          : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                      )}
+                    >
+                      {g === "person" ? (
+                        <>
+                          <UserIcon size={11} /> Nhân sự
+                        </>
+                      ) : (
+                        <>
+                          <FolderKanban size={11} /> Dự án
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div className="inline-flex items-center gap-2">
+            <div
+              className={cn(
+                "inline-flex items-center gap-2",
+                readOnly && "ml-auto"
+              )}
+            >
               <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Mật độ
               </span>
@@ -450,7 +478,54 @@ export function AllocationsClient({
         )}
       </div>
 
-      {(!profiles.length || !projects.length) && (
+      {readOnly && projects.length > 0 && (
+        <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+          <div className="border-b border-border/60 px-4 py-3.5 sm:px-5">
+            <div className="text-sm font-semibold">Dự án liên quan</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {projects.length} dự án bạn đang / từng được phân bổ
+            </div>
+          </div>
+          <ul className="divide-y divide-border/60">
+            {projects.map((p) => {
+              const mine = allocations.filter((a) => a.project_id === p.id);
+              const loadNow = mine
+                .filter(
+                  (a) =>
+                    a.start_date <= today.toISOString().slice(0, 10) &&
+                    a.end_date >= today.toISOString().slice(0, 10)
+                )
+                .reduce((s, a) => s + Number(a.percent), 0);
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={`/projects/${p.id}`}
+                    className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-muted/35 sm:px-5"
+                  >
+                    <span
+                      className="h-9 w-1.5 shrink-0 rounded-full"
+                      style={{ background: p.color || "#0d9488" }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{p.name}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {p.client || "—"} · {mine.length} đợt phân bổ
+                      </div>
+                    </div>
+                    <Badge variant={loadNow > 0 ? "brand" : "secondary"}>
+                      {loadNow > 0
+                        ? `${Math.round(loadNow * 100)}% hiện tại`
+                        : "Không active"}
+                    </Badge>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {!readOnly && (!profiles.length || !projects.length) && (
         <div className="overflow-hidden rounded-2xl bg-amber-500/8 ring-1 ring-amber-500/20">
           <div className="flex items-center gap-3 px-4 py-3.5 text-amber-700 sm:px-5 dark:text-amber-300">
             <AlertTriangle size={16} className="shrink-0" />
@@ -458,6 +533,15 @@ export function AllocationsClient({
               Bạn cần có ít nhất 1 nhân sự và 1 dự án trước khi phân bổ.
             </span>
           </div>
+        </div>
+      )}
+
+      {readOnly && allocations.length === 0 && (
+        <div className="overflow-hidden rounded-2xl bg-muted/30 ring-1 ring-border/60 px-5 py-10 text-center">
+          <div className="text-sm font-medium">Chưa có phân bổ</div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Khi PM/admin gán bạn vào dự án, timeline sẽ hiện ở đây.
+          </p>
         </div>
       )}
 
@@ -469,8 +553,8 @@ export function AllocationsClient({
           phases={phases}
           startDate={timelineRange.start}
           endDate={timelineRange.end}
-          onEditAllocation={openEdit}
-          groupBy={groupBy}
+          onEditAllocation={readOnly ? undefined : openEdit}
+          groupBy={readOnly ? "person" : groupBy}
           density={density}
         />
       ) : null}
@@ -478,9 +562,13 @@ export function AllocationsClient({
       {view === "list" && (
         <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
           <div className="border-b border-border/60 px-4 py-3.5 sm:px-5">
-            <div className="text-sm font-semibold">Danh sách phân bổ</div>
+            <div className="text-sm font-semibold">
+              {readOnly ? "Các đợt phân bổ của bạn" : "Danh sách phân bổ"}
+            </div>
             <div className="mt-0.5 text-xs text-muted-foreground">
-              {profiles.length} nhân sự · {allocations.length} đợt phân bổ
+              {readOnly
+                ? `${allocations.length} đợt · ${projects.length} dự án`
+                : `${profiles.length} nhân sự · ${allocations.length} đợt phân bổ`}
             </div>
           </div>
           <div className="divide-y divide-border/60">
@@ -584,24 +672,26 @@ export function AllocationsClient({
                             <Badge variant="brand">
                               {formatPercent(a.percent)}
                             </Badge>
-                            <div className="flex items-center gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-9 w-9"
-                                onClick={() => openEdit(a)}
-                              >
-                                <Pencil size={15} />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-9 w-9"
-                                onClick={() => remove(a.id)}
-                              >
-                                <Trash2 size={15} className="text-rose-500" />
-                              </Button>
-                            </div>
+                            {!readOnly && (
+                              <div className="flex items-center gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-9 w-9"
+                                  onClick={() => openEdit(a)}
+                                >
+                                  <Pencil size={15} />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-9 w-9"
+                                  onClick={() => remove(a.id)}
+                                >
+                                  <Trash2 size={15} className="text-rose-500" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -614,6 +704,7 @@ export function AllocationsClient({
         </div>
       )}
 
+      {!readOnly && (
       <Dialog
         open={open}
         onOpenChange={(o) => {
@@ -816,6 +907,7 @@ export function AllocationsClient({
           </form>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }

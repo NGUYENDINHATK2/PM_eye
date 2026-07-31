@@ -136,7 +136,7 @@ export function AllocationTimeline({
   phases: ProjectPhase[];
   startDate: Date;
   endDate: Date;
-  onEditAllocation: (a: Allocation) => void;
+  onEditAllocation?: (a: Allocation) => void;
   groupBy?: GroupBy;
   density?: Density;
 }) {
@@ -456,22 +456,30 @@ export function AllocationTimeline({
                               ? proj?.name?.[0]?.toUpperCase() ?? "?"
                               : profile?.full_name?.[0]?.toUpperCase() ?? "?";
 
+                          const barClass =
+                            "absolute rounded-lg text-xs text-white font-semibold px-2 transition-all flex items-center gap-1.5 text-left ring-1 ring-black/10 overflow-hidden";
+                          const barStyle = {
+                            left: `${left}%`,
+                            width: `${width}%`,
+                            top: sizes.padTop + laneIdx * sizes.laneStep,
+                            height: sizes.barH,
+                            background: `linear-gradient(135deg, ${color} 0%, ${shade(color, -12)} 100%)`,
+                            boxShadow: `0 4px 14px -2px ${color}80, 0 0 0 1px ${color}30 inset`,
+                            textShadow: "0 1px 2px rgb(0 0 0 / 0.25)",
+                          } as const;
+
                           return (
                             <Tooltip key={a.id}>
                               <TooltipTrigger asChild>
+                                {onEditAllocation ? (
                                 <button
                                   type="button"
                                   onClick={() => onEditAllocation(a)}
-                                  className="absolute rounded-lg text-xs text-white font-semibold px-2 hover:ring-2 hover:ring-white/60 hover:z-20 transition-all flex items-center gap-1.5 text-left ring-1 ring-black/10 overflow-hidden"
-                                  style={{
-                                    left: `${left}%`,
-                                    width: `${width}%`,
-                                    top: sizes.padTop + laneIdx * sizes.laneStep,
-                                    height: sizes.barH,
-                                    background: `linear-gradient(135deg, ${color} 0%, ${shade(color, -12)} 100%)`,
-                                    boxShadow: `0 4px 14px -2px ${color}80, 0 0 0 1px ${color}30 inset`,
-                                    textShadow: "0 1px 2px rgb(0 0 0 / 0.25)",
-                                  }}
+                                  className={cn(
+                                    barClass,
+                                    "hover:ring-2 hover:ring-white/60 hover:z-20 cursor-pointer"
+                                  )}
+                                  style={barStyle}
                                 >
                                   <span
                                     className="shrink-0 w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px]"
@@ -494,6 +502,30 @@ export function AllocationTimeline({
                                     {Math.round(a.percent * 100)}%
                                   </span>
                                 </button>
+                                ) : (
+                                <div className={cn(barClass, "cursor-default")} style={barStyle}>
+                                  <span
+                                    className="shrink-0 w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px]"
+                                    style={{
+                                      background: "rgb(255 255 255 / 0.25)",
+                                      backdropFilter: "blur(2px)",
+                                    }}
+                                  >
+                                    {initial}
+                                  </span>
+                                  <span className="truncate flex-1">
+                                    {primary}
+                                  </span>
+                                  <span
+                                    className="shrink-0 tabular-nums text-[11px] px-1 rounded"
+                                    style={{
+                                      background: "rgb(0 0 0 / 0.15)",
+                                    }}
+                                  >
+                                    {Math.round(a.percent * 100)}%
+                                  </span>
+                                </div>
+                                )}
                               </TooltipTrigger>
                               <TooltipContent className="max-w-[260px]">
                                 <div className="font-medium flex items-center gap-1.5">

@@ -31,7 +31,22 @@ const NAV: (Item & { roles?: string[] })[] = [
   { id: "nav-cap", label: "Capacity team", href: "/capacity", icon: Activity, group: "Điều hướng" },
   { id: "nav-emp", label: "Nhân sự", href: "/employees", icon: Users, group: "Điều hướng", roles: ["admin", "manager", "pm"] },
   { id: "nav-proj", label: "Dự án", href: "/projects", icon: Briefcase, group: "Điều hướng" },
-  { id: "nav-alloc", label: "Phân bổ", href: "/allocations", icon: Sliders, group: "Điều hướng", roles: ["admin", "manager", "pm"] },
+  {
+    id: "nav-alloc",
+    label: "Phân bổ",
+    href: "/allocations",
+    icon: Sliders,
+    group: "Điều hướng",
+    roles: ["admin", "manager", "pm"],
+  },
+  {
+    id: "nav-my-plan",
+    label: "Kế hoạch của tôi",
+    href: "/allocations",
+    icon: Sliders,
+    group: "Điều hướng",
+    roles: ["member"],
+  },
   { id: "nav-exp", label: "Chi phí", href: "/expenses", icon: Receipt, group: "Điều hướng", roles: ["admin", "manager", "pm"] },
   { id: "nav-users", label: "Tài khoản", href: "/settings/users", icon: Users, group: "Điều hướng", roles: ["admin"] },
 ];
