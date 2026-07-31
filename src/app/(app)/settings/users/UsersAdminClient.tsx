@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Field, FieldControl, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -571,11 +572,11 @@ export function UsersAdminClient() {
                     <Field>
                       <Label htmlFor="start_date">Ngày vào</Label>
                       <FieldControl icon={<CalendarDays />}>
-                        <Input
+                        <DatePicker
                           id="start_date"
                           name="start_date"
-                          type="date"
                           defaultValue={new Date().toISOString().slice(0, 10)}
+                          showIcon={false}
                           className="pl-10"
                         />
                       </FieldControl>

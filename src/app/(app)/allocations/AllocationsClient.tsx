@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldGrid } from "@/components/ui/field";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -756,21 +757,19 @@ export function AllocationsClient({
             <FieldGrid>
               <Field>
                 <Label htmlFor="from">Từ ngày</Label>
-                <Input
+                <DatePicker
                   id="from"
-                  type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={setStartDate}
                   required
                 />
               </Field>
               <Field>
                 <Label htmlFor="to">Đến ngày</Label>
-                <Input
+                <DatePicker
                   id="to"
-                  type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={setEndDate}
                   required
                 />
               </Field>

@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1050,20 +1051,18 @@ export function ProjectDetailClient({
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
                 <Field>
                   <Label htmlFor="start_date">Bắt đầu</Label>
-                  <Input
+                  <DatePicker
                     id="start_date"
                     name="start_date"
-                    type="date"
                     required
                     defaultValue={toDateInput(editing?.start_date)}
                   />
                 </Field>
                 <Field>
                   <Label htmlFor="end_date">Kết thúc</Label>
-                  <Input
+                  <DatePicker
                     id="end_date"
                     name="end_date"
-                    type="date"
                     required
                     defaultValue={toDateInput(editing?.end_date)}
                   />
@@ -1227,19 +1226,17 @@ export function ProjectDetailClient({
               <FieldGrid>
                 <Field>
                   <Label htmlFor="due_date">Ngày đáo hạn</Label>
-                  <Input
+                  <DatePicker
                     id="due_date"
                     name="due_date"
-                    type="date"
                     defaultValue={toDateInput(payEditing?.due_date)}
                   />
                 </Field>
                 <Field>
                   <Label htmlFor="paid_date">Ngày đã thu</Label>
-                  <Input
+                  <DatePicker
                     id="paid_date"
                     name="paid_date"
-                    type="date"
                     defaultValue={toDateInput(payEditing?.paid_date)}
                     disabled={payStatus !== "paid"}
                   />

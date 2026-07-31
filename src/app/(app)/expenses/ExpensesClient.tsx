@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -957,10 +958,9 @@ export function ExpensesClient({
                 </Field>
                 <Field>
                   <Label htmlFor="spent_date">Ngày chi</Label>
-                  <Input
+                  <DatePicker
                     id="spent_date"
                     name="spent_date"
-                    type="date"
                     defaultValue={
                       toDateInput(editing?.spent_date) ||
                       new Date().toISOString().slice(0, 10)

@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -908,19 +909,17 @@ export function ProjectsClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="start_date">Ngày bắt đầu</Label>
-                <Input
+                <DatePicker
                   id="start_date"
                   name="start_date"
-                  type="date"
                   defaultValue={toDateInput(editing?.start_date)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="end_date">Ngày kết thúc</Label>
-                <Input
+                <DatePicker
                   id="end_date"
                   name="end_date"
-                  type="date"
                   defaultValue={toDateInput(editing?.end_date)}
                 />
                 <div className="text-[11px] text-muted-foreground">

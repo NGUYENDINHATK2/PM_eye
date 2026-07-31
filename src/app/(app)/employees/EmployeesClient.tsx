@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldControl, FieldGrid } from "@/components/ui/field";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -946,14 +947,14 @@ export function EmployeesClient({
                       <Label htmlFor="start_date">Ngày vào</Label>
                     </div>
                     <FieldControl icon={<CalendarDays />}>
-                      <Input
+                      <DatePicker
                         id="start_date"
                         name="start_date"
-                        type="date"
                         defaultValue={
                           toDateInput(editing?.start_date) ||
                           new Date().toISOString().slice(0, 10)
                         }
+                        showIcon={false}
                         className="pl-10"
                       />
                     </FieldControl>
@@ -972,10 +973,9 @@ export function EmployeesClient({
                         Mức mới có hiệu lực từ
                       </Label>
                     </div>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={salaryEffectiveFrom}
-                      onChange={(e) => setSalaryEffectiveFrom(e.target.value)}
+                      onChange={setSalaryEffectiveFrom}
                       required
                     />
                     <p className="text-xs leading-relaxed text-muted-foreground">
