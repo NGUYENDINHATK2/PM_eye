@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldControl, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,8 +25,18 @@ import {
 import { ROLE_GROUPS } from "@/lib/roles";
 import { APP_ROLES, roleLabel } from "@/lib/rbac";
 import type { AppRole } from "@/types/database";
-import { formatCurrency, humanizeSupabaseError } from "@/lib/utils";
-import { Loader2, Plus, Shield, Trash2, UserCog } from "lucide-react";
+import { cn, formatCurrency, humanizeSupabaseError } from "@/lib/utils";
+import {
+  Briefcase,
+  CalendarDays,
+  Loader2,
+  Plus,
+  Shield,
+  Trash2,
+  User,
+  UserCog,
+  Wallet,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -258,133 +270,218 @@ export function UsersAdminClient() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {editing ? "Sửa tài khoản" : "Tạo tài khoản mới"}
-            </DialogTitle>
-            <DialogDescription>
-              Gán quyền hệ thống (app_role). Đồng bộ vào JWT app_metadata.
-            </DialogDescription>
+            <div className="flex items-start gap-3.5">
+              <div
+                className={cn(
+                  "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl",
+                  "bg-gradient-to-br from-teal-500/20 via-sky-500/10 to-transparent",
+                  "ring-1 ring-teal-500/25 text-teal-700 dark:text-teal-300"
+                )}
+              >
+                <Shield className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <DialogTitle>
+                  {editing ? "Sửa tài khoản" : "Tạo tài khoản mới"}
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  {editing
+                    ? "Đổi quyền đăng nhập, mật khẩu và trạng thái tài khoản."
+                    : "Tạo acc login + gán quyền hệ thống (admin / manager / pm / member)."}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <form onSubmit={onSubmit} className="space-y-4" key={editing?.id ?? "new"}>
-            <div className="space-y-1.5">
-              <Label htmlFor="full_name">Họ tên</Label>
-              <Input
-                id="full_name"
-                name="full_name"
-                required
-                defaultValue={editing?.full_name ?? ""}
-              />
-            </div>
-            {!editing && (
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email đăng nhập</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  placeholder="user@cong-ty.com"
-                />
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="password">
-                {editing ? "Mật khẩu mới (để trống nếu giữ)" : "Mật khẩu"}
-              </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                minLength={editing ? undefined : 6}
-                required={!editing}
-                autoComplete="new-password"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Quyền hệ thống</Label>
-                <Select
-                  value={appRole}
-                  onValueChange={(v) => setAppRole(v as AppRole)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {APP_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {roleLabel(r)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Chức danh</Label>
-                <Select value={jobRole} onValueChange={setJobRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLE_GROUPS.map((g) =>
-                      g.roles.map((r) => (
-                        <SelectItem key={r} value={r}>
-                          {r}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="base_salary">Lương / tháng</Label>
-                <Input
-                  id="base_salary"
-                  name="base_salary"
-                  type="number"
-                  min={0}
-                  defaultValue={editing?.base_salary ?? 0}
-                />
-              </div>
-              {!editing && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="start_date">Ngày vào</Label>
+          <form onSubmit={onSubmit} key={editing?.id ?? "new"}>
+            <DialogBody>
+              <div className="flex flex-col gap-4 rounded-2xl bg-muted/30 p-5 ring-1 ring-border/40 sm:p-6">
+                <Field>
+                  <Label htmlFor="full_name">Họ tên</Label>
+                  <FieldControl icon={<User />}>
+                    <Input
+                      id="full_name"
+                      name="full_name"
+                      required
+                      defaultValue={editing?.full_name ?? ""}
+                      className="pl-10"
+                    />
+                  </FieldControl>
+                </Field>
+
+                {!editing && (
+                  <Field>
+                    <Label htmlFor="email">Email đăng nhập</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      placeholder="user@cong-ty.com"
+                    />
+                  </Field>
+                )}
+
+                <Field>
+                  <Label htmlFor="password">
+                    {editing ? "Mật khẩu mới" : "Mật khẩu"}
+                  </Label>
                   <Input
-                    id="start_date"
-                    name="start_date"
-                    type="date"
-                    defaultValue={new Date().toISOString().slice(0, 10)}
+                    id="password"
+                    name="password"
+                    type="password"
+                    minLength={editing ? undefined : 6}
+                    required={!editing}
+                    autoComplete="new-password"
+                    placeholder={
+                      editing ? "Để trống nếu giữ mật khẩu cũ" : "Tối thiểu 6 ký tự"
+                    }
                   />
+                </Field>
+
+                <FieldGrid>
+                  <Field>
+                    <Label>Quyền hệ thống</Label>
+                    <Select
+                      value={appRole}
+                      onValueChange={(v) => setAppRole(v as AppRole)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {APP_ROLES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {roleLabel(r)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <Label>Chức danh</Label>
+                    <FieldControl icon={<Briefcase />}>
+                      <Select value={jobRole} onValueChange={setJobRole}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLE_GROUPS.map((g) =>
+                            g.roles.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {r}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </FieldControl>
+                  </Field>
+                </FieldGrid>
+
+                {editing ? (
+                  <Field>
+                    <Label htmlFor="base_salary">Lương / tháng</Label>
+                    <FieldControl icon={<Wallet />} suffix="VND">
+                      <Input
+                        id="base_salary"
+                        name="base_salary"
+                        type="number"
+                        min={0}
+                        defaultValue={editing.base_salary ?? 0}
+                        className="pl-10 pr-14"
+                      />
+                    </FieldControl>
+                  </Field>
+                ) : (
+                  <FieldGrid>
+                    <Field>
+                      <Label htmlFor="base_salary">Lương / tháng</Label>
+                      <FieldControl icon={<Wallet />} suffix="VND">
+                        <Input
+                          id="base_salary"
+                          name="base_salary"
+                          type="number"
+                          min={0}
+                          defaultValue={0}
+                          className="pl-10 pr-14"
+                        />
+                      </FieldControl>
+                    </Field>
+                    <Field>
+                      <Label htmlFor="start_date">Ngày vào</Label>
+                      <FieldControl icon={<CalendarDays />}>
+                        <Input
+                          id="start_date"
+                          name="start_date"
+                          type="date"
+                          defaultValue={new Date().toISOString().slice(0, 10)}
+                          className="pl-10"
+                        />
+                      </FieldControl>
+                    </Field>
+                  </FieldGrid>
+                )}
+              </div>
+
+              {editing && (
+                <label
+                  className={cn(
+                    "flex min-h-[3.5rem] cursor-pointer items-center justify-between gap-4 rounded-2xl px-5 py-3.5",
+                    "bg-muted/30 ring-1 ring-border/50 transition-colors",
+                    "hover:bg-muted/45 hover:ring-primary/25"
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium leading-none">
+                      Đang hoạt động
+                    </div>
+                    <div className="mt-1.5 text-xs text-muted-foreground">
+                      Tắt để khóa đăng nhập tài khoản này
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    defaultChecked={editing.is_active}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={cn(
+                      "relative h-7 w-12 shrink-0 rounded-full bg-muted transition-colors",
+                      "peer-checked:bg-teal-500",
+                      "after:absolute after:left-1 after:top-1 after:h-5 after:w-5",
+                      "after:rounded-full after:bg-white after:shadow-sm after:transition-transform",
+                      "peer-checked:after:translate-x-5"
+                    )}
+                  />
+                </label>
+              )}
+
+              {error && (
+                <div className="rounded-xl bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-500 ring-1 ring-rose-500/20">
+                  {error}
                 </div>
               )}
-            </div>
-            {editing && (
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  defaultChecked={editing.is_active}
-                  className="rounded"
-                />
-                Đang hoạt động
-              </label>
-            )}
-            {error && (
-              <div className="text-xs text-rose-500 bg-rose-500/10 px-3 py-2 rounded-lg">
-                {error}
-              </div>
-            )}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            </DialogBody>
+            <DialogFooter className="sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setOpen(false)}
+                disabled={saving}
+              >
                 Huỷ
               </Button>
-              <Button type="submit" variant="brand" disabled={saving}>
+              <Button
+                type="submit"
+                variant="brand"
+                disabled={saving}
+                className="min-w-[7.5rem]"
+              >
                 {saving && <Loader2 className="animate-spin" />}
-                {editing ? "Lưu" : "Tạo tài khoản"}
+                {editing ? "Lưu thay đổi" : "Tạo tài khoản"}
               </Button>
             </DialogFooter>
           </form>

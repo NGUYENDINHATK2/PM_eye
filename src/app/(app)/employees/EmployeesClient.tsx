@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -20,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Field, FieldControl, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -849,210 +851,205 @@ export function EmployeesClient({
             </div>
           </DialogHeader>
 
-          <form
-            onSubmit={onSubmit}
-            className="space-y-5 px-6 py-5"
-            key={editing?.id ?? "new-emp"}
-          >
-            <div className="space-y-4 rounded-2xl bg-muted/35 p-4 ring-1 ring-border/50">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Họ và tên</Label>
-                <div className="relative">
-                  <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-                  <Input
-                    id="full_name"
-                    name="full_name"
-                    required
-                    placeholder="Nguyễn Văn A"
-                    defaultValue={editing?.full_name ?? ""}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+          <form onSubmit={onSubmit} key={editing?.id ?? "new-emp"}>
+            <DialogBody>
+              <div className="flex flex-col gap-4 rounded-2xl bg-muted/30 p-5 ring-1 ring-border/40 sm:p-6">
+                <Field>
+                  <Label htmlFor="full_name">Họ và tên</Label>
+                  <FieldControl icon={<User />}>
                     <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required={!editing}
-                      placeholder="name@company.com"
-                      defaultValue={editing?.email ?? ""}
-                      disabled={!!editing}
+                      id="full_name"
+                      name="full_name"
+                      required
+                      placeholder="Nguyễn Văn A"
+                      defaultValue={editing?.full_name ?? ""}
                       className="pl-10"
                     />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Vị trí</Label>
-                  <Select value={role} onValueChange={setRole}>
-                    <SelectTrigger className="pl-10 relative">
-                      <Briefcase className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[320px]">
-                      {ROLE_GROUPS.map((group, gi) => (
-                        <SelectGroup key={group.label}>
-                          {gi > 0 && <SelectSeparator />}
-                          <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                            {group.label}
-                          </SelectLabel>
-                          {group.roles.map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  </FieldControl>
+                </Field>
 
-              {!editing && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Mật khẩu đăng nhập</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    minLength={6}
-                    required
-                    autoComplete="new-password"
-                    placeholder="Tối thiểu 6 ký tự"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {canViewSalary && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="base_salary">Lương / tháng</Label>
-                      {editing && historyCount(editing.id) > 0 && (
-                        <Badge variant="info" className="text-[9px] !py-0">
-                          {historyCount(editing.id)} lần đổi
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <Wallet className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                <FieldGrid>
+                  <Field>
+                    <Label htmlFor="email">Email</Label>
+                    <FieldControl icon={<Mail />}>
                       <Input
-                        id="base_salary"
-                        name="base_salary"
-                        type="number"
-                        min="0"
-                        step="100000"
-                        required
-                        value={salaryInput || ""}
-                        onChange={(e) =>
-                          setSalaryInput(Number(e.target.value || 0))
-                        }
-                        className="pl-10 pr-14"
+                        id="email"
+                        name="email"
+                        type="email"
+                        required={!editing}
+                        placeholder="name@company.com"
+                        defaultValue={editing?.email ?? ""}
+                        disabled={!!editing}
+                        className="pl-10"
                       />
-                      <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold tracking-wide text-muted-foreground">
-                        VND
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="start_date">Ngày vào</Label>
-                  <div className="relative">
-                    <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                    </FieldControl>
+                  </Field>
+                  <Field>
+                    <Label>Vị trí</Label>
+                    <FieldControl icon={<Briefcase />}>
+                      <Select value={role} onValueChange={setRole}>
+                        <SelectTrigger className="pl-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[320px]">
+                          {ROLE_GROUPS.map((group, gi) => (
+                            <SelectGroup key={group.label}>
+                              {gi > 0 && <SelectSeparator />}
+                              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {group.label}
+                              </SelectLabel>
+                              {group.roles.map((r) => (
+                                <SelectItem key={r} value={r}>
+                                  {r}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FieldControl>
+                  </Field>
+                </FieldGrid>
+
+                {!editing && (
+                  <Field>
+                    <Label htmlFor="password">Mật khẩu đăng nhập</Label>
                     <Input
-                      id="start_date"
-                      name="start_date"
-                      type="date"
-                      defaultValue={
-                        toDateInput(editing?.start_date) ||
-                        new Date().toISOString().slice(0, 10)
-                      }
-                      className="pl-10"
+                      id="password"
+                      name="password"
+                      type="password"
+                      minLength={6}
+                      required
+                      autoComplete="new-password"
+                      placeholder="Tối thiểu 6 ký tự"
                     />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {canViewSalary &&
-              editing &&
-              salaryInput > 0 &&
-              salaryInput !== Number(editing.base_salary) && (
-                <div className="space-y-3 rounded-2xl bg-amber-500/[0.07] p-4 ring-1 ring-amber-500/20">
-                  <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    <Label className="normal-case tracking-normal text-amber-800 dark:text-amber-200">
-                      Mức mới có hiệu lực từ
-                    </Label>
-                  </div>
-                  <Input
-                    type="date"
-                    value={salaryEffectiveFrom}
-                    onChange={(e) => setSalaryEffectiveFrom(e.target.value)}
-                    required
-                  />
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    Trước ngày này giữ{" "}
-                    <span className="font-medium text-foreground tnum">
-                      {formatCurrency(editing.base_salary)}
-                    </span>
-                    ; từ ngày này dùng{" "}
-                    <span className="font-medium text-foreground tnum">
-                      {formatCurrency(salaryInput)}
-                    </span>
-                    . Lịch sử được ghi lại.
-                  </p>
-                </div>
-              )}
-
-            <label
-              className={cn(
-                "flex cursor-pointer items-center justify-between gap-4 rounded-2xl px-4 py-3.5",
-                "bg-background ring-1 ring-border/70 transition-colors",
-                "hover:ring-primary/30 hover:bg-muted/40"
-              )}
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-medium">Đang làm việc</div>
-                <div className="text-xs text-muted-foreground">
-                  Tắt khi nhân sự nghỉ / tạm ngưng
-                </div>
-              </div>
-              <input
-                type="checkbox"
-                name="is_active"
-                defaultChecked={editing ? editing.is_active : true}
-                className="peer sr-only"
-              />
-              <span
-                className={cn(
-                  "relative h-7 w-12 shrink-0 rounded-full bg-muted transition-colors",
-                  "peer-checked:bg-teal-500",
-                  "after:absolute after:left-1 after:top-1 after:h-5 after:w-5",
-                  "after:rounded-full after:bg-white after:shadow-sm after:transition-transform",
-                  "peer-checked:after:translate-x-5"
+                  </Field>
                 )}
-              />
-            </label>
 
-            {error && (
-              <div className="rounded-xl bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
-                {error}
+                <FieldGrid>
+                  {canViewSalary && (
+                    <Field>
+                      <div className="flex h-4 items-center justify-between gap-2">
+                        <Label htmlFor="base_salary">Lương / tháng</Label>
+                        {editing && historyCount(editing.id) > 0 ? (
+                          <Badge variant="info" className="text-[9px] !py-0">
+                            {historyCount(editing.id)} lần đổi
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <FieldControl icon={<Wallet />} suffix="VND">
+                        <Input
+                          id="base_salary"
+                          name="base_salary"
+                          type="number"
+                          min="0"
+                          step="100000"
+                          required
+                          value={salaryInput || ""}
+                          onChange={(e) =>
+                            setSalaryInput(Number(e.target.value || 0))
+                          }
+                          className="pl-10 pr-14"
+                        />
+                      </FieldControl>
+                    </Field>
+                  )}
+                  <Field>
+                    <div className="flex h-4 items-center">
+                      <Label htmlFor="start_date">Ngày vào</Label>
+                    </div>
+                    <FieldControl icon={<CalendarDays />}>
+                      <Input
+                        id="start_date"
+                        name="start_date"
+                        type="date"
+                        defaultValue={
+                          toDateInput(editing?.start_date) ||
+                          new Date().toISOString().slice(0, 10)
+                        }
+                        className="pl-10"
+                      />
+                    </FieldControl>
+                  </Field>
+                </FieldGrid>
               </div>
-            )}
 
-            <DialogFooter className="-mx-6 -mb-5 mt-1 border-t-0 bg-transparent px-0 pb-0 pt-1 sm:justify-between">
+              {canViewSalary &&
+                editing &&
+                salaryInput > 0 &&
+                salaryInput !== Number(editing.base_salary) && (
+                  <div className="flex flex-col gap-3 rounded-2xl bg-amber-500/[0.07] p-5 ring-1 ring-amber-500/20">
+                    <div className="flex h-4 items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      <Label className="normal-case tracking-normal text-amber-800 dark:text-amber-200">
+                        Mức mới có hiệu lực từ
+                      </Label>
+                    </div>
+                    <Input
+                      type="date"
+                      value={salaryEffectiveFrom}
+                      onChange={(e) => setSalaryEffectiveFrom(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Trước ngày này giữ{" "}
+                      <span className="font-medium text-foreground tnum">
+                        {formatCurrency(editing.base_salary)}
+                      </span>
+                      ; từ ngày này dùng{" "}
+                      <span className="font-medium text-foreground tnum">
+                        {formatCurrency(salaryInput)}
+                      </span>
+                      . Lịch sử được ghi lại.
+                    </p>
+                  </div>
+                )}
+
+              <label
+                className={cn(
+                  "flex min-h-[3.5rem] cursor-pointer items-center justify-between gap-4 rounded-2xl px-5 py-3.5",
+                  "bg-muted/30 ring-1 ring-border/50 transition-colors",
+                  "hover:bg-muted/45 hover:ring-primary/25"
+                )}
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium leading-none">
+                    Đang làm việc
+                  </div>
+                  <div className="mt-1.5 text-xs text-muted-foreground">
+                    Tắt khi nhân sự nghỉ / tạm ngưng
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  defaultChecked={editing ? editing.is_active : true}
+                  className="peer sr-only"
+                />
+                <span
+                  className={cn(
+                    "relative h-7 w-12 shrink-0 rounded-full bg-muted transition-colors",
+                    "peer-checked:bg-teal-500",
+                    "after:absolute after:left-1 after:top-1 after:h-5 after:w-5",
+                    "after:rounded-full after:bg-white after:shadow-sm after:transition-transform",
+                    "peer-checked:after:translate-x-5"
+                  )}
+                />
+              </label>
+
+              {error && (
+                <div className="rounded-xl bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
+                  {error}
+                </div>
+              )}
+            </DialogBody>
+
+            <DialogFooter className="sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={saving}
-                className="rounded-xl"
               >
                 Hủy
               </Button>
@@ -1060,7 +1057,7 @@ export function EmployeesClient({
                 type="submit"
                 variant="brand"
                 disabled={saving}
-                className="min-w-[7.5rem] rounded-xl"
+                className="min-w-[7.5rem]"
               >
                 {saving ? "Đang lưu..." : "Lưu thay đổi"}
               </Button>

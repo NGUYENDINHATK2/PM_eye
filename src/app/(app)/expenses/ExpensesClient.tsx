@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -19,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -915,84 +917,86 @@ export function ExpensesClient({
               Server, license, outsource, hoặc bất cứ chi phí nào ngoài lương.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={save} className="space-y-4" key={editing?.id ?? "new"}>
-            <div className="space-y-2">
-              <Label htmlFor="description">Mô tả</Label>
-              <Textarea
-                id="description"
-                name="description"
-                required
-                placeholder="VD: Mua server AWS tháng 5, License Figma 5 chỗ..."
-                defaultValue={editing?.description ?? ""}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Số tiền (VND)</Label>
-                <Input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  min="0"
-                  step="10000"
+          <form onSubmit={save} key={editing?.id ?? "new"}>
+            <DialogBody>
+              <Field>
+                <Label htmlFor="description">Mô tả</Label>
+                <Textarea
+                  id="description"
+                  name="description"
                   required
-                  defaultValue={editing?.amount ?? ""}
+                  placeholder="VD: Mua server AWS tháng 5, License Figma 5 chỗ..."
+                  defaultValue={editing?.description ?? ""}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="spent_date">Ngày chi</Label>
-                <Input
-                  id="spent_date"
-                  name="spent_date"
-                  type="date"
-                  defaultValue={
-                    toDateInput(editing?.spent_date) ||
-                    new Date().toISOString().slice(0, 10)
-                  }
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Loại</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {CAT_LABEL[c]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Gán cho dự án</Label>
-                <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Chi phí chung —</SelectItem>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {error && (
-              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
-                {error}
-              </div>
-            )}
+              </Field>
+              <FieldGrid>
+                <Field>
+                  <Label htmlFor="amount">Số tiền (VND)</Label>
+                  <Input
+                    id="amount"
+                    name="amount"
+                    type="number"
+                    min="0"
+                    step="10000"
+                    required
+                    defaultValue={editing?.amount ?? ""}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="spent_date">Ngày chi</Label>
+                  <Input
+                    id="spent_date"
+                    name="spent_date"
+                    type="date"
+                    defaultValue={
+                      toDateInput(editing?.spent_date) ||
+                      new Date().toISOString().slice(0, 10)
+                    }
+                    required
+                  />
+                </Field>
+              </FieldGrid>
+              <FieldGrid>
+                <Field>
+                  <Label>Loại</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {CAT_LABEL[c]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <Label>Gán cho dự án</Label>
+                  <Select value={projectId} onValueChange={setProjectId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Chi phí chung —</SelectItem>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGrid>
+              {error && (
+                <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+                  {error}
+                </div>
+              )}
+            </DialogBody>
 
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"

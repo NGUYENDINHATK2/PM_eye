@@ -21,12 +21,14 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -716,13 +718,10 @@ export function ProjectsClient({
               Tạo dự án mới và bắt đầu chia giai đoạn để theo dõi.
             </DialogDescription>
           </DialogHeader>
-          <form
-            onSubmit={onSubmit}
-            className="space-y-4"
-            key={editing?.id ?? "new-project"}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
+          <form onSubmit={onSubmit} key={editing?.id ?? "new-project"}>
+            <DialogBody>
+            <FieldGrid>
+              <Field>
                 <Label htmlFor="name">Tên dự án</Label>
                 <Input
                   id="name"
@@ -730,16 +729,16 @@ export function ProjectsClient({
                   required
                   defaultValue={editing?.name ?? ""}
                 />
-              </div>
-              <div className="space-y-2">
+              </Field>
+              <Field>
                 <Label htmlFor="client">Khách hàng</Label>
                 <Input
                   id="client"
                   name="client"
                   defaultValue={editing?.client ?? ""}
                 />
-              </div>
-            </div>
+              </Field>
+            </FieldGrid>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="total_budget">Ngân sách / Cap (VND)</Label>
@@ -933,8 +932,9 @@ export function ProjectsClient({
                 {error}
               </div>
             )}
+            </DialogBody>
 
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"

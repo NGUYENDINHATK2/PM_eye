@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -607,9 +609,10 @@ export function AllocationsClient({
               vượt 100%.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={save} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
+          <form onSubmit={save}>
+            <DialogBody>
+            <FieldGrid>
+              <Field>
                 <Label>Nhân sự</Label>
                 <Select value={userId} onValueChange={setUserId}>
                   <SelectTrigger>
@@ -623,8 +626,8 @@ export function AllocationsClient({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
+              </Field>
+              <Field>
                 <Label>Dự án</Label>
                 <Select
                   value={projectId}
@@ -670,10 +673,10 @@ export function AllocationsClient({
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
+              </Field>
+            </FieldGrid>
 
-            <div className="space-y-2">
+            <Field>
               <Label>Giai đoạn (tùy chọn)</Label>
               <Select
                 value={phaseId || "none"}
@@ -691,12 +694,13 @@ export function AllocationsClient({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            {/* Slider hero */}
-            <div className="p-5 rounded-xl bg-gradient-to-br from-teal-500/10 to-sky-500/10 ring-1 ring-teal-500/20">
-              <div className="flex items-center justify-between mb-4">
-                <Label>% thời gian dành cho dự án này</Label>
+            <div className="rounded-2xl bg-gradient-to-br from-teal-500/10 to-sky-500/10 p-5 ring-1 ring-teal-500/20">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <Label className="normal-case tracking-normal">
+                  % thời gian dành cho dự án này
+                </Label>
                 <span className="text-3xl font-semibold tabular-nums bg-gradient-to-br from-teal-500 to-sky-500 bg-clip-text text-transparent">
                   {Math.round(percent * 100)}%
                 </span>
@@ -708,7 +712,7 @@ export function AllocationsClient({
                 max={100}
                 step={5}
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
+              <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
                 <span>0%</span>
                 <span>25%</span>
                 <span>50%</span>
@@ -716,8 +720,8 @@ export function AllocationsClient({
                 <span>100%</span>
               </div>
               {overloadHint && overloadHint.load > 1 && (
-                <div className="mt-4 flex items-start gap-2 text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
-                  <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <div className="mt-4 flex items-start gap-2 rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <div>
                     Ngày <strong>{formatDate(overloadHint.date)}</strong> sẽ
                     tổng load{" "}
@@ -728,8 +732,8 @@ export function AllocationsClient({
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
+            <FieldGrid>
+              <Field>
                 <Label htmlFor="from">Từ ngày</Label>
                 <Input
                   id="from"
@@ -738,8 +742,8 @@ export function AllocationsClient({
                   onChange={(e) => setStartDate(e.target.value)}
                   required
                 />
-              </div>
-              <div className="space-y-2">
+              </Field>
+              <Field>
                 <Label htmlFor="to">Đến ngày</Label>
                 <Input
                   id="to"
@@ -748,10 +752,10 @@ export function AllocationsClient({
                   onChange={(e) => setEndDate(e.target.value)}
                   required
                 />
-              </div>
-            </div>
+              </Field>
+            </FieldGrid>
 
-            <div className="space-y-2">
+            <Field>
               <Label htmlFor="note">Ghi chú</Label>
               <Input
                 id="note"
@@ -759,15 +763,16 @@ export function AllocationsClient({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Cover BE khi A nghỉ thai sản..."
               />
-            </div>
+            </Field>
 
             {error && (
-              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
+              <div className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
                 {error}
               </div>
             )}
+            </DialogBody>
 
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"

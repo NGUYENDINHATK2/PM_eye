@@ -14,12 +14,14 @@ import {
 } from "@/components/ui/card";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -1033,129 +1035,127 @@ export function ProjectDetailClient({
               báo nếu thiếu người.
             </DialogDescription>
           </DialogHeader>
-          <form
-            onSubmit={savePhase}
-            className="space-y-4"
-            key={editing?.id ?? "new-phase"}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="phase_name">Tên giai đoạn</Label>
-              <Input
-                id="phase_name"
-                name="phase_name"
-                required
-                placeholder="Ví dụ: MVP, Maintenance, UAT"
-                defaultValue={editing?.phase_name ?? ""}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="start_date">Bắt đầu</Label>
+          <form onSubmit={savePhase} key={editing?.id ?? "new-phase"}>
+            <DialogBody>
+              <Field>
+                <Label htmlFor="phase_name">Tên giai đoạn</Label>
                 <Input
-                  id="start_date"
-                  name="start_date"
-                  type="date"
+                  id="phase_name"
+                  name="phase_name"
                   required
-                  defaultValue={toDateInput(editing?.start_date)}
+                  placeholder="Ví dụ: MVP, Maintenance, UAT"
+                  defaultValue={editing?.phase_name ?? ""}
                 />
+              </Field>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
+                <Field>
+                  <Label htmlFor="start_date">Bắt đầu</Label>
+                  <Input
+                    id="start_date"
+                    name="start_date"
+                    type="date"
+                    required
+                    defaultValue={toDateInput(editing?.start_date)}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="end_date">Kết thúc</Label>
+                  <Input
+                    id="end_date"
+                    name="end_date"
+                    type="date"
+                    required
+                    defaultValue={toDateInput(editing?.end_date)}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="phase_budget">Budget riêng</Label>
+                  <Input
+                    id="phase_budget"
+                    name="phase_budget"
+                    type="number"
+                    min="0"
+                    step="1000000"
+                    defaultValue={editing?.phase_budget ?? 0}
+                  />
+                </Field>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="end_date">Kết thúc</Label>
-                <Input
-                  id="end_date"
-                  name="end_date"
-                  type="date"
-                  required
-                  defaultValue={toDateInput(editing?.end_date)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phase_budget">Budget riêng</Label>
-                <Input
-                  id="phase_budget"
-                  name="phase_budget"
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  defaultValue={editing?.phase_budget ?? 0}
-                />
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Yêu cầu nhân sự</Label>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  type="button"
-                  onClick={addRole}
-                >
-                  <Plus /> Thêm role
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {reqRoles.length === 0 && (
-                  <div className="text-xs text-muted-foreground italic py-2">
-                    Chưa cấu hình yêu cầu role. Hệ thống sẽ không cảnh báo thiếu
-                    người.
-                  </div>
-                )}
-                {reqRoles.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Select
-                      value={r.role}
-                      onValueChange={(v) => updateRole(i, { role: v })}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[320px]">
-                        {ROLE_GROUPS.map((group, gi) => (
-                          <SelectGroup key={group.label}>
-                            {gi > 0 && <SelectSeparator />}
-                            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                              {group.label}
-                            </SelectLabel>
-                            {group.roles.map((o) => (
-                              <SelectItem key={o} value={o}>
-                                {o}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      type="number"
-                      min="1"
-                      step="0.5"
-                      className="w-24"
-                      value={r.count}
-                      onChange={(e) =>
-                        updateRole(i, { count: Number(e.target.value) })
-                      }
-                    />
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      type="button"
-                      onClick={() => removeRole(i)}
-                    >
-                      <X className="text-rose-500" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
+              <Field>
+                <div className="flex h-4 items-center justify-between gap-2">
+                  <Label>Yêu cầu nhân sự</Label>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    type="button"
+                    onClick={addRole}
+                  >
+                    <Plus /> Thêm role
+                  </Button>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {reqRoles.length === 0 && (
+                    <div className="py-2 text-xs italic text-muted-foreground">
+                      Chưa cấu hình yêu cầu role. Hệ thống sẽ không cảnh báo thiếu
+                      người.
+                    </div>
+                  )}
+                  {reqRoles.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Select
+                        value={r.role}
+                        onValueChange={(v) => updateRole(i, { role: v })}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[320px]">
+                          {ROLE_GROUPS.map((group, gi) => (
+                            <SelectGroup key={group.label}>
+                              {gi > 0 && <SelectSeparator />}
+                              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {group.label}
+                              </SelectLabel>
+                              {group.roles.map((o) => (
+                                <SelectItem key={o} value={o}>
+                                  {o}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min="1"
+                        step="0.5"
+                        className="w-24"
+                        value={r.count}
+                        onChange={(e) =>
+                          updateRole(i, { count: Number(e.target.value) })
+                        }
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        onClick={() => removeRole(i)}
+                      >
+                        <X className="text-rose-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Field>
 
-            {phaseError && (
-              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
-                {phaseError}
-              </div>
-            )}
+              {phaseError && (
+                <div className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
+                  {phaseError}
+                </div>
+              )}
+            </DialogBody>
 
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"
@@ -1183,88 +1183,85 @@ export function ProjectDetailClient({
               Milestone hợp đồng — invoice + payment tracking.
             </DialogDescription>
           </DialogHeader>
-          <form
-            onSubmit={savePayment}
-            className="space-y-4"
-            key={payEditing?.id ?? "new-pay"}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="milestone_name">Tên milestone</Label>
-              <Input
-                id="milestone_name"
-                name="milestone_name"
-                placeholder="VD: 30% ký HĐ, 30% UAT, 40% Go-live"
-                defaultValue={payEditing?.milestone_name ?? ""}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="amount">Số tiền (VND)</Label>
+          <form onSubmit={savePayment} key={payEditing?.id ?? "new-pay"}>
+            <DialogBody>
+              <Field>
+                <Label htmlFor="milestone_name">Tên milestone</Label>
                 <Input
-                  id="amount"
-                  name="amount"
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  required
-                  defaultValue={payEditing?.amount ?? ""}
+                  id="milestone_name"
+                  name="milestone_name"
+                  placeholder="VD: 30% ký HĐ, 30% UAT, 40% Go-live"
+                  defaultValue={payEditing?.milestone_name ?? ""}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Trạng thái</Label>
-                <Select
-                  value={payStatus}
-                  onValueChange={(v) => setPayStatus(v as PaymentStatus)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="planned">📋 Kế hoạch</SelectItem>
-                    <SelectItem value="invoiced">🧾 Đã xuất HĐ</SelectItem>
-                    <SelectItem value="paid">✅ Đã thu</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="due_date">Ngày đáo hạn</Label>
+              </Field>
+              <FieldGrid>
+                <Field>
+                  <Label htmlFor="amount">Số tiền (VND)</Label>
+                  <Input
+                    id="amount"
+                    name="amount"
+                    type="number"
+                    min="0"
+                    step="1000000"
+                    required
+                    defaultValue={payEditing?.amount ?? ""}
+                  />
+                </Field>
+                <Field>
+                  <Label>Trạng thái</Label>
+                  <Select
+                    value={payStatus}
+                    onValueChange={(v) => setPayStatus(v as PaymentStatus)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planned">📋 Kế hoạch</SelectItem>
+                      <SelectItem value="invoiced">🧾 Đã xuất HĐ</SelectItem>
+                      <SelectItem value="paid">✅ Đã thu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGrid>
+              <FieldGrid>
+                <Field>
+                  <Label htmlFor="due_date">Ngày đáo hạn</Label>
+                  <Input
+                    id="due_date"
+                    name="due_date"
+                    type="date"
+                    defaultValue={toDateInput(payEditing?.due_date)}
+                  />
+                </Field>
+                <Field>
+                  <Label htmlFor="paid_date">Ngày đã thu</Label>
+                  <Input
+                    id="paid_date"
+                    name="paid_date"
+                    type="date"
+                    defaultValue={toDateInput(payEditing?.paid_date)}
+                    disabled={payStatus !== "paid"}
+                  />
+                </Field>
+              </FieldGrid>
+              <Field>
+                <Label htmlFor="note">Ghi chú</Label>
                 <Input
-                  id="due_date"
-                  name="due_date"
-                  type="date"
-                  defaultValue={toDateInput(payEditing?.due_date)}
+                  id="note"
+                  name="note"
+                  placeholder="Số HĐ, số invoice, ghi chú..."
+                  defaultValue={payEditing?.note ?? ""}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="paid_date">Ngày đã thu</Label>
-                <Input
-                  id="paid_date"
-                  name="paid_date"
-                  type="date"
-                  defaultValue={toDateInput(payEditing?.paid_date)}
-                  disabled={payStatus !== "paid"}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="note">Ghi chú</Label>
-              <Input
-                id="note"
-                name="note"
-                placeholder="Số HĐ, số invoice, ghi chú..."
-                defaultValue={payEditing?.note ?? ""}
-              />
-            </div>
+              </Field>
+              {payError && (
+                <div className="rounded-md bg-rose-500/10 px-3 py-2 text-xs text-rose-600 ring-1 ring-rose-500/20 dark:text-rose-400">
+                  {payError}
+                </div>
+              )}
+            </DialogBody>
 
-            {payError && (
-              <div className="text-xs text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20 px-3 py-2 rounded-md">
-                {payError}
-              </div>
-            )}
-
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
               <Button
                 variant="ghost"
                 type="button"
@@ -1277,8 +1274,8 @@ export function ProjectDetailClient({
                 {paySaving
                   ? "Đang lưu..."
                   : payEditing
-                  ? "Lưu thay đổi"
-                  : "Thêm"}
+                    ? "Lưu thay đổi"
+                    : "Thêm"}
               </Button>
             </DialogFooter>
           </form>
