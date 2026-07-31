@@ -36,12 +36,11 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-1.5rem)] max-w-lg",
-        "translate-x-[-50%] translate-y-[-50%] gap-0",
-        "overflow-hidden bg-card text-card-foreground p-0",
+        "fixed left-[50%] top-[50%] z-50 flex w-[calc(100%-1.5rem)] max-w-lg",
+        "max-h-[min(92vh,880px)] translate-x-[-50%] translate-y-[-50%] flex-col",
+        "overflow-hidden bg-card p-0 text-card-foreground",
         "rounded-[1.35rem] border-0 ring-1 ring-black/5 dark:ring-white/10",
         "shadow-[0_32px_80px_-20px_rgb(15_23_42_/_0.45),0_12px_28px_-12px_rgb(15_23_42_/_0.25)]",
-        "max-h-[min(92vh,880px)] overflow-y-auto",
         "duration-200",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -51,11 +50,14 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      {children}
+      {/* Scroll nằm BÊN TRONG — clip bởi overflow-hidden + bo góc, không thọt ra ngoài */}
+      <div className="dialog-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {children}
+      </div>
 
       <DialogPrimitive.Close
         className={cn(
-          "absolute right-5 top-5 z-10",
+          "absolute right-5 top-5 z-20",
           "inline-flex h-9 w-9 items-center justify-center rounded-xl",
           "text-muted-foreground hover:bg-background/80 hover:text-foreground",
           "ring-1 ring-transparent hover:ring-border/80",
@@ -105,8 +107,8 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-2 px-7 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-8",
-      "border-t border-border/60 bg-muted/25",
+      "sticky bottom-0 z-10 flex flex-col-reverse gap-2 px-7 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-8",
+      "border-t border-border/60 bg-card/95 backdrop-blur-sm",
       className
     )}
     {...props}
