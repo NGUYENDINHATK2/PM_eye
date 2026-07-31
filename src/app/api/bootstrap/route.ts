@@ -54,8 +54,15 @@ export async function GET() {
     salaryRes.error;
 
   if (firstError) {
+    const msg = firstError.message ?? "db_error";
+    const invalidKey = /invalid api key/i.test(msg);
     return NextResponse.json(
-      { error: "db_error", message: firstError.message },
+      {
+        error: "db_error",
+        message: invalidKey
+          ? "Invalid API key — kiểm tra Vercel env: SUPABASE_SERVICE_ROLE_KEY phải là service_role (secret) của ĐÚNG project trong NEXT_PUBLIC_SUPABASE_URL. Không dùng anon/publishable. Sau khi sửa → Redeploy."
+          : msg,
+      },
       { status: 500, headers: PRIVATE_CACHE_HEADERS }
     );
   }
