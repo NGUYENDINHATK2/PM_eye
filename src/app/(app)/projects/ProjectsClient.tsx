@@ -353,7 +353,13 @@ export function ProjectsClient({
 
       {/* Hero KPIs */}
       {projects.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div
+          className={
+            canViewMoney
+              ? "grid grid-cols-2 gap-3 lg:grid-cols-5"
+              : "grid grid-cols-2 gap-3 lg:grid-cols-2"
+          }
+        >
           <KpiCard
             label="Tổng dự án"
             value={statsSummary.total.toString()}
@@ -361,48 +367,55 @@ export function ProjectsClient({
             tone="teal"
             icon={<Briefcase size={14} />}
           />
-          <KpiCard
-            label="Tổng doanh thu"
-            value={formatCurrency(statsSummary.totalRevenue)}
-            hint={
-              statsSummary.withRevenueCount > 0
-                ? `${statsSummary.withRevenueCount} dự án có doanh thu`
-                : "Chưa có dự án nào ghi doanh thu"
-            }
-            tone="cyan"
-            icon={<Wallet size={14} />}
-          />
-          <KpiCard
-            label={
-              statsSummary.totalProfit >= 0 ? "Lợi nhuận" : "Đang lỗ"
-            }
-            value={formatCurrency(statsSummary.totalProfit)}
-            hint={`Margin TB ${formatPercent(statsSummary.avgMargin)}`}
-            tone={
-              statsSummary.totalProfit >= 0
-                ? statsSummary.lossCount > 0
-                  ? "amber"
-                  : "emerald"
-                : "rose"
-            }
-            icon={<TrendingUp size={14} />}
-          />
-          <KpiCard
-            label="Đã tiêu"
-            value={formatCurrency(statsSummary.totalSpent)}
-            hint="Lương + vận hành"
-            tone="sky"
-            icon={<Activity size={14} />}
-          />
+          {canViewMoney && (
+            <>
+              <KpiCard
+                label="Tổng doanh thu"
+                value={formatCurrency(statsSummary.totalRevenue)}
+                hint={
+                  statsSummary.withRevenueCount > 0
+                    ? `${statsSummary.withRevenueCount} dự án có doanh thu`
+                    : "Chưa có dự án nào ghi doanh thu"
+                }
+                tone="cyan"
+                icon={<Wallet size={14} />}
+              />
+              <KpiCard
+                label={
+                  statsSummary.totalProfit >= 0 ? "Lợi nhuận" : "Đang lỗ"
+                }
+                value={formatCurrency(statsSummary.totalProfit)}
+                hint={`Margin TB ${formatPercent(statsSummary.avgMargin)}`}
+                tone={
+                  statsSummary.totalProfit >= 0
+                    ? statsSummary.lossCount > 0
+                      ? "amber"
+                      : "emerald"
+                    : "rose"
+                }
+                icon={<TrendingUp size={14} />}
+              />
+              <KpiCard
+                label="Đã tiêu"
+                value={formatCurrency(statsSummary.totalSpent)}
+                hint="Lương + vận hành"
+                tone="sky"
+                icon={<Activity size={14} />}
+              />
+            </>
+          )}
           <KpiCard
             label="Cảnh báo"
             value={(
               statsSummary.lossCount + statsSummary.overBudgetCount
             ).toString()}
             hint={
-              statsSummary.lossCount > 0 || statsSummary.overBudgetCount > 0
+              canViewMoney &&
+              (statsSummary.lossCount > 0 || statsSummary.overBudgetCount > 0)
                 ? `${statsSummary.lossCount} lỗ · ${statsSummary.overBudgetCount} vượt cap`
-                : "Tất cả OK"
+                : canViewMoney
+                  ? "Tất cả OK"
+                  : `${statsSummary.ongoing} đang chạy`
             }
             tone={
               statsSummary.lossCount + statsSummary.overBudgetCount > 0
@@ -459,8 +472,12 @@ export function ProjectsClient({
               <SelectContent>
                 <SelectItem value="recent">Mới tạo trước</SelectItem>
                 <SelectItem value="name">Theo tên</SelectItem>
-                <SelectItem value="profit">Lợi nhuận cao</SelectItem>
-                <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
+                {canViewMoney && (
+                  <>
+                    <SelectItem value="profit">Lợi nhuận cao</SelectItem>
+                    <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -622,16 +639,18 @@ export function ProjectsClient({
                     </div>
                   </div>
 
-                  {/* P&L hero */}
-                  <div className="rounded-xl bg-muted/25 p-3.5 ring-1 ring-border/40">
-                    {fin.hasRevenue ? (
-                      <ProfitBlock fin={fin} />
-                    ) : fin.hasCap ? (
-                      <CostCapBlock fin={fin} />
-                    ) : (
-                      <NoCapBlock fin={fin} />
-                    )}
-                  </div>
+                  {/* P&L hero — chỉ admin/manager/pm */}
+                  {canViewMoney && (
+                    <div className="rounded-xl bg-muted/25 p-3.5 ring-1 ring-border/40">
+                      {fin.hasRevenue ? (
+                        <ProfitBlock fin={fin} />
+                      ) : fin.hasCap ? (
+                        <CostCapBlock fin={fin} />
+                      ) : (
+                        <NoCapBlock fin={fin} />
+                      )}
+                    </div>
+                  )}
 
                   {/* Team */}
                   <div className="flex items-center gap-3 border-t border-border/50 pt-3.5">
@@ -750,101 +769,105 @@ export function ProjectsClient({
                 />
               </Field>
             </FieldGrid>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="total_budget">Ngân sách / Cap (VND)</Label>
-                <Input
-                  id="total_budget"
-                  name="total_budget"
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  placeholder="0 = không cap (maintenance)"
-                  defaultValue={editing?.total_budget ?? 0}
-                />
-                <div className="text-[11px] text-muted-foreground">
-                  Để <strong>0</strong> nếu là dự án vận hành chia đợt — tool sẽ track theo phase.
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="consumed_before">
-                  Đã tiêu trước đó (VND)
-                </Label>
-                <Input
-                  id="consumed_before"
-                  name="consumed_before"
-                  type="number"
-                  min="0"
-                  step="1000000"
-                  placeholder="0"
-                  defaultValue={editing?.consumed_before ?? 0}
-                />
-                <div className="text-[11px] text-muted-foreground">
-                  Phần budget đã chi trước khi dùng tool. Để 0 nếu là dự án mới.
-                </div>
-              </div>
-            </div>
-
-            {/* Revenue section */}
-            <div className="space-y-3 rounded-2xl bg-emerald-500/[0.06] p-4 ring-1 ring-emerald-500/15">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-4 rounded-full bg-emerald-500" />
-                <Label className="mb-0">Doanh thu (khách trả)</Label>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="revenue" className="text-xs">
-                    Doanh thu dự kiến (VND)
-                  </Label>
-                  <Input
-                    id="revenue"
-                    name="revenue"
-                    type="number"
-                    min="0"
-                    step="1000000"
-                    placeholder="0 = chưa biết"
-                    defaultValue={editing?.revenue ?? 0}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Hình thức billing</Label>
-                  <Select value={billingType} onValueChange={setBillingType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BILLING_OPTIONS.map((b) => (
-                        <SelectItem key={b} value={b}>
-                          {BILLING_LABEL[b]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {billingType !== "fixed" && (
-                <div className="space-y-2">
-                  <Label htmlFor="mm_rate" className="text-xs">
-                    Đơn giá VND / man-month
-                  </Label>
-                  <Input
-                    id="mm_rate"
-                    name="mm_rate"
-                    type="number"
-                    min="0"
-                    step="1000000"
-                    placeholder="VD: 25,000,000"
-                    defaultValue={editing?.mm_rate ?? 0}
-                  />
-                  <div className="text-[11px] text-muted-foreground">
-                    Để tham khảo. Doanh thu thực tế lấy theo invoice/payment.
+            {canViewMoney && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="total_budget">Ngân sách / Cap (VND)</Label>
+                    <Input
+                      id="total_budget"
+                      name="total_budget"
+                      type="number"
+                      min="0"
+                      step="1000000"
+                      placeholder="0 = không cap (maintenance)"
+                      defaultValue={editing?.total_budget ?? 0}
+                    />
+                    <div className="text-[11px] text-muted-foreground">
+                      Để <strong>0</strong> nếu là dự án vận hành chia đợt — tool sẽ track theo phase.
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="consumed_before">
+                      Đã tiêu trước đó (VND)
+                    </Label>
+                    <Input
+                      id="consumed_before"
+                      name="consumed_before"
+                      type="number"
+                      min="0"
+                      step="1000000"
+                      placeholder="0"
+                      defaultValue={editing?.consumed_before ?? 0}
+                    />
+                    <div className="text-[11px] text-muted-foreground">
+                      Phần budget đã chi trước khi dùng tool. Để 0 nếu là dự án mới.
+                    </div>
                   </div>
                 </div>
-              )}
-              <div className="text-[11px] text-muted-foreground">
-                Profit = Doanh thu − (Lương team + Vận hành + Đã tiêu trước).
-              </div>
-            </div>
+
+                {/* Revenue section */}
+                <div className="space-y-3 rounded-2xl bg-emerald-500/[0.06] p-4 ring-1 ring-emerald-500/15">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-4 rounded-full bg-emerald-500" />
+                    <Label className="mb-0">Doanh thu (khách trả)</Label>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="revenue" className="text-xs">
+                        Doanh thu dự kiến (VND)
+                      </Label>
+                      <Input
+                        id="revenue"
+                        name="revenue"
+                        type="number"
+                        min="0"
+                        step="1000000"
+                        placeholder="0 = chưa biết"
+                        defaultValue={editing?.revenue ?? 0}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Hình thức billing</Label>
+                      <Select value={billingType} onValueChange={setBillingType}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BILLING_OPTIONS.map((b) => (
+                            <SelectItem key={b} value={b}>
+                              {BILLING_LABEL[b]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {billingType !== "fixed" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="mm_rate" className="text-xs">
+                        Đơn giá VND / man-month
+                      </Label>
+                      <Input
+                        id="mm_rate"
+                        name="mm_rate"
+                        type="number"
+                        min="0"
+                        step="1000000"
+                        placeholder="VD: 25,000,000"
+                        defaultValue={editing?.mm_rate ?? 0}
+                      />
+                      <div className="text-[11px] text-muted-foreground">
+                        Để tham khảo. Doanh thu thực tế lấy theo invoice/payment.
+                      </div>
+                    </div>
+                  )}
+                  <div className="text-[11px] text-muted-foreground">
+                    Profit = Doanh thu − (Lương team + Vận hành + Đã tiêu trước).
+                  </div>
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Trạng thái</Label>

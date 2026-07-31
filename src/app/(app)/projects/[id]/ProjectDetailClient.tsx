@@ -852,7 +852,7 @@ export function ProjectDetailClient({
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                           {formatDate(ph.start_date)} → {formatDate(ph.end_date)}
-                          {ph.phase_budget > 0 && (
+                          {canViewMoney && ph.phase_budget > 0 && (
                             <span>
                               {" "}
                               · Budget: {formatCurrency(ph.phase_budget)}
@@ -878,7 +878,8 @@ export function ProjectDetailClient({
                               )}
                             </span>
                           )}
-                          {ph.phase_budget <= 0 &&
+                          {canViewMoney &&
+                            ph.phase_budget <= 0 &&
                             (phaseSpend.get(ph.id) ?? 0) > 0 && (
                               <span>
                                 {" "}
@@ -887,7 +888,7 @@ export function ProjectDetailClient({
                               </span>
                             )}
                         </div>
-                        {ph.phase_budget > 0 && (
+                        {canViewMoney && ph.phase_budget > 0 && (
                           <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden max-w-xs">
                             <div
                               className={cn(
@@ -1067,17 +1068,19 @@ export function ProjectDetailClient({
                     defaultValue={toDateInput(editing?.end_date)}
                   />
                 </Field>
-                <Field>
-                  <Label htmlFor="phase_budget">Budget riêng</Label>
-                  <Input
-                    id="phase_budget"
-                    name="phase_budget"
-                    type="number"
-                    min="0"
-                    step="1000000"
-                    defaultValue={editing?.phase_budget ?? 0}
-                  />
-                </Field>
+                {canViewMoney && (
+                  <Field>
+                    <Label htmlFor="phase_budget">Budget riêng</Label>
+                    <Input
+                      id="phase_budget"
+                      name="phase_budget"
+                      type="number"
+                      min="0"
+                      step="1000000"
+                      defaultValue={editing?.phase_budget ?? 0}
+                    />
+                  </Field>
+                )}
               </div>
 
               <Field>

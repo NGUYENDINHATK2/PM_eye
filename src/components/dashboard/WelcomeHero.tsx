@@ -35,6 +35,7 @@ export function WelcomeHero({
   avgMargin,
   arOutstanding,
   warningsCount,
+  hideMoney = false,
 }: {
   userName: string;
   totalRevenue: number;
@@ -42,6 +43,7 @@ export function WelcomeHero({
   avgMargin: number;
   arOutstanding: number;
   warningsCount: number;
+  hideMoney?: boolean;
 }) {
   const now = new Date();
   const greet = greeting(now.getHours());
@@ -105,31 +107,37 @@ export function WelcomeHero({
           <span aria-hidden>👋</span>
         </h1>
         <p className="text-sm lg:text-[15px] text-muted-foreground mt-3 max-w-xl leading-relaxed">
-          Tổng quan doanh thu, lợi nhuận và dòng tiền của portfolio trong tháng.
+          {hideMoney
+            ? "Tổng quan dự án, phân bổ và cảnh báo liên quan đến bạn."
+            : "Tổng quan doanh thu, lợi nhuận và dòng tiền của portfolio trong tháng."}
         </p>
 
-        {/* KPI tiles */}
-        <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <KpiTile
-            label="Tổng doanh thu"
-            value={formatCurrency(totalRevenue)}
-            icon={<Wallet size={14} />}
-            tone="teal"
-          />
-          <KpiTile
-            label={profitable ? "Lợi nhuận" : "Đang lỗ"}
-            value={formatCurrency(totalProfit)}
-            sub={`Margin ${Math.round(avgMargin * 100)}%`}
-            icon={profitable ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-            tone={profitable ? "emerald" : "rose"}
-          />
-          <KpiTile
-            label={arOutstanding > 0 ? "Chưa thu" : "Đã thu đủ"}
-            value={formatCurrency(arOutstanding)}
-            icon={<Wallet size={14} />}
-            tone={arOutstanding > 0 ? "amber" : "emerald"}
-          />
-        </div>
+        {/* KPI tiles — ẩn tiền với member */}
+        {!hideMoney && (
+          <div className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KpiTile
+              label="Tổng doanh thu"
+              value={formatCurrency(totalRevenue)}
+              icon={<Wallet size={14} />}
+              tone="teal"
+            />
+            <KpiTile
+              label={profitable ? "Lợi nhuận" : "Đang lỗ"}
+              value={formatCurrency(totalProfit)}
+              sub={`Margin ${Math.round(avgMargin * 100)}%`}
+              icon={
+                profitable ? <TrendingUp size={14} /> : <TrendingDown size={14} />
+              }
+              tone={profitable ? "emerald" : "rose"}
+            />
+            <KpiTile
+              label={arOutstanding > 0 ? "Chưa thu" : "Đã thu đủ"}
+              value={formatCurrency(arOutstanding)}
+              icon={<Wallet size={14} />}
+              tone={arOutstanding > 0 ? "amber" : "emerald"}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

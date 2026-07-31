@@ -8,19 +8,40 @@ export function isAppRole(v: unknown): v is AppRole {
   return typeof v === "string" && (APP_ROLES as string[]).includes(v);
 }
 
-/** Role từ JWT app_metadata (ưu tiên) hoặc profile.app_role. */
+/**
+ * Role hiệu lực.
+ * Ưu tiên profile.app_role (DB) — tránh JWT cũ còn claim admin khi đã bị hạ quyền.
+ * Fallback: JWT app_metadata.role → ADMIN_EMAILS.
+ */
 export function roleFromUser(
   user: User | null | undefined,
   profileRole?: string | null
 ): AppRole | null {
+  if (isAppRole(profileRole)) return profileRole;
   const meta = user?.app_metadata as { role?: string } | undefined;
   if (isAppRole(meta?.role)) return meta.role;
-  if (isAppRole(profileRole)) return profileRole;
   // Legacy ADMIN_EMAILS allowlist → admin
   if (user?.email && adminEmailSet().has(user.email.toLowerCase())) {
     return "admin";
   }
   return null;
+}
+
+/** Module nào role được vào (route guard). */
+export function canAccessEmployees(role: AppRole | null | undefined): boolean {
+  return role === "admin" || role === "manager" || role === "pm";
+}
+
+export function canAccessExpenses(role: AppRole | null | undefined): boolean {
+  return canViewMoney(role);
+}
+
+export function canAccessInsights(role: AppRole | null | undefined): boolean {
+  return canViewMoney(role);
+}
+
+export function canAccessUsersAdmin(role: AppRole | null | undefined): boolean {
+  return role === "admin";
 }
 
 function adminEmailSet(): Set<string> {

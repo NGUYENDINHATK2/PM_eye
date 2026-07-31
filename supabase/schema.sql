@@ -244,12 +244,12 @@ alter table public.operating_expenses enable row level security;
 alter table public.project_payments enable row level security;
 alter table public.salary_history enable row level security;
 
--- PROFILES: đọc được profile của chính + roster khi đã có app_role trong JWT
+-- PROFILES: member chỉ đọc chính; manager/pm/admin đọc roster
 create policy "profiles_select" on public.profiles
   for select to authenticated
   using (
     id = auth.uid()
-    or public.app_role() in ('admin', 'manager', 'pm', 'member')
+    or public.app_role() in ('admin', 'manager', 'pm')
   );
 
 create policy "profiles_insert_admin" on public.profiles
@@ -361,7 +361,7 @@ grant select (
 
 grant insert (
   id, full_name, email, job_role, app_role,
-  base_salary, start_date, is_active, avatar_url
+  start_date, is_active, avatar_url
 ) on public.profiles to authenticated;
 
 grant update (
@@ -431,42 +431,49 @@ declare
   r public.profiles%rowtype;
   u auth.users%rowtype;
   v_role text;
+  j jsonb;
+  v_caller text;
 begin
-  if auth.role() = 'authenticated'
+  v_caller := coalesce(auth.role(), '');
+
+  if v_caller = 'authenticated'
      and (auth.uid() is null or p_user_id is distinct from auth.uid()) then
     raise exception 'forbidden';
   end if;
 
   select * into r from public.profiles where id = p_user_id;
-  if found then
-    return to_jsonb(r);
-  end if;
-
-  select * into u from auth.users where id = p_user_id;
   if not found then
-    return null;
+    select * into u from auth.users where id = p_user_id;
+    if not found then
+      return null;
+    end if;
+
+    v_role := coalesce(u.raw_app_meta_data->>'role', 'member');
+    if v_role not in ('admin', 'manager', 'pm', 'member') then
+      v_role := 'member';
+    end if;
+
+    insert into public.profiles (
+      id, full_name, email, job_role, app_role, base_salary, is_active
+    ) values (
+      u.id,
+      coalesce(split_part(u.email, '@', 1), 'User'),
+      u.email,
+      case when v_role = 'admin' then 'BU Lead' else 'Member' end,
+      v_role,
+      0,
+      true
+    )
+    on conflict (id) do update set email = excluded.email
+    returning * into r;
   end if;
 
-  v_role := coalesce(u.raw_app_meta_data->>'role', 'member');
-  if v_role not in ('admin', 'manager', 'pm', 'member') then
-    v_role := 'member';
+  j := to_jsonb(r);
+  -- Che lương trừ admin JWT / service_role
+  if v_caller = 'authenticated' and not public.is_admin() then
+    j := j || jsonb_build_object('base_salary', 0);
   end if;
-
-  insert into public.profiles (
-    id, full_name, email, job_role, app_role, base_salary, is_active
-  ) values (
-    u.id,
-    coalesce(split_part(u.email, '@', 1), 'User'),
-    u.email,
-    case when v_role = 'admin' then 'BU Lead' else 'Member' end,
-    v_role,
-    0,
-    true
-  )
-  on conflict (id) do update set email = excluded.email
-  returning * into r;
-
-  return to_jsonb(r);
+  return j;
 end;
 $$;
 

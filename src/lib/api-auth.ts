@@ -3,6 +3,7 @@ import {
   canViewSalary,
   isAppRole,
   roleFromUser,
+  stripProfileSalary,
 } from "@/lib/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -272,10 +273,15 @@ export async function requireApiUser(): Promise<
     );
   }
 
+  const safeProfile = stripProfileSalary(
+    { ...profile, app_role: role },
+    role
+  );
+
   return {
     user,
     role,
-    profile: { ...profile, app_role: role },
+    profile: safeProfile,
     isAdmin: role === "admin",
     supabase,
     admin,

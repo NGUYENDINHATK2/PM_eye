@@ -14,6 +14,7 @@ import {
   userLoadForMonth,
   userProjectBreakdownForMonth,
 } from "@/lib/calculations";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { cn, formatCurrency, formatPercent, monthLabel } from "@/lib/utils";
 import type { Allocation, Profile, Project } from "@/types/database";
 import { useMemo } from "react";
@@ -31,6 +32,8 @@ export function BigHeatmap({
   startDate: Date;
   endDate: Date;
 }) {
+  const { data: appData } = useAppData();
+  const canViewSalary = appData?.user.canViewSalary ?? false;
   const today = new Date();
 
   const projectsById = useMemo(
@@ -160,7 +163,7 @@ export function BigHeatmap({
                         </div>
                         <div className="text-[10px] text-muted-foreground truncate">
                           {p.job_role}
-                          {Number(p.base_salary) > 0 && (
+                          {canViewSalary && Number(p.base_salary) > 0 && (
                             <span className="ml-1.5 opacity-70">
                               · {formatCurrency(p.base_salary)}
                             </span>
@@ -265,7 +268,7 @@ export function BigHeatmap({
                                     </span>
                                   </div>
                                 ))}
-                                {cost > 0 && (
+                                {canViewSalary && cost > 0 && (
                                   <div className="flex justify-between text-[10px] text-muted-foreground pt-1 mt-1 border-t border-border">
                                     <span>Chi phí lương</span>
                                     <span className="tnum">

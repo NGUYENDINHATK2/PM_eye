@@ -393,7 +393,13 @@ export function EmployeesClient({
       />
 
       {/* Hero KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div
+        className={
+          canViewSalary
+            ? "grid grid-cols-2 gap-3 lg:grid-cols-5"
+            : "grid grid-cols-2 gap-3 lg:grid-cols-4"
+        }
+      >
         <KpiCard
           label="Active"
           value={activeList.length.toString()}
@@ -401,13 +407,15 @@ export function EmployeesClient({
           tone="indigo"
           icon={<Users size={14} />}
         />
-        <KpiCard
-          label="Quỹ lương / tháng"
-          value={formatCurrency(totalSalary)}
-          hint={`TB ${formatCurrency(avgSalary)} / người`}
-          tone="violet"
-          icon={<Wallet size={14} />}
-        />
+        {canViewSalary && (
+          <KpiCard
+            label="Quỹ lương / tháng"
+            value={formatCurrency(totalSalary)}
+            hint={`TB ${formatCurrency(avgSalary)} / người`}
+            tone="violet"
+            icon={<Wallet size={14} />}
+          />
+        )}
         <KpiCard
           label="Tải trung bình"
           value={formatPercent(avgLoad)}
@@ -625,8 +633,12 @@ export function EmployeesClient({
                 <SelectItem value="name">Tên A→Z</SelectItem>
                 <SelectItem value="load_desc">Tải cao→thấp</SelectItem>
                 <SelectItem value="load_asc">Tải thấp→cao</SelectItem>
-                <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
-                <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
+                {canViewSalary && (
+                  <>
+                    <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
+                    <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -677,6 +689,7 @@ export function EmployeesClient({
               startingSoon={d.startingSoon}
               status={d.status}
               historyCount={historyCount(d.profile.id)}
+              canViewSalary={canViewSalary}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -1146,6 +1159,7 @@ function PersonCard({
   startingSoon,
   status,
   historyCount,
+  canViewSalary,
   onEdit,
   onDelete,
 }: {
@@ -1155,6 +1169,7 @@ function PersonCard({
   startingSoon: boolean;
   status: ReturnType<typeof loadStatus>;
   historyCount: number;
+  canViewSalary: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1256,8 +1271,8 @@ function PersonCard({
         </div>
       </div>
 
-      {/* Footer: salary + history — chỉ khi admin (base_salary đã strip = 0 cho non-admin) */}
-      {Number(profile.base_salary) > 0 && (
+      {/* Footer: salary — chỉ admin */}
+      {canViewSalary && Number(profile.base_salary) > 0 && (
         <div className="mt-3.5 flex items-center justify-between border-t border-border/60 pt-3.5 text-xs">
           <div>
             <div className="text-muted-foreground">Lương / tháng</div>

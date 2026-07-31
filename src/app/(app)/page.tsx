@@ -9,6 +9,7 @@ import { StatCards } from "@/components/dashboard/StatCards";
 import { TeamHeatmap } from "@/components/dashboard/TeamHeatmap";
 import { TopProjects } from "@/components/dashboard/TopProjects";
 import { WelcomeHero } from "@/components/dashboard/WelcomeHero";
+import { MoneyGate } from "@/components/RoleGate";
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { buildAppAlerts } from "@/lib/alerts";
 import { monthlyCostTimeline, paymentSummary } from "@/lib/calculations";
@@ -69,7 +70,7 @@ function DashboardView({
       timeline.find((b) => b.key === `${y}-${String(m).padStart(2, "0")}`)
         ?.total ?? 0;
 
-    const { alerts, finances } = buildAppAlerts({
+    const { alerts: rawAlerts, finances } = buildAppAlerts({
       profiles,
       projects,
       phases,
@@ -79,6 +80,10 @@ function DashboardView({
       salaryHistory,
       asOf: today,
     });
+    // Member không xem cảnh báo tiền (budget / AR)
+    const alerts = user.canViewMoney
+      ? rawAlerts
+      : rawAlerts.filter((a) => a.kind !== "budget");
 
     const totalRevenue = finances.reduce((s, f) => s + f.finance.revenue, 0);
     const totalProfit = finances.reduce(
@@ -108,6 +113,7 @@ function DashboardView({
     };
   }, [
     user,
+    user.canViewMoney,
     profiles,
     projects,
     phases,
@@ -117,24 +123,34 @@ function DashboardView({
     salaryHistory,
   ]);
 
+  const canMoney = user.canViewMoney;
+
   return (
     <div className="space-y-5">
       <section className="space-y-4 animate-fade-up">
         <WelcomeHero
           userName={computed.displayName}
-          totalRevenue={computed.totalRevenue}
-          totalProfit={computed.totalProfit}
-          avgMargin={computed.avgMargin}
-          arOutstanding={computed.ar.totalInvoiced + computed.ar.totalPlanned}
+          totalRevenue={canMoney ? computed.totalRevenue : 0}
+          totalProfit={canMoney ? computed.totalProfit : 0}
+          avgMargin={canMoney ? computed.avgMargin : 0}
+          arOutstanding={
+            canMoney
+              ? computed.ar.totalInvoiced + computed.ar.totalPlanned
+              : 0
+          }
           warningsCount={computed.alerts.length}
+          hideMoney={!canMoney}
         />
 
         <StatCards
           ongoingProjects={computed.ongoingProjects}
           activePeople={computed.activeUserIds.size}
-          burnThisMonth={computed.burnThisMonth}
+          burnThisMonth={canMoney ? computed.burnThisMonth : 0}
           warnings={computed.alerts.length}
-          burnSpark={computed.timeline.map((t) => t.total)}
+          burnSpark={
+            canMoney ? computed.timeline.map((t) => t.total) : []
+          }
+          hideMoney={!canMoney}
         />
       </section>
 
@@ -143,24 +159,34 @@ function DashboardView({
         style={{ animationDelay: "120ms" }}
       >
         <div className="lg:col-span-2">
-          <CashFlowTrend
-            allocations={allocations}
-            profilesById={computed.profilesById}
-            expenses={expenses}
-            payments={payments}
-            salaryHistory={salaryHistory}
-          />
+          <MoneyGate
+            fallback={
+              <div className="flex h-full min-h-[220px] items-center justify-center rounded-2xl bg-card px-6 text-center text-sm text-muted-foreground ring-1 ring-border/70">
+                Biểu đồ cashflow chỉ dành cho admin / quản lý / PM.
+              </div>
+            }
+          >
+            <CashFlowTrend
+              allocations={allocations}
+              profilesById={computed.profilesById}
+              expenses={expenses}
+              payments={payments}
+              salaryHistory={salaryHistory}
+            />
+          </MoneyGate>
         </div>
         <AlertList alerts={computed.alerts} />
       </div>
 
-      <div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-up"
-        style={{ animationDelay: "200ms" }}
-      >
-        <TopProjects items={computed.finances} />
-        <PortfolioMix items={computed.finances} />
-      </div>
+      <MoneyGate>
+        <div
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-up"
+          style={{ animationDelay: "200ms" }}
+        >
+          <TopProjects items={computed.finances} />
+          <PortfolioMix items={computed.finances} />
+        </div>
+      </MoneyGate>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div
@@ -169,16 +195,18 @@ function DashboardView({
         >
           <TeamHeatmap profiles={profiles} allocations={allocations} />
         </div>
-        <div className="animate-fade-up" style={{ animationDelay: "340ms" }}>
-          <ProjectHealth items={computed.finances} />
-        </div>
+        <MoneyGate>
+          <div className="animate-fade-up" style={{ animationDelay: "340ms" }}>
+            <ProjectHealth items={computed.finances} />
+          </div>
+        </MoneyGate>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "400ms" }}>
         <RecentActivity
           allocations={allocations}
-          expenses={expenses}
-          payments={payments}
+          expenses={canMoney ? expenses : []}
+          payments={canMoney ? payments : []}
           profiles={profiles}
           projects={projects}
         />

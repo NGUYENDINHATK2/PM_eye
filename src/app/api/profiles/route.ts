@@ -1,35 +1,45 @@
-import { PRIVATE_CACHE_HEADERS, requireApiUser, requireRole } from "@/lib/api-auth";
+import {
+  PRIVATE_CACHE_HEADERS,
+  requireApiUser,
+  requireRole,
+} from "@/lib/api-auth";
 import { canViewSalary, stripProfileSalary } from "@/lib/rbac";
-import type { Profile } from "@/types/database";
+import { scopeProfiles } from "@/lib/scope-query";
+import type { Allocation, Profile, Project } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/profiles — scoped + strip salary */
+/** GET /api/profiles — scoped theo role + strip lương */
 export async function GET() {
   const ctx = await requireApiUser();
   if (ctx instanceof NextResponse) return ctx;
 
-  const { data, error } = await ctx.admin
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [profilesRes, allocRes, projectsRes] = await Promise.all([
+    ctx.admin.from("profiles").select("*").order("created_at", { ascending: false }),
+    ctx.admin.from("allocations").select("*"),
+    ctx.admin.from("projects").select("*"),
+  ]);
 
-  if (error) {
+  if (profilesRes.error) {
     return NextResponse.json(
-      { error: "db_error", message: error.message },
+      { error: "db_error", message: profilesRes.error.message },
       { status: 500, headers: PRIVATE_CACHE_HEADERS }
     );
   }
 
-  const rows = ((data ?? []) as Profile[]).map((p) =>
-    stripProfileSalary(p, ctx.role)
-  );
+  const scoped = scopeProfiles(
+    (profilesRes.data ?? []) as Profile[],
+    ctx.role,
+    ctx.user.id,
+    (allocRes.data ?? []) as Allocation[],
+    (projectsRes.data ?? []) as Project[]
+  ).map((p) => stripProfileSalary(p, ctx.role));
 
-  return NextResponse.json(rows, { headers: PRIVATE_CACHE_HEADERS });
+  return NextResponse.json(scoped, { headers: PRIVATE_CACHE_HEADERS });
 }
 
-/** PATCH body for salary updates — admin only via this route preferred */
+/** PATCH — manager sửa hồ sơ; chỉ admin sửa lương / app_role */
 export async function PATCH(req: Request) {
   const ctx = await requireRole(["admin", "manager"]);
   if (ctx instanceof NextResponse) return ctx;

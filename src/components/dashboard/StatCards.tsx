@@ -66,12 +66,14 @@ export function StatCards({
   burnThisMonth,
   warnings,
   burnSpark,
+  hideMoney = false,
 }: {
   ongoingProjects: number;
   activePeople: number;
   burnThisMonth: number;
   warnings: number;
   burnSpark?: number[];
+  hideMoney?: boolean;
 }) {
   const burnPoints: SparkPoint[] =
     burnSpark && burnSpark.length > 0
@@ -95,23 +97,27 @@ export function StatCards({
       value: activePeople,
       display: activePeople.toString(),
       hint: "người",
-      href: "/employees",
+      href: hideMoney ? "/allocations" : "/employees",
       icon: Users,
       color: "hsl(var(--sky))",
       textClass: "gradient-text",
       spark: fakeSpark(3),
     },
-    {
-      title: "Burn tháng này",
-      value: burnThisMonth,
-      display: formatCurrency(burnThisMonth),
-      hint: "lương + vận hành",
-      href: "/expenses",
-      icon: TrendingUp,
-      color: "hsl(var(--emerald))",
-      textClass: "gradient-text-emerald",
-      spark: burnPoints,
-    },
+    ...(!hideMoney
+      ? [
+          {
+            title: "Burn tháng này",
+            value: burnThisMonth,
+            display: formatCurrency(burnThisMonth),
+            hint: "lương + vận hành",
+            href: "/expenses",
+            icon: TrendingUp,
+            color: "hsl(var(--emerald))",
+            textClass: "gradient-text-emerald",
+            spark: burnPoints,
+          } satisfies Stat,
+        ]
+      : []),
     {
       title: "Cảnh báo",
       value: warnings,
@@ -126,7 +132,13 @@ export function StatCards({
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+    <div
+      className={
+        hideMoney
+          ? "grid grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4"
+          : "grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4"
+      }
+    >
       {stats.map((s, i) => (
         <Link
           key={s.title}
