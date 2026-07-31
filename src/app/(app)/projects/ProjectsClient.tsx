@@ -68,8 +68,10 @@ import {
   Trash2,
   Wallet,
 } from "lucide-react";
+import { useAppData } from "@/lib/hooks/useAppData";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const STATUS_OPTIONS = ["planned", "ongoing", "paused", "completed"] as const;
 const STATUS_LABEL: Record<string, string> = {
@@ -96,13 +98,13 @@ const STATUS_VARIANT: Record<
 };
 
 const PRESET_COLORS = [
-  "#6366f1",
-  "#0ea5e9",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
+  "#0d9488",
+  "#0284c7",
+  "#059669",
+  "#d97706",
+  "#e11d48",
+  "#0e7490",
+  "#64748b",
 ];
 
 export function ProjectsClient({
@@ -121,12 +123,20 @@ export function ProjectsClient({
   salaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
+  const { mutate, data: appData } = useAppData();
+  const canViewMoney = appData?.user.canViewMoney ?? false;
+  const canWrite =
+    appData?.user.role === "admin" ||
+    appData?.user.role === "manager" ||
+    appData?.user.role === "pm";
   const [projects, setProjects] = useState(initialProjects);
+  useEffect(() => setProjects(initialProjects), [initialProjects]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [status, setStatus] = useState<string>("planned");
   const [billingType, setBillingType] = useState<string>("fixed");
+  const [managerId, setManagerId] = useState<string>("none");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -147,6 +157,7 @@ export function ProjectsClient({
     setColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
     setStatus("planned");
     setBillingType("fixed");
+    setManagerId("none");
     setError(null);
     setOpen(true);
   }
@@ -156,6 +167,7 @@ export function ProjectsClient({
     setColor(p.color);
     setStatus(p.status);
     setBillingType(p.billing_type ?? "fixed");
+    setManagerId(p.manager_id ?? "none");
     setError(null);
     setOpen(true);
   }
@@ -168,16 +180,19 @@ export function ProjectsClient({
     const payload = {
       name: fd.get("name") as string,
       client: (fd.get("client") as string) || null,
-      total_budget: Number(fd.get("total_budget") || 0),
-      consumed_before: Number(fd.get("consumed_before") || 0),
-      revenue: Number(fd.get("revenue") || 0),
+      total_budget: canViewMoney ? Number(fd.get("total_budget") || 0) : 0,
+      consumed_before: canViewMoney
+        ? Number(fd.get("consumed_before") || 0)
+        : 0,
+      revenue: canViewMoney ? Number(fd.get("revenue") || 0) : 0,
       billing_type: billingType,
-      mm_rate: Number(fd.get("mm_rate") || 0),
+      mm_rate: canViewMoney ? Number(fd.get("mm_rate") || 0) : 0,
       status,
       start_date: (fd.get("start_date") as string) || null,
       end_date: (fd.get("end_date") as string) || null,
       description: (fd.get("description") as string) || null,
       color,
+      manager_id: managerId === "none" ? null : managerId,
     };
 
     if (editing) {
@@ -193,9 +208,13 @@ export function ProjectsClient({
         return;
       }
       if (data) {
-        setProjects((arr) =>
-          arr.map((p) => (p.id === editing.id ? (data as Project) : p))
-        );
+        const next = data as Project;
+        setProjects((arr) => arr.map((p) => (p.id === editing.id ? next : p)));
+        mutate((prev) => ({
+          ...prev,
+          projects: prev.projects.map((p) => (p.id === editing.id ? next : p)),
+        }));
+        toast.success(`Đã cập nhật ${next.name}`);
         setOpen(false);
       }
     } else {
@@ -210,7 +229,13 @@ export function ProjectsClient({
         return;
       }
       if (data) {
-        setProjects((arr) => [data as Project, ...arr]);
+        const next = data as Project;
+        setProjects((arr) => [next, ...arr]);
+        mutate((prev) => ({
+          ...prev,
+          projects: [next, ...prev.projects],
+        }));
+        toast.success(`Đã tạo dự án ${next.name}`);
         setOpen(false);
       }
     }
@@ -221,8 +246,17 @@ export function ProjectsClient({
       !confirm(`Xóa dự án "${p.name}"? Tất cả phases và allocations sẽ mất.`)
     )
       return;
-    await supabase.from("projects").delete().eq("id", p.id);
+    const { error: err } = await supabase.from("projects").delete().eq("id", p.id);
+    if (err) {
+      toast.error(humanizeSupabaseError(err.message));
+      return;
+    }
     setProjects((arr) => arr.filter((x) => x.id !== p.id));
+    mutate((prev) => ({
+      ...prev,
+      projects: prev.projects.filter((x) => x.id !== p.id),
+    }));
+    toast.success(`Đã xóa ${p.name}`);
   }
 
   // Filter + sort
@@ -517,7 +551,7 @@ export function ProjectsClient({
                     <div className="min-w-0 flex-1">
                       <Link
                         href={`/projects/${p.id}`}
-                        className="font-semibold text-lg tracking-tight hover:text-indigo-500 transition truncate block"
+                        className="font-semibold text-lg tracking-tight hover:text-teal-500 transition truncate block"
                       >
                         {p.name}
                       </Link>
@@ -607,7 +641,7 @@ export function ProjectsClient({
                                   {m.profile.full_name}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground">
-                                  {m.profile.role} · {formatPercent(m.percent)}
+                                  {m.profile.job_role} · {formatPercent(m.percent)}
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -818,23 +852,48 @@ export function ProjectsClient({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Màu</Label>
-                <div className="flex items-center gap-1.5 h-9">
-                  {PRESET_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setColor(c)}
-                      className={cn(
-                        "w-6 h-6 rounded-full transition-all",
-                        color === c
-                          ? "ring-2 ring-offset-2 ring-offset-background ring-indigo-500 scale-110"
-                          : "hover:scale-110"
-                      )}
-                      style={{ background: c }}
-                    />
-                  ))}
-                </div>
+                <Label>PM phụ trách</Label>
+                <Select value={managerId} onValueChange={setManagerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn PM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Chưa gán —</SelectItem>
+                    {profiles
+                      .filter(
+                        (p) =>
+                          p.is_active &&
+                          (p.app_role === "pm" ||
+                            p.app_role === "manager" ||
+                            p.app_role === "admin" ||
+                            p.job_role === "PM")
+                      )
+                      .map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.full_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Màu</Label>
+              <div className="flex items-center gap-1.5 h-9">
+                {PRESET_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setColor(c)}
+                    className={cn(
+                      "w-6 h-6 rounded-full transition-all",
+                      color === c
+                        ? "ring-2 ring-offset-2 ring-offset-background ring-teal-500 scale-110"
+                        : "hover:scale-110"
+                    )}
+                    style={{ background: c }}
+                  />
+                ))}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1003,14 +1062,14 @@ function NoCapBlock({ fin }: { fin: ProjectFinance }) {
 type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
 const TONE_MAP: Record<Tone, { bg: string; text: string; iconBg: string }> = {
   indigo: {
-    bg: "bg-indigo-500/5 border-indigo-500/15",
-    text: "text-indigo-600 dark:text-indigo-400",
-    iconBg: "bg-indigo-500/10",
+    bg: "bg-teal-500/5 border-teal-500/15",
+    text: "text-teal-600 dark:text-teal-400",
+    iconBg: "bg-teal-500/10",
   },
   violet: {
-    bg: "bg-violet-500/5 border-violet-500/15",
-    text: "text-violet-600 dark:text-violet-400",
-    iconBg: "bg-violet-500/10",
+    bg: "bg-cyan-500/5 border-cyan-500/15",
+    text: "text-cyan-600 dark:text-cyan-400",
+    iconBg: "bg-cyan-500/10",
   },
   emerald: {
     bg: "bg-emerald-500/5 border-emerald-500/15",

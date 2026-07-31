@@ -105,7 +105,7 @@ export function CashFlowTrend({
                   className={cn(
                     "px-3 h-7 rounded-md text-xs font-medium transition",
                     granularity === g
-                      ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                      ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -138,7 +138,7 @@ export function CashFlowTrend({
             className={cn(
               "rounded-lg border px-3 py-2",
               totalNet >= 0
-                ? "bg-indigo-500/5 border-indigo-500/15"
+                ? "bg-teal-500/5 border-teal-500/15"
                 : "bg-amber-500/5 border-amber-500/15"
             )}
           >
@@ -256,7 +256,7 @@ export function CashFlowTrend({
                           <span
                             className={cn(
                               "tnum font-semibold",
-                              d.net >= 0 ? "text-indigo-500" : "text-amber-500"
+                              d.net >= 0 ? "text-teal-500" : "text-amber-500"
                             )}
                           >
                             {d.net >= 0 ? "+" : ""}

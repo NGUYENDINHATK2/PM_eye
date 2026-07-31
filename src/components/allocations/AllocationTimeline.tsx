@@ -305,7 +305,7 @@ export function AllocationTimeline({
                     className={cn(
                       "flex-1 flex flex-col justify-center items-center border-l border-border/60 text-center relative",
                       m.isCurrent
-                        ? "text-indigo-500 bg-indigo-500/[0.06]"
+                        ? "text-teal-500 bg-teal-500/[0.06]"
                         : "text-muted-foreground"
                     )}
                     style={{ minWidth: sizes.monthMinW }}
@@ -313,7 +313,7 @@ export function AllocationTimeline({
                     <div
                       className={cn(
                         "text-sm font-semibold",
-                        m.isCurrent && "text-indigo-500"
+                        m.isCurrent && "text-teal-500"
                       )}
                     >
                       {m.label}
@@ -389,7 +389,7 @@ export function AllocationTimeline({
                           key={m.key}
                           className={cn(
                             "absolute top-0 bottom-0 border-l border-border/60",
-                            m.isCurrent && "bg-indigo-500/[0.04]"
+                            m.isCurrent && "bg-teal-500/[0.04]"
                           )}
                           style={{
                             left: `${(i / months.length) * 100}%`,
@@ -504,7 +504,7 @@ export function AllocationTimeline({
                                   {proj?.name}
                                 </div>
                                 <div className="text-[11px] text-foreground mt-0.5">
-                                  {profile?.full_name} · {profile?.role}
+                                  {profile?.full_name} · {profile?.job_role}
                                 </div>
                                 {phase && (
                                   <div className="text-[10px] text-muted-foreground mt-1">
@@ -576,7 +576,7 @@ function PersonRail({
       <div className="min-w-0 flex-1">
         <div className="font-medium text-sm truncate">{profile.full_name}</div>
         <div className="text-[10px] text-muted-foreground truncate">
-          {profile.role}
+          {profile.job_role}
         </div>
       </div>
       {load > 0 && (
@@ -619,7 +619,7 @@ function ProjectRail({
   const roles = new Set<string>();
   for (const uid of activeMembers) {
     const p = profilesById.get(uid);
-    if (p) roles.add(p.role);
+    if (p) roles.add(p.job_role);
   }
   return (
     <>

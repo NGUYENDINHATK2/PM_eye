@@ -10,8 +10,7 @@ export function NoAccess({ email }: { email: string | null }) {
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    window.location.assign("/login");
   }
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
@@ -23,20 +22,19 @@ export function NoAccess({ email }: { email: string | null }) {
           Không có quyền truy cập
         </h1>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-          Tài khoản của bạn chưa được cấp quyền admin cho PM_Eye.
+          Tài khoản chưa được gán quyền (admin / quản lý / PM / member).
           {email && (
             <>
               <br />
-              Liên hệ admin nội bộ để cấp quyền cho email{" "}
-              <span className="font-medium text-foreground">{email}</span>.
+              Liên hệ admin để cấp quyền cho{" "}
+              <span className="font-medium text-foreground">{email}</span>
+              {" "}(App Metadata{" "}
+              <code className="text-[11px]">role</code>
+              ).
             </>
           )}
         </p>
-        <Button
-          variant="outline"
-          onClick={signOut}
-          className="mt-6 w-full"
-        >
+        <Button variant="outline" onClick={signOut} className="mt-6 w-full">
           Đăng xuất
         </Button>
       </div>

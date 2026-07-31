@@ -74,7 +74,7 @@ export function WhereTimeGoes({
                   className={cn(
                     "flex-1 px-2 py-3 text-xs text-center min-w-[100px]",
                     m.isCurrent
-                      ? "text-indigo-500 font-semibold bg-indigo-500/[0.04]"
+                      ? "text-teal-500 font-semibold bg-teal-500/[0.04]"
                       : "text-muted-foreground"
                   )}
                 >
@@ -103,7 +103,7 @@ export function WhereTimeGoes({
                       {p.full_name}
                     </div>
                     <div className="text-[10px] text-muted-foreground truncate">
-                      {p.role}
+                      {p.job_role}
                     </div>
                   </div>
                 </div>
@@ -129,7 +129,7 @@ export function WhereTimeGoes({
                         key={m.key}
                         className={cn(
                           "flex-1 px-2 py-3 min-w-[100px] flex items-center",
-                          m.isCurrent && "bg-indigo-500/[0.03]"
+                          m.isCurrent && "bg-teal-500/[0.03]"
                         )}
                       >
                         <Tooltip>

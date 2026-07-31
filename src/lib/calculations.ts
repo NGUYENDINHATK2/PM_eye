@@ -487,7 +487,7 @@ export function phaseRoleGaps(
     if (a.phase_id !== phase.id) continue;
     const p = profilesById.get(a.user_id);
     if (!p) continue;
-    assignedByRole.set(p.role, (assignedByRole.get(p.role) ?? 0) + Number(a.percent));
+    assignedByRole.set(p.job_role, (assignedByRole.get(p.job_role) ?? 0) + Number(a.percent));
   }
 
   const result: RoleGap[] = [];

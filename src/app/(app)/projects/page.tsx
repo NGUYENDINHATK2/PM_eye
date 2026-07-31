@@ -5,15 +5,9 @@ import { useAppData } from "@/lib/hooks/useAppData";
 import { ProjectsClient } from "./ProjectsClient";
 
 export default function ProjectsPage() {
-  const { data, loading, error } = useAppData();
+  const { data, loading } = useAppData();
 
-  if (loading) return <PageSkeleton variant="list" />;
-  if (error)
-    return (
-      <div className="text-center py-20 text-rose-500">
-        Lỗi tải dữ liệu: {error}
-      </div>
-    );
+  if (loading && !data) return <PageSkeleton variant="list" />;
   if (!data) return null;
 
   return (

@@ -57,14 +57,14 @@ export function PageHeader({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
           {eyebrow && (
-            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-indigo-500" />
+            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-teal-700 dark:text-teal-400 mb-2 flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-teal-500" />
               {eyebrow}
             </div>
           )}
           <h1
             className={cn(
-              "font-display text-3xl sm:text-4xl lg:text-[40px] font-semibold tracking-tight leading-[1.05]",
+              "font-display text-2xl sm:text-3xl lg:text-[34px] font-semibold tracking-tight leading-[1.1]",
               highlight && "gradient-text"
             )}
           >

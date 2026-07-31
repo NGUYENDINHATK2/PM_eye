@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertList, type Alert } from "@/components/dashboard/AlertList";
+import { AlertList } from "@/components/dashboard/AlertList";
 import { CashFlowTrend } from "@/components/dashboard/CashFlowTrend";
 import { PortfolioMix } from "@/components/dashboard/PortfolioMix";
 import { ProjectHealth } from "@/components/dashboard/ProjectHealth";
@@ -10,34 +10,25 @@ import { TeamHeatmap } from "@/components/dashboard/TeamHeatmap";
 import { TopProjects } from "@/components/dashboard/TopProjects";
 import { WelcomeHero } from "@/components/dashboard/WelcomeHero";
 import { PageSkeleton } from "@/components/ui/skeleton";
-import {
-  monthlyCostTimeline,
-  paymentSummary,
-  phaseRoleGaps,
-  projectFinance,
-  userLoadCurrentMonth,
-  userLoadToday,
-} from "@/lib/calculations";
+import { buildAppAlerts } from "@/lib/alerts";
+import { monthlyCostTimeline, paymentSummary } from "@/lib/calculations";
 import { useAppData } from "@/lib/hooks/useAppData";
 import { useMemo } from "react";
 
 export default function DashboardPage() {
-  const { data, loading, error } = useAppData();
+  const { data, loading } = useAppData();
 
-  if (loading) return <PageSkeleton variant="dashboard" />;
-  if (error) {
-    return (
-      <div className="text-center py-20 text-rose-500">
-        Lỗi tải dữ liệu: {error}
-      </div>
-    );
-  }
+  if (loading && !data) return <PageSkeleton variant="dashboard" />;
   if (!data) return null;
 
   return <DashboardView data={data} />;
 }
 
-function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppData>["data"]> }) {
+function DashboardView({
+  data,
+}: {
+  data: NonNullable<ReturnType<typeof useAppData>["data"]>;
+}) {
   const {
     user,
     profiles,
@@ -78,17 +69,16 @@ function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppDat
       timeline.find((b) => b.key === `${y}-${String(m).padStart(2, "0")}`)
         ?.total ?? 0;
 
-    const finances = projects.map((p) => ({
-      project: p,
-      finance: projectFinance(
-        p,
-        allocations,
-        profilesById,
-        expenses,
-        today,
-        salaryHistory
-      ),
-    }));
+    const { alerts, finances } = buildAppAlerts({
+      profiles,
+      projects,
+      phases,
+      allocations,
+      expenses,
+      payments,
+      salaryHistory,
+      asOf: today,
+    });
 
     const totalRevenue = finances.reduce((s, f) => s + f.finance.revenue, 0);
     const totalProfit = finances.reduce(
@@ -96,95 +86,7 @@ function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppDat
       0
     );
     const avgMargin = totalRevenue > 0 ? totalProfit / totalRevenue : 0;
-
     const ar = paymentSummary(payments, today);
-
-    // Alerts
-    const alerts: Alert[] = [];
-
-    for (const { project, finance } of finances) {
-      if (finance.hasRevenue && finance.profit < 0) {
-        alerts.push({
-          id: `loss-${project.id}`,
-          kind: "budget",
-          title: `${project.name} đang LỖ`,
-          detail: `Margin ${Math.round(finance.margin * 100)}%, chi vượt doanh thu ${Math.round(
-            Math.abs(finance.profit) / 1_000_000
-          )}tr.`,
-        });
-      }
-    }
-
-    if (ar.overdueCount > 0) {
-      alerts.push({
-        id: `ar-overdue`,
-        kind: "budget",
-        title: `${ar.overdueCount} đợt thu quá hạn`,
-        detail: `Tổng ${Math.round(
-          ar.totalOverdue / 1_000_000
-        )}tr — cần chase khách.`,
-      });
-    }
-
-    for (const p of profiles) {
-      // Burnout: today's load (đang quá tải ngay bây giờ).
-      // Bench: today=0 VÀ tháng=0 (không phải chỉ chưa bắt đầu) để tránh
-      // báo nhầm người có allocation bắt đầu trong tháng.
-      const loadNow = userLoadToday(p.id, allocations, today);
-      const loadMonth = userLoadCurrentMonth(p.id, allocations, today);
-      if (loadNow > 1.0) {
-        alerts.push({
-          id: `burn-${p.id}`,
-          kind: "burnout",
-          title: `${p.full_name} đang ${Math.round(loadNow * 100)}% tải`,
-          detail: `Quá tải so với 100%. Cân nhắc giảm scope hoặc rebalance team.`,
-        });
-      } else if (loadNow === 0 && loadMonth === 0 && p.is_active) {
-        alerts.push({
-          id: `idle-${p.id}`,
-          kind: "idle",
-          title: `${p.full_name} đang bench`,
-          detail: `Không có allocation tháng này — có thể đẩy vào dự án mới hoặc cho học/upskill.`,
-        });
-      }
-    }
-
-    for (const { project, finance } of finances) {
-      if (!finance.hasCap) continue;
-      if (finance.overBudget) {
-        alerts.push({
-          id: `bud-${project.id}`,
-          kind: "budget",
-          title: `${project.name} vượt budget`,
-          detail: `Đã tiêu ${Math.round(finance.utilization * 100)}% / 100% ngân sách.`,
-        });
-      } else if (finance.utilization > 0.85 && project.status === "ongoing") {
-        alerts.push({
-          id: `bud-${project.id}`,
-          kind: "budget",
-          title: `${project.name} sắp hết budget`,
-          detail: `Còn ${Math.max(0, 100 - Math.round(finance.utilization * 100))}% ngân sách.`,
-        });
-      }
-    }
-
-    for (const ph of phases) {
-      const startD = new Date(ph.start_date);
-      const endD = new Date(ph.end_date);
-      if (today < startD || today > endD) continue;
-      const gaps = phaseRoleGaps(ph, allocations, profilesById);
-      for (const g of gaps) {
-        if (g.missing > 0) {
-          const proj = projects.find((p) => p.id === ph.project_id);
-          alerts.push({
-            id: `gap-${ph.id}-${g.role}`,
-            kind: "missing-role",
-            title: `${proj?.name ?? "?"} · ${ph.phase_name} thiếu ${g.role}`,
-            detail: `Cần ${g.required}, đã có ${g.assigned.toFixed(1)} (FTE). Thiếu ~${g.missing.toFixed(1)}.`,
-          });
-        }
-      }
-    }
 
     const emailName = user?.email?.split("@")[0] ?? "bạn";
     const displayName =
@@ -204,7 +106,16 @@ function DashboardView({ data }: { data: NonNullable<ReturnType<typeof useAppDat
       alerts,
       displayName,
     };
-  }, [user, profiles, projects, phases, allocations, expenses, payments, salaryHistory]);
+  }, [
+    user,
+    profiles,
+    projects,
+    phases,
+    allocations,
+    expenses,
+    payments,
+    salaryHistory,
+  ]);
 
   return (
     <div className="space-y-6">

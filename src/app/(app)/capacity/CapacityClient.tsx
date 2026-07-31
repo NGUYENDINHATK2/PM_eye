@@ -64,13 +64,13 @@ export function CapacityClient({
   const filteredProfiles = useMemo(() => {
     let list = profiles;
     if (onlyActive) list = list.filter((p) => p.is_active);
-    if (roleFilter !== "all") list = list.filter((p) => p.role === roleFilter);
+    if (roleFilter !== "all") list = list.filter((p) => p.job_role === roleFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (p) =>
           p.full_name.toLowerCase().includes(q) ||
-          p.role.toLowerCase().includes(q)
+          p.job_role.toLowerCase().includes(q)
       );
     }
     if (sort !== "default") {
@@ -80,7 +80,7 @@ export function CapacityClient({
       } else if (sort === "role") {
         list.sort(
           (a, b) =>
-            a.role.localeCompare(b.role, "vi") ||
+            a.job_role.localeCompare(b.job_role, "vi") ||
             a.full_name.localeCompare(b.full_name, "vi")
         );
       } else {
@@ -96,7 +96,7 @@ export function CapacityClient({
 
   const allRoles = useMemo(() => {
     const set = new Set<string>();
-    for (const p of profiles) set.add(p.role);
+    for (const p of profiles) set.add(p.job_role);
     return Array.from(set).sort();
   }, [profiles]);
 
@@ -196,7 +196,7 @@ export function CapacityClient({
                 className={cn(
                   "inline-flex items-center gap-2 px-3 lg:px-4 h-9 rounded-lg text-xs lg:text-sm font-medium transition",
                   active
-                    ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                    ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -269,7 +269,7 @@ export function CapacityClient({
               type="checkbox"
               checked={onlyActive}
               onChange={(e) => setOnlyActive(e.target.checked)}
-              className="w-3.5 h-3.5 accent-indigo-500"
+              className="w-3.5 h-3.5 accent-teal-500"
             />
             Chỉ active
           </label>
@@ -302,7 +302,7 @@ export function CapacityClient({
 
       {/* View description */}
       <div className="text-xs text-muted-foreground -mt-2 flex items-center gap-2">
-        <span className="w-1 h-1 rounded-full bg-indigo-500" />
+        <span className="w-1 h-1 rounded-full bg-teal-500" />
         {viewItems.find((v) => v.id === view)?.desc}
         <span className="text-muted-foreground/60">
           · {filteredProfiles.length} người

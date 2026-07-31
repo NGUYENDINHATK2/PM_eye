@@ -5,15 +5,9 @@ import { useAppData } from "@/lib/hooks/useAppData";
 import { CapacityClient } from "./CapacityClient";
 
 export default function CapacityPage() {
-  const { data, loading, error } = useAppData();
+  const { data, loading } = useAppData();
 
-  if (loading) return <PageSkeleton variant="dashboard" />;
-  if (error)
-    return (
-      <div className="text-center py-20 text-rose-500">
-        Lỗi tải dữ liệu: {error}
-      </div>
-    );
+  if (loading && !data) return <PageSkeleton variant="dashboard" />;
   if (!data) return null;
 
   return (

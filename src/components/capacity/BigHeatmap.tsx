@@ -118,21 +118,21 @@ export function BigHeatmap({
                     key={m.key}
                     className={cn(
                       "text-center pb-3 min-w-[80px]",
-                      m.isCurrent && "text-indigo-500"
+                      m.isCurrent && "text-teal-500"
                     )}
                   >
                     <div
                       className={cn(
                         "text-xs font-semibold",
                         m.isCurrent
-                          ? "text-indigo-500"
+                          ? "text-teal-500"
                           : "text-muted-foreground"
                       )}
                     >
                       {monthLabel(m.key)}
                     </div>
                     {m.isCurrent && (
-                      <div className="text-[9px] mt-0.5 text-indigo-500 font-medium uppercase tracking-wider">
+                      <div className="text-[9px] mt-0.5 text-teal-500 font-medium uppercase tracking-wider">
                         Hiện tại
                       </div>
                     )}
@@ -159,7 +159,7 @@ export function BigHeatmap({
                           {p.full_name}
                         </div>
                         <div className="text-[10px] text-muted-foreground truncate">
-                          {p.role}
+                          {p.job_role}
                           {Number(p.base_salary) > 0 && (
                             <span className="ml-1.5 opacity-70">
                               · {formatCurrency(p.base_salary)}
@@ -205,7 +205,7 @@ export function BigHeatmap({
                               className={cn(
                                 "h-12 rounded-lg flex flex-col items-center justify-center text-sm font-semibold tnum cursor-pointer transition-all duration-200 hover:scale-105 relative overflow-hidden",
                                 isCritical && "animate-glow-pulse",
-                                m.isCurrent && "ring-2 ring-indigo-500/40"
+                                m.isCurrent && "ring-2 ring-teal-500/40"
                               )}
                               style={cellStyle(load)}
                             >

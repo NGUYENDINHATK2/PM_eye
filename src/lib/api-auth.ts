@@ -1,41 +1,34 @@
+import {
+  canViewMoney,
+  canViewSalary,
+  isAppRole,
+  roleFromUser,
+} from "@/lib/rbac";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import type { AppRole, Profile } from "@/types/database";
 import type { User } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 
-/**
- * Danh sách email admin. Lấy từ env var ADMIN_EMAILS (CSV).
- * Trên Supabase, có thể set thêm `app_metadata.role = 'admin'` trên auth.users.
- */
-function adminEmailSet(): Set<string> {
-  const raw = process.env.ADMIN_EMAILS ?? "";
-  return new Set(
-    raw
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
-
-export function isAppAdmin(user: User | null | undefined): boolean {
-  if (!user) return false;
-  // 1. Email allowlist (đơn giản, không cần touch DB)
-  if (user.email && adminEmailSet().has(user.email.toLowerCase())) return true;
-  // 2. Supabase app_metadata.role === 'admin' (set qua dashboard)
-  const meta = user.app_metadata as { role?: string } | undefined;
-  if (meta?.role === "admin") return true;
-  return false;
-}
+// re-export for convenience
+export type { AppRole };
+export {
+  canViewMoney,
+  canViewSalary,
+  roleFromUser,
+  isAppRole,
+} from "@/lib/rbac";
 
 export type AuthedContext = {
   user: User;
+  role: AppRole;
+  profile: Profile;
   isAdmin: boolean;
   supabase: Awaited<ReturnType<typeof createClient>>;
+  /** Service role — dùng khi cần đọc lương / bypass column grants */
+  admin: ReturnType<typeof createAdminClient>;
 };
 
-/**
- * Lấy session cho API route. Trả về 401 JSON nếu chưa đăng nhập.
- * Không bao giờ redirect — route handler quyết định body & status.
- */
 export async function requireApiUser(): Promise<
   AuthedContext | NextResponse
 > {
@@ -49,22 +42,69 @@ export async function requireApiUser(): Promise<
       { status: 401 }
     );
   }
-  return { user, isAdmin: isAppAdmin(user), supabase };
-}
 
-/**
- * Convenience: yêu cầu admin. Trả về 401 / 403 JSON nếu không đủ quyền.
- */
-export async function requireApiAdmin(): Promise<
-  AuthedContext | NextResponse
-> {
-  const ctx = await requireApiUser();
-  if (ctx instanceof NextResponse) return ctx;
-  if (!ctx.isAdmin) {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return NextResponse.json(
+      {
+        error: "misconfigured",
+        message: "Thiếu SUPABASE_SERVICE_ROLE_KEY trên server.",
+      },
+      { status: 500 }
+    );
+  }
+
+  const { data: profileRow } = await admin
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const profile = profileRow as Profile | null;
+  if (!profile || !profile.is_active) {
     return NextResponse.json(
       {
         error: "forbidden",
-        message: "Endpoint này chỉ dành cho admin.",
+        message: "Tài khoản chưa có profile hoặc đã bị vô hiệu.",
+      },
+      { status: 403 }
+    );
+  }
+
+  const role = roleFromUser(user, profile.app_role);
+  if (!role) {
+    return NextResponse.json(
+      {
+        error: "forbidden",
+        message: "Tài khoản chưa được gán quyền (app_role).",
+      },
+      { status: 403 }
+    );
+  }
+
+  return {
+    user,
+    role,
+    profile: { ...profile, app_role: role },
+    isAdmin: role === "admin",
+    supabase,
+    admin,
+  };
+}
+
+export async function requireRole(
+  allowed: AppRole | AppRole[]
+): Promise<AuthedContext | NextResponse> {
+  const ctx = await requireApiUser();
+  if (ctx instanceof NextResponse) return ctx;
+  const list = Array.isArray(allowed) ? allowed : [allowed];
+  if (!list.includes(ctx.role)) {
+    return NextResponse.json(
+      {
+        error: "forbidden",
+        message: "Bạn không có quyền thực hiện thao tác này.",
       },
       { status: 403 }
     );
@@ -72,7 +112,18 @@ export async function requireApiAdmin(): Promise<
   return ctx;
 }
 
-/** Default cache headers cho mọi API response chứa dữ liệu nội bộ. */
+/** @deprecated — dùng requireRole('admin') */
+export async function requireApiAdmin(): Promise<
+  AuthedContext | NextResponse
+> {
+  return requireRole("admin");
+}
+
+/** Legacy helper — JWT / ADMIN_EMAILS */
+export function isAppAdmin(user: User | null | undefined): boolean {
+  return roleFromUser(user) === "admin";
+}
+
 export const PRIVATE_CACHE_HEADERS = {
   "Cache-Control": "private, no-store, must-revalidate",
 };

@@ -115,7 +115,7 @@ export function WelcomeHero({
             label="Tổng doanh thu"
             value={formatCurrency(totalRevenue)}
             icon={<Wallet size={14} />}
-            tone="indigo"
+            tone="teal"
           />
           <KpiTile
             label={profitable ? "Lợi nhuận" : "Đang lỗ"}
@@ -136,7 +136,7 @@ export function WelcomeHero({
   );
 }
 
-type Tone = "indigo" | "emerald" | "rose" | "amber";
+type Tone = "teal" | "emerald" | "rose" | "amber";
 
 function KpiTile({
   label,
@@ -152,10 +152,10 @@ function KpiTile({
   tone: Tone;
 }) {
   const toneMap: Record<Tone, { border: string; bg: string; iconText: string; valueText: string }> = {
-    indigo: {
-      border: "border-indigo-500/20",
-      bg: "bg-indigo-500/5",
-      iconText: "text-indigo-600 dark:text-indigo-400",
+    teal: {
+      border: "border-teal-500/20",
+      bg: "bg-teal-500/5",
+      iconText: "text-teal-600 dark:text-teal-400",
       valueText: "gradient-text-indigo",
     },
     emerald: {

@@ -1,14 +1,13 @@
-import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
-import type { Allocation } from "@/types/database";
+import { PRIVATE_CACHE_HEADERS, requireApiUser } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/allocations — admin only. */
 export async function GET() {
-  const ctx = await requireApiAdmin();
+  const ctx = await requireApiUser();
   if (ctx instanceof NextResponse) return ctx;
 
+  // Client nên dùng /api/bootstrap; endpoint này trả raw qua user RLS
   const { data, error } = await ctx.supabase
     .from("allocations")
     .select("*")
@@ -21,7 +20,5 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json((data ?? []) as Allocation[], {
-    headers: PRIVATE_CACHE_HEADERS,
-  });
+  return NextResponse.json(data ?? [], { headers: PRIVATE_CACHE_HEADERS });
 }

@@ -34,12 +34,15 @@ import {
 } from "@/components/ui/select";
 import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import {
+  allocationCostForMonth,
   paymentSummary,
   phaseRoleGaps,
   projectFinance,
 } from "@/lib/calculations";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { createClient } from "@/lib/supabase/client";
 import {
+  cn,
   formatCurrency,
   formatDate,
   formatPercent,
@@ -65,13 +68,17 @@ import {
   Layers,
   Pencil,
   Plus,
+  Receipt,
   Trash2,
   Users,
   Wallet,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+
+type TeamTab = "today" | "upcoming" | "all";
 
 export function ProjectDetailClient({
   project,
@@ -93,12 +100,16 @@ export function ProjectDetailClient({
   salaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
+  const { data: appData } = useAppData();
+  const canViewMoney = appData?.user.canViewMoney ?? false;
+  const canViewSalary = appData?.user.canViewSalary ?? false;
   const [phases, setPhases] = useState(initialPhases);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
   const [reqRoles, setReqRoles] = useState<RequiredRole[]>([]);
   const [phaseError, setPhaseError] = useState<string | null>(null);
   const [phaseSaving, setPhaseSaving] = useState(false);
+  const [teamTab, setTeamTab] = useState<TeamTab>("today");
 
   // Payments
   const [payments, setPayments] = useState(initialPayments);
@@ -107,6 +118,9 @@ export function ProjectDetailClient({
   const [payStatus, setPayStatus] = useState<PaymentStatus>("planned");
   const [payError, setPayError] = useState<string | null>(null);
   const [paySaving, setPaySaving] = useState(false);
+
+  useEffect(() => setPhases(initialPhases), [initialPhases]);
+  useEffect(() => setPayments(initialPayments), [initialPayments]);
 
   const arSummary = useMemo(() => paymentSummary(payments), [payments]);
 
@@ -128,7 +142,7 @@ export function ProjectDetailClient({
     [project, allAllocations, profilesById, expenses, salaryHistory]
   );
 
-  // Team đang chạy hôm nay + chi tiết phases họ tham gia
+  // Team roster theo tab: hôm nay / sắp tới / tất cả
   const team = useMemo(() => {
     const today = new Date();
     type Item = {
@@ -140,7 +154,9 @@ export function ProjectDetailClient({
     for (const a of allocations) {
       const aStart = new Date(a.start_date);
       const aEnd = new Date(a.end_date);
-      if (today < aStart || today > aEnd) continue;
+      if (teamTab === "today" && (today < aStart || today > aEnd)) continue;
+      if (teamTab === "upcoming" && aStart <= today) continue;
+      if (teamTab === "all" && aEnd < today) continue; // active + future
       const p = profilesById.get(a.user_id);
       if (!p) continue;
       const phaseName =
@@ -167,7 +183,47 @@ export function ProjectDetailClient({
     return Array.from(map.values()).sort(
       (a, b) => b.totalPercent - a.totalPercent
     );
-  }, [allocations, profilesById, phases]);
+  }, [allocations, profilesById, phases, teamTab]);
+
+  const phaseSpend = useMemo(() => {
+    const today = new Date();
+    const map = new Map<string, number>();
+    for (const ph of phases) {
+      let labor = 0;
+      const phAllocs = allocations.filter((a) => a.phase_id === ph.id);
+      if (phAllocs.length > 0) {
+        const earliest = phAllocs.reduce(
+          (min, a) => (new Date(a.start_date) < min ? new Date(a.start_date) : min),
+          new Date(phAllocs[0].start_date)
+        );
+        const cur = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+        while (cur <= today) {
+          const y = cur.getFullYear();
+          const m = cur.getMonth() + 1;
+          for (const a of phAllocs) {
+            const p = profilesById.get(a.user_id);
+            if (!p) continue;
+            labor += allocationCostForMonth(a, p, y, m, salaryHistory);
+          }
+          cur.setMonth(cur.getMonth() + 1);
+        }
+      }
+      const ops = expenses
+        .filter((e) => e.phase_id === ph.id)
+        .reduce((s, e) => s + Number(e.amount), 0);
+      map.set(ph.id, labor + ops);
+    }
+    return map;
+  }, [phases, allocations, expenses, profilesById, salaryHistory]);
+
+  const sortedExpenses = useMemo(
+    () =>
+      [...expenses].sort(
+        (a, b) =>
+          new Date(b.spent_date).getTime() - new Date(a.spent_date).getTime()
+      ),
+    [expenses]
+  );
 
   function openNew() {
     setEditing(null);
@@ -212,6 +268,7 @@ export function ProjectDetailClient({
         setPhases((arr) =>
           arr.map((p) => (p.id === editing.id ? (data as ProjectPhase) : p))
         );
+        toast.success("Đã cập nhật giai đoạn");
         setOpen(false);
       }
     } else {
@@ -227,6 +284,7 @@ export function ProjectDetailClient({
       }
       if (data) {
         setPhases((arr) => [...arr, data as ProjectPhase]);
+        toast.success("Đã thêm giai đoạn");
         setOpen(false);
       }
     }
@@ -234,8 +292,16 @@ export function ProjectDetailClient({
 
   async function removePhase(ph: ProjectPhase) {
     if (!confirm(`Xóa giai đoạn "${ph.phase_name}"?`)) return;
-    await supabase.from("project_phases").delete().eq("id", ph.id);
+    const { error: err } = await supabase
+      .from("project_phases")
+      .delete()
+      .eq("id", ph.id);
+    if (err) {
+      toast.error(humanizeSupabaseError(err.message));
+      return;
+    }
     setPhases((arr) => arr.filter((x) => x.id !== ph.id));
+    toast.success("Đã xóa giai đoạn");
   }
 
   function openNewPayment() {
@@ -373,7 +439,8 @@ export function ProjectDetailClient({
         }
       />
 
-      {/* P&L summary — hero row */}
+      {/* P&L summary — hero row (ẩn với member) */}
+      {canViewMoney && (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden">
           <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-emerald-500/20 blur-3xl" />
@@ -493,16 +560,75 @@ export function ProjectDetailClient({
           </CardContent>
         </Card>
       </div>
+      )}
 
+      {/* Budget utilization */}
+      {canViewMoney && finance.hasCap && (
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Ngân sách đã dùng
+                </div>
+                <div className="text-lg font-semibold tnum mt-0.5">
+                  {formatCurrency(finance.totalSpent)}{" "}
+                  <span className="text-sm text-muted-foreground font-normal">
+                    / {formatCurrency(finance.budget)}
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div
+                  className={cn(
+                    "text-2xl font-semibold tnum",
+                    finance.overBudget
+                      ? "text-rose-500"
+                      : finance.utilization > 0.85
+                      ? "text-amber-500"
+                      : "text-teal-600 dark:text-teal-400"
+                  )}
+                >
+                  {Math.round(finance.utilization * 100)}%
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {finance.overBudget
+                    ? `Vượt ${formatCurrency(Math.abs(finance.remaining))}`
+                    : `Còn ${formatCurrency(Math.max(0, finance.remaining))}`}
+                </div>
+              </div>
+            </div>
+            <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  finance.overBudget
+                    ? "bg-rose-500"
+                    : finance.utilization > 0.85
+                    ? "bg-amber-500"
+                    : "bg-teal-500"
+                )}
+                style={{
+                  width: `${Math.min(100, finance.utilization * 100)}%`,
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {canViewMoney && (
       <ProjectCostBreakdown
         projectId={project.id}
         allocations={allAllocations}
         profilesById={profilesById}
         expenses={expenses}
-        salaryHistory={salaryHistory}
+        salaryHistory={canViewSalary ? salaryHistory : []}
       />
+      )}
 
       {/* Payments (khách trả nhiều đợt) */}
+      {canViewMoney && (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
@@ -563,22 +689,54 @@ export function ProjectDetailClient({
           )}
         </CardContent>
       </Card>
+      )}
 
-      {/* Team đang chạy */}
+      {/* Team roster */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Team đang chạy</CardTitle>
-          <CardDescription>
-            {team.length > 0
-              ? `${team.length} người đang phân bổ vào dự án hôm nay`
-              : "Chưa có ai phân bổ vào hôm nay"}
-          </CardDescription>
+        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="text-base">Team trên dự án</CardTitle>
+            <CardDescription>
+              {team.length > 0
+                ? `${team.length} người · tab ${
+                    teamTab === "today"
+                      ? "hôm nay"
+                      : teamTab === "upcoming"
+                      ? "sắp tới"
+                      : "đang + sắp"
+                  }`
+                : "Chưa có phân bổ trong tab này"}
+            </CardDescription>
+          </div>
+          <div className="flex gap-1">
+            {(
+              [
+                ["today", "Hôm nay"],
+                ["upcoming", "Sắp tới"],
+                ["all", "Tất cả"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setTeamTab(k)}
+                className={cn(
+                  "h-8 px-2.5 rounded-lg text-[11px] border transition",
+                  teamTab === k
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "hover:bg-muted"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
           {team.length === 0 ? (
             <div className="text-sm text-muted-foreground text-center py-8">
               Hãy vào{" "}
-              <Link href="/allocations" className="text-indigo-500 hover:underline">
+              <Link href="/allocations" className="text-teal-500 hover:underline">
                 Phân bổ
               </Link>{" "}
               để gán người vào dự án.
@@ -609,7 +767,7 @@ export function ProjectDetailClient({
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {m.profile.role}
+                        {m.profile.job_role}
                       </div>
                       <div className="mt-2 space-y-1">
                         {m.slots.map((s, i) => (
@@ -670,13 +828,13 @@ export function ProjectDetailClient({
                   key={ph.id}
                   className={
                     active
-                      ? "p-4 rounded-xl border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-500/[0.06] to-transparent transition shadow-sm"
+                      ? "p-4 rounded-xl border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/[0.06] to-transparent transition shadow-sm"
                       : "p-4 rounded-xl border bg-card/40 transition hover:bg-card"
                   }
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                      <div className="w-9 h-9 rounded-lg bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0">
                         <Layers size={16} />
                       </div>
                       <div className="min-w-0">
@@ -692,9 +850,60 @@ export function ProjectDetailClient({
                         <div className="text-xs text-muted-foreground mt-0.5">
                           {formatDate(ph.start_date)} → {formatDate(ph.end_date)}
                           {ph.phase_budget > 0 && (
-                            <span> · Budget: {formatCurrency(ph.phase_budget)}</span>
+                            <span>
+                              {" "}
+                              · Budget: {formatCurrency(ph.phase_budget)}
+                              {" · Đã chi: "}
+                              {formatCurrency(phaseSpend.get(ph.id) ?? 0)}
+                              {ph.phase_budget > 0 && (
+                                <span
+                                  className={
+                                    (phaseSpend.get(ph.id) ?? 0) > ph.phase_budget
+                                      ? " text-rose-500 font-medium"
+                                      : ""
+                                  }
+                                >
+                                  {" "}
+                                  (
+                                  {Math.round(
+                                    ((phaseSpend.get(ph.id) ?? 0) /
+                                      ph.phase_budget) *
+                                      100
+                                  )}
+                                  %)
+                                </span>
+                              )}
+                            </span>
                           )}
+                          {ph.phase_budget <= 0 &&
+                            (phaseSpend.get(ph.id) ?? 0) > 0 && (
+                              <span>
+                                {" "}
+                                · Đã chi:{" "}
+                                {formatCurrency(phaseSpend.get(ph.id) ?? 0)}
+                              </span>
+                            )}
                         </div>
+                        {ph.phase_budget > 0 && (
+                          <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden max-w-xs">
+                            <div
+                              className={cn(
+                                "h-full rounded-full",
+                                (phaseSpend.get(ph.id) ?? 0) > ph.phase_budget
+                                  ? "bg-rose-500"
+                                  : "bg-teal-500"
+                              )}
+                              style={{
+                                width: `${Math.min(
+                                  100,
+                                  ((phaseSpend.get(ph.id) ?? 0) /
+                                    ph.phase_budget) *
+                                    100
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-1">
@@ -752,6 +961,66 @@ export function ProjectDetailClient({
           </div>
         </CardContent>
       </Card>
+
+      {/* Expenses on this project */}
+      {canViewMoney && (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Receipt size={16} className="text-amber-500" />
+              Chi phí vận hành
+            </CardTitle>
+            <CardDescription>
+              {sortedExpenses.length > 0
+                ? `${sortedExpenses.length} khoản · tổng ${formatCurrency(
+                    sortedExpenses.reduce((s, e) => s + Number(e.amount), 0)
+                  )}`
+                : "Chưa ghi chi phí cho dự án này"}
+            </CardDescription>
+          </div>
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/expenses">Quản lý chi phí</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {sortedExpenses.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-6">
+              Ghi chi phí tại trang Chi phí và gán vào dự án này.
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {sortedExpenses.slice(0, 8).map((e) => (
+                <div
+                  key={e.id}
+                  className="flex items-center gap-3 rounded-xl border px-3 py-2 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">
+                      {e.description || e.category}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {e.category} · {formatDate(e.spent_date)}
+                    </div>
+                  </div>
+                  <div className="tnum font-semibold shrink-0">
+                    {formatCurrency(Number(e.amount))}
+                  </div>
+                </div>
+              ))}
+              {sortedExpenses.length > 8 && (
+                <Link
+                  href="/expenses"
+                  className="block text-center text-xs text-primary pt-2 hover:underline"
+                >
+                  Xem thêm {sortedExpenses.length - 8} khoản →
+                </Link>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">

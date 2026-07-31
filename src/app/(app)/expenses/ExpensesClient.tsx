@@ -59,7 +59,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -109,6 +109,7 @@ export function ExpensesClient({
 }) {
   const supabase = createClient();
   const [expenses, setExpenses] = useState(initialExpenses);
+  useEffect(() => setExpenses(initialExpenses), [initialExpenses]);
 
   // Dialog state
   const [open, setOpen] = useState(false);
@@ -1029,14 +1030,14 @@ function rangeLabel(r: Range): string {
 type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
 const toneMap: Record<Tone, { bg: string; text: string; iconBg: string }> = {
   indigo: {
-    bg: "bg-indigo-500/5 border-indigo-500/15",
-    text: "text-indigo-600 dark:text-indigo-400",
-    iconBg: "bg-indigo-500/10",
+    bg: "bg-teal-500/5 border-teal-500/15",
+    text: "text-teal-600 dark:text-teal-400",
+    iconBg: "bg-teal-500/10",
   },
   violet: {
-    bg: "bg-violet-500/5 border-violet-500/15",
-    text: "text-violet-600 dark:text-violet-400",
-    iconBg: "bg-violet-500/10",
+    bg: "bg-cyan-500/5 border-cyan-500/15",
+    text: "text-cyan-600 dark:text-cyan-400",
+    iconBg: "bg-cyan-500/10",
   },
   emerald: {
     bg: "bg-emerald-500/5 border-emerald-500/15",

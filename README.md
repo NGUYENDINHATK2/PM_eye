@@ -38,48 +38,53 @@ cd /Users/developer/Documents/PM_Eye
 npm install
 ```
 
-### B2. Tạo project Supabase
-1. Vào https://supabase.com → **New project** (free tier OK).
-2. Sau khi project sẵn sàng → vào **SQL Editor** → **New query** → paste toàn bộ nội dung [supabase/schema.sql](supabase/schema.sql) → **Run**.
-3. Vào **Settings → API** lấy 2 giá trị:
-   - `Project URL`
-   - `anon public` key
+### B2. Reset DB + schema RBAC (bắt buộc chạy lại sạch)
+
+> `schema.sql` mới **drop schema public** rồi tạo lại (multi-role). Backup data cũ trước nếu cần.
+
+1. Vào https://supabase.com → project (hoặc New project).
+2. **SQL Editor** → paste toàn bộ [supabase/schema.sql](supabase/schema.sql) → **Run**.
+3. **Settings → API** lấy: `Project URL`, `anon` key, **`service_role` key** (secret).
 
 ### B3. Env vars
 ```bash
 cp .env.local.example .env.local
 ```
-Mở [.env.local](.env.local) và điền:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...   # server-only
+ADMIN_EMAILS=ban@cong-ty.com
 ```
 
-### B4. Tạo tài khoản admin + siết RLS
+### B4. Tạo admin đầu tiên
 
-> **Policy**: PM_Eye là tool 1-người-dùng (admin). Mọi bảng đều admin-only.
-> User đăng nhập mà không phải admin sẽ thấy trang "Không có quyền" + nút
-> đăng xuất, không request data nào được gọi.
+Roles: **admin** | **manager** | **pm** | **member**
 
-1. Trong Supabase Dashboard → **Authentication → Users → Add user** (manual). Bật **auto-confirm** để khỏi xác minh email.
-2. Vào **SQL Editor** → paste [supabase/migrations/20260516_rls_admin_split.sql](supabase/migrations/20260516_rls_admin_split.sql) → **Run**. Migration này:
-   - Tạo function `is_app_admin()` đọc `auth.jwt().app_metadata.role`.
-   - Drop mọi policy cũ → tạo `admin_all_*` cho TẤT CẢ bảng.
-   - Kết quả: chỉ user có `app_metadata.role = 'admin'` mới SELECT/INSERT/UPDATE/DELETE bất kỳ bảng nào.
-3. Gán role admin cho user vừa tạo: Dashboard → **Authentication → Users → chọn user** → tab **User App Metadata** → paste:
+| Role | Dự án | P&L / tiền | Lương |
+|------|-------|------------|-------|
+| admin | All | Có | Có |
+| manager | All | Có | Không |
+| pm | `projects.manager_id` = mình | Có | Không |
+| member | Có allocation | Không | Không |
+
+1. Supabase → **Authentication → Users → Add user** (auto-confirm).
+2. User → **App Metadata**:
    ```json
    { "role": "admin" }
    ```
-   ⚠ Phải là **App Metadata** (user không tự sửa được), **không phải** User Metadata.
+3. Trigger `handle_new_user` sẽ tạo `profiles` (id = auth.users.id). Nếu thiếu, upsert thủ công:
+   ```sql
+   insert into public.profiles (id, full_name, email, job_role, app_role, base_salary)
+   values ('<user-uuid>', 'Admin', 'ban@cong-ty.com', 'BU Lead', 'admin', 0)
+   on conflict (id) do update set app_role = 'admin';
+   ```
+4. Đăng xuất / đăng nhập lại để JWT có `app_metadata.role`.
 
-### B5. Env vars cho RBAC ở Next.js
-Trong [.env.local](.env.local) (và Vercel project settings) — đồng bộ với DB:
-```
-ADMIN_EMAILS=ban@cong-ty.com,leader@cong-ty.com
-```
-- `ADMIN_EMAILS` là email allowlist cho **API layer** (CSV) → cho phép user vào trang được.
-- ⚠ **NHƯNG** không đủ cho ghi dữ liệu. CRUD (PATCH/INSERT/DELETE) đi thẳng qua Supabase client từ browser, bị RLS chặn nếu chưa set `app_metadata.role`. Symptom: error PGRST116 "0 rows".
-- ✅ **Bắt buộc** vẫn phải set `{"role": "admin"}` trong **Supabase Dashboard → Authentication → Users → User App Metadata** (xem bước B4 step 3). Sau đó **đăng xuất + đăng nhập lại** để JWT mới có claim.
+### B5. Cấp acc cấp dưới
+
+Đăng nhập admin → sidebar **Tài khoản** (`/settings/users`) → tạo manager / pm / member (email + mật khẩu + quyền).  
+Gán **PM phụ trách** khi tạo/sửa dự án (`manager_id`).
 
 ### B5.1. (Optional) HTTP Basic Auth — pop dialog mật khẩu trước khi vào site
 

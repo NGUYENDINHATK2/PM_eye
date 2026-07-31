@@ -54,7 +54,7 @@ import {
   Trash2,
   User as UserIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export function AllocationsClient({
   profiles,
@@ -69,6 +69,7 @@ export function AllocationsClient({
 }) {
   const supabase = createClient();
   const [allocations, setAllocations] = useState(initialAllocations);
+  useEffect(() => setAllocations(initialAllocations), [initialAllocations]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Allocation | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -330,7 +331,7 @@ export function AllocationsClient({
               className={cn(
                 "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
                 view === "timeline"
-                  ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                  ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -343,7 +344,7 @@ export function AllocationsClient({
               className={cn(
                 "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
                 view === "list"
-                  ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                  ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -494,7 +495,7 @@ export function AllocationsClient({
                     <div>
                       <div className="font-semibold">{p.full_name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {p.role}
+                        {p.job_role}
                       </div>
                     </div>
                   </div>
@@ -617,7 +618,7 @@ export function AllocationsClient({
                   <SelectContent>
                     {profiles.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.full_name} — {p.role}
+                        {p.full_name} — {p.job_role}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -693,10 +694,10 @@ export function AllocationsClient({
             </div>
 
             {/* Slider hero */}
-            <div className="p-5 rounded-xl bg-gradient-to-br from-indigo-500/10 to-sky-500/10 ring-1 ring-indigo-500/20">
+            <div className="p-5 rounded-xl bg-gradient-to-br from-teal-500/10 to-sky-500/10 ring-1 ring-teal-500/20">
               <div className="flex items-center justify-between mb-4">
                 <Label>% thời gian dành cho dự án này</Label>
-                <span className="text-3xl font-semibold tabular-nums bg-gradient-to-br from-indigo-500 to-sky-500 bg-clip-text text-transparent">
+                <span className="text-3xl font-semibold tabular-nums bg-gradient-to-br from-teal-500 to-sky-500 bg-clip-text text-transparent">
                   {Math.round(percent * 100)}%
                 </span>
               </div>

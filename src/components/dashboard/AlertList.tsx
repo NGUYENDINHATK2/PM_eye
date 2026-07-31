@@ -1,5 +1,6 @@
 "use client";
 
+import type { AppAlert } from "@/lib/alerts";
 import {
   Card,
   CardContent,
@@ -7,18 +8,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Flame, UserX, Wallet, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  CalendarClock,
+  CheckCircle2,
+  Flame,
+  Sparkles,
+  UserX,
+  Wallet,
+  Wrench,
+} from "lucide-react";
+import Link from "next/link";
 import { ReactNode } from "react";
 
-export type Alert = {
-  id: string;
-  kind: "burnout" | "idle" | "budget" | "missing-role";
-  title: string;
-  detail: string;
-};
+/** @deprecated — dùng AppAlert từ @/lib/alerts */
+export type Alert = AppAlert;
 
 const kindStyle: Record<
-  Alert["kind"],
+  AppAlert["kind"],
   { icon: ReactNode; bg: string; text: string; ring: string }
 > = {
   burnout: {
@@ -41,28 +47,46 @@ const kindStyle: Record<
   },
   "missing-role": {
     icon: <UserX size={13} strokeWidth={2.3} />,
+    bg: "bg-cyan-500/10",
+    text: "text-cyan-600 dark:text-cyan-400",
+    ring: "ring-cyan-500/20",
+  },
+  deadline: {
+    icon: <CalendarClock size={13} strokeWidth={2.3} />,
     bg: "bg-violet-500/10",
     text: "text-violet-600 dark:text-violet-400",
     ring: "ring-violet-500/20",
   },
+  hygiene: {
+    icon: <Wrench size={13} strokeWidth={2.3} />,
+    bg: "bg-slate-500/10",
+    text: "text-slate-600 dark:text-slate-300",
+    ring: "ring-slate-500/20",
+  },
 };
 
-export function AlertList({ alerts }: { alerts: Alert[] }) {
+export function AlertList({ alerts }: { alerts: AppAlert[] }) {
   const hasAlerts = alerts.length > 0;
+  const critical = alerts.filter((a) => a.severity === "critical").length;
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="font-display text-base flex items-center gap-2">
           <span
             className={
-              hasAlerts ? "status-dot status-dot-amber" : "status-dot"
+              critical > 0
+                ? "status-dot status-dot-rose"
+                : hasAlerts
+                ? "status-dot status-dot-amber"
+                : "status-dot"
             }
           />
           Cảnh báo
         </CardTitle>
         <CardDescription>
           {hasAlerts
-            ? `${alerts.length} điểm cần để ý`
+            ? `${alerts.length} điểm · ${critical} critical`
             : "Không có vấn đề nào"}
         </CardDescription>
       </CardHeader>
@@ -78,17 +102,13 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
             </div>
           </div>
         )}
-        <div className="space-y-1 max-h-80 overflow-auto no-scrollbar -mx-1 px-1">
-          {alerts.map((a, i) => {
+        <div className="space-y-2 max-h-[420px] overflow-y-auto no-scrollbar">
+          {alerts.slice(0, 12).map((a) => {
             const s = kindStyle[a.kind];
-            return (
-              <div
-                key={a.id}
-                className="group flex items-start gap-3 p-2.5 rounded-lg hover:bg-accent/50 transition animate-fade-up"
-                style={{ animationDelay: `${i * 40}ms` }}
-              >
+            const inner = (
+              <>
                 <div
-                  className={`w-7 h-7 rounded-md ${s.bg} ${s.text} ring-1 ${s.ring} flex items-center justify-center shrink-0`}
+                  className={`w-7 h-7 rounded-lg ${s.bg} ${s.text} ring-1 ${s.ring} flex items-center justify-center shrink-0`}
                 >
                   {s.icon}
                 </div>
@@ -98,10 +118,29 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
                     {a.detail}
                   </div>
                 </div>
+              </>
+            );
+            const cls =
+              "flex items-start gap-2.5 p-2.5 rounded-xl border bg-card/50 hover:border-primary/25 transition";
+            return a.href ? (
+              <Link key={a.id} href={a.href} className={cls}>
+                {inner}
+              </Link>
+            ) : (
+              <div key={a.id} className={cls}>
+                {inner}
               </div>
             );
           })}
         </div>
+        {alerts.length > 12 && (
+          <Link
+            href="/insights"
+            className="block text-center text-xs text-primary mt-3 hover:underline"
+          >
+            Xem toàn bộ trên Insights →
+          </Link>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,5 +1,10 @@
 "use client";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { roleLabel } from "@/lib/rbac";
+import { createClient } from "@/lib/supabase/client";
+import type { AppRole } from "@/types/database";
 import { cn } from "@/lib/utils";
 import {
   Activity,
@@ -7,72 +12,120 @@ import {
   ChevronRight,
   Eye,
   LayoutDashboard,
+  LineChart,
   LogOut,
   Menu,
   Receipt,
-  Settings,
+  Search,
+  Shield,
   Sliders,
-  User as UserIcon,
   Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 type Item = {
   href: string;
   label: string;
   icon: typeof Briefcase;
+  roles?: AppRole[]; // undefined = all
 };
 
 const MENU_ITEMS: Item[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  {
+    href: "/insights",
+    label: "Insights",
+    icon: LineChart,
+    roles: ["admin", "manager", "pm"],
+  },
   { href: "/capacity", label: "Capacity team", icon: Activity },
-  { href: "/employees", label: "Nhân sự", icon: Users },
+  {
+    href: "/employees",
+    label: "Nhân sự",
+    icon: Users,
+    roles: ["admin", "manager", "pm"],
+  },
   { href: "/projects", label: "Dự án", icon: Briefcase },
-  { href: "/allocations", label: "Phân bổ", icon: Sliders },
-  { href: "/expenses", label: "Chi phí", icon: Receipt },
+  {
+    href: "/allocations",
+    label: "Phân bổ",
+    icon: Sliders,
+    roles: ["admin", "manager", "pm"],
+  },
+  {
+    href: "/expenses",
+    label: "Chi phí",
+    icon: Receipt,
+    roles: ["admin", "manager", "pm"],
+  },
+  {
+    href: "/settings/users",
+    label: "Tài khoản",
+    icon: Shield,
+    roles: ["admin"],
+  },
 ];
 
-const ACCOUNT_ITEMS: Item[] = [
-  { href: "#profile", label: "Profile", icon: UserIcon },
-  { href: "#settings", label: "Cài đặt", icon: Settings },
-];
-
-export function Sidebar({ userEmail }: { userEmail?: string }) {
+export function Sidebar({
+  userEmail,
+  appRole,
+  onOpenSearch,
+}: {
+  userEmail?: string;
+  appRole: AppRole;
+  onOpenSearch?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  const items = useMemo(
+    () =>
+      MENU_ITEMS.filter(
+        (i) => !i.roles || i.roles.includes(appRole)
+      ),
+    [appRole]
+  );
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [open]);
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.assign("/login");
+    } catch {
+      toast.error("Không đăng xuất được. Thử lại.");
+      setSigningOut(false);
+      router.refresh();
+    }
   }
 
-  const userName = userEmail?.split("@")[0] ?? "Admin";
+  const userName = userEmail?.split("@")[0] ?? "User";
   const displayName =
     userName.charAt(0).toUpperCase() + userName.slice(1, 16);
 
   return (
     <>
-      {/* ============ Mobile top bar ============ */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 h-14 glass border-b">
         <button
           type="button"
           onClick={() => setOpen(true)}
           className="w-9 h-9 rounded-xl inline-flex items-center justify-center hover:bg-accent transition"
+          aria-label="Mở menu"
         >
           <Menu size={18} />
         </button>
@@ -82,40 +135,40 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
             PM<span className="gradient-text">_Eye</span>
           </div>
         </div>
-        <Avatar className="h-8 w-8 ring-2 ring-primary/15">
-          <AvatarFallback className="text-xs bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-semibold">
-            {userName?.[0]?.toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="w-9 h-9 rounded-xl inline-flex items-center justify-center hover:bg-accent transition"
+          aria-label="Tìm kiếm"
+        >
+          <Search size={16} />
+        </button>
       </header>
 
       <div className="lg:hidden h-14 shrink-0" />
 
-      {/* ============ Backdrop ============ */}
       {open && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-in fade-in-0"
+          className="lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         />
       )}
 
-      {/* ============ Sidebar ============ */}
       <aside
         className={cn(
           "z-50 bg-card border-r flex flex-col",
           "fixed inset-y-0 left-0 w-[272px] transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
-          "lg:sticky lg:top-0 lg:translate-x-0 lg:w-[260px] lg:h-screen lg:shrink-0"
+          "lg:sticky lg:top-0 lg:translate-x-0 lg:w-[248px] lg:h-screen lg:shrink-0"
         )}
       >
-        {/* Top: logo */}
         <div className="px-5 pt-5 pb-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
             <LogoMark />
             <div className="font-display font-bold tracking-tight text-lg leading-none">
               PM<span className="gradient-text">_Eye</span>
-              <div className="text-[10px] font-medium tracking-[0.18em] uppercase text-muted-foreground/80 mt-1.5">
-                Project · People · P&amp;L
+              <div className="text-[10px] font-medium tracking-[0.16em] uppercase text-muted-foreground/80 mt-1.5">
+                Ops console
               </div>
             </div>
           </Link>
@@ -128,11 +181,22 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
           </button>
         </div>
 
-        {/* User card */}
+        <div className="px-3 pb-3">
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            className="w-full h-9 px-3 rounded-xl border bg-background text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition flex items-center gap-2"
+          >
+            <Search size={14} />
+            <span className="flex-1 text-left">Tìm nhanh…</span>
+            <kbd className="text-[10px] px-1 py-0.5 rounded border">⌘K</kbd>
+          </button>
+        </div>
+
         <div className="px-3 pb-4">
-          <div className="rounded-xl border bg-card p-2.5 flex items-center gap-3 shadow-sm">
-            <Avatar className="h-10 w-10 ring-2 ring-primary/20 shrink-0">
-              <AvatarFallback className="text-sm bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-semibold">
+          <div className="rounded-xl border bg-muted/40 p-2.5 flex items-center gap-3">
+            <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
+              <AvatarFallback className="text-sm bg-gradient-to-br from-teal-500 to-cyan-600 text-white font-semibold">
                 {displayName?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -140,17 +204,16 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
               <div className="font-semibold text-sm truncate">{displayName}</div>
               <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
                 <span className="status-dot" />
-                Admin
+                {roleLabel(appRole)}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 px-3 overflow-y-auto no-scrollbar">
           <SectionLabel>Menu</SectionLabel>
           <div className="space-y-0.5 mb-6">
-            {MENU_ITEMS.map((item) => {
+            {items.map((item) => {
               const active =
                 item.href === "/"
                   ? pathname === "/"
@@ -160,37 +223,34 @@ export function Sidebar({ userEmail }: { userEmail?: string }) {
           </div>
 
           <SectionLabel>Tài khoản</SectionLabel>
-          <div className="space-y-0.5">
-            {ACCOUNT_ITEMS.map((item) => (
-              <NavLink key={item.href} item={item} active={false} />
-            ))}
-            <button
-              type="button"
-              onClick={signOut}
-              className="group w-full flex items-center gap-3 h-10 px-3 rounded-xl text-sm text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/[0.08] transition-colors text-left"
-            >
-              <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0">
-                <LogOut size={15} strokeWidth={2} />
-              </span>
-              <span className="flex-1 truncate">Đăng xuất</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={signOut}
+            disabled={signingOut}
+            className="group w-full flex items-center gap-3 h-10 px-3 rounded-xl text-sm text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/[0.08] transition-colors text-left disabled:opacity-60"
+          >
+            <span className="flex items-center justify-center w-5 h-5 rounded-md shrink-0">
+              <LogOut size={15} strokeWidth={2} />
+            </span>
+            <span className="flex-1 truncate">
+              {signingOut ? "Đang thoát…" : "Đăng xuất"}
+            </span>
+          </button>
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 pb-4 pt-3 space-y-3 border-t">
+        <div className="px-4 pb-4 pt-3 space-y-3 border-t lg:hidden">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
               Theme
             </span>
             <ThemeToggle />
           </div>
-          {userEmail && (
-            <div className="text-[11px] text-muted-foreground/70 truncate">
-              {userEmail}
-            </div>
-          )}
         </div>
+        {userEmail && (
+          <div className="hidden lg:block px-4 pb-4 pt-3 border-t text-[11px] text-muted-foreground/70 truncate">
+            {userEmail}
+          </div>
+        )}
       </aside>
     </>
   );
@@ -203,8 +263,8 @@ function LogoMark({ size = 36 }: { size?: number }) {
       style={{
         width: size,
         height: size,
-        background: "linear-gradient(135deg, hsl(var(--indigo)), hsl(var(--violet)))",
-        boxShadow: "0 6px 16px -4px hsl(var(--indigo) / 0.45)",
+        background: "linear-gradient(135deg, hsl(var(--teal)), hsl(var(--sky)))",
+        boxShadow: "0 6px 16px -4px hsl(var(--teal) / 0.4)",
       }}
     >
       <div
@@ -212,7 +272,7 @@ function LogoMark({ size = 36 }: { size?: number }) {
         className="absolute inset-0 opacity-50"
         style={{
           background:
-            "radial-gradient(circle at 30% 25%, hsl(0 0% 100% / 0.4), transparent 60%)",
+            "radial-gradient(circle at 30% 25%, hsl(0 0% 100% / 0.35), transparent 60%)",
         }}
       />
       <Eye size={size * 0.45} strokeWidth={2.4} className="relative" />
@@ -233,6 +293,7 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
   return (
     <Link
       href={item.href}
+      prefetch
       className={cn(
         "group relative flex items-center gap-3 h-10 px-3 rounded-xl text-sm transition-colors",
         active

@@ -476,7 +476,7 @@ function PersonList({
                     {profile.full_name}
                   </div>
                   <div className="text-[10px] text-muted-foreground truncate">
-                    {profile.role}
+                    {profile.job_role}
                   </div>
                 </div>
                 <Badge

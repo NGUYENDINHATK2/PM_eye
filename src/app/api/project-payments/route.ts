@@ -1,17 +1,16 @@
-import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
-import type { ProjectPayment } from "@/types/database";
+import { PRIVATE_CACHE_HEADERS, requireRole } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const ctx = await requireApiAdmin();
+  const ctx = await requireRole(["admin", "manager", "pm"]);
   if (ctx instanceof NextResponse) return ctx;
 
   const { data, error } = await ctx.supabase
     .from("project_payments")
     .select("*")
-    .order("due_date", { ascending: true, nullsFirst: false });
+    .order("due_date");
 
   if (error) {
     return NextResponse.json(
@@ -20,7 +19,5 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json((data ?? []) as ProjectPayment[], {
-    headers: PRIVATE_CACHE_HEADERS,
-  });
+  return NextResponse.json(data ?? [], { headers: PRIVATE_CACHE_HEADERS });
 }

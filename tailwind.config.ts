@@ -62,8 +62,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
-        display: ["var(--font-display)", "Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "Plus Jakarta Sans", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Outfit", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "monospace"],
       },
       keyframes: {

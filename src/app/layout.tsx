@@ -1,14 +1,14 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Outfit, Plus_Jakarta_Sans } from "next/font/google";
 
-const inter = Inter({
+const sans = Plus_Jakarta_Sans({
   subsets: ["latin", "vietnamese"],
   variable: "--font-sans",
   display: "swap",
 });
-const display = Space_Grotesk({
-  subsets: ["latin", "vietnamese"],
+const display = Outfit({
+  subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-display",
   display: "swap",
@@ -21,24 +21,24 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PM_Eye — Neural Ops · Project · People · P&L",
-  description: "AI cyberpunk command center cho PM/leader: dự án, nhân sự, dòng tiền — trực quan, real-time.",
+  title: "PM_Eye — Project · People · P&L",
+  description:
+    "Ops console cho PM/leader: capacity team, burn chi phí, sức khỏe dự án — rõ ràng, realtime.",
 };
 
-// FOUC-safe theme init — default DARK (cosmic liquid-glass aesthetic)
+// FOUC-safe theme — default LIGHT (professional ops aesthetic)
 const themeScript = `
 (function() {
   try {
-    var t = localStorage.getItem('pm-eye-theme') || 'dark';
+    var t = localStorage.getItem('pm-eye-theme') || 'light';
     if (t === 'system') {
-      var d = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (d) document.documentElement.classList.add('dark');
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      }
     } else if (t === 'dark') {
       document.documentElement.classList.add('dark');
     }
-  } catch(e) {
-    document.documentElement.classList.add('dark');
-  }
+  } catch(e) {}
 })();
 `;
 
@@ -51,7 +51,7 @@ export default function RootLayout({
     <html
       lang="vi"
       suppressHydrationWarning
-      className={`${inter.variable} ${display.variable} ${mono.variable}`}
+      className={`${sans.variable} ${display.variable} ${mono.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

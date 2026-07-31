@@ -51,9 +51,9 @@ export function AvailableByRole({
     const map = new Map<string, Profile[]>();
     for (const p of profiles) {
       if (!p.is_active) continue;
-      const list = map.get(p.role) ?? [];
+      const list = map.get(p.job_role) ?? [];
       list.push(p);
-      map.set(p.role, list);
+      map.set(p.job_role, list);
     }
     return Array.from(map.entries())
       .map(([role, list]) => ({ role, members: list }))
@@ -108,14 +108,14 @@ export function AvailableByRole({
                     key={m.key}
                     className={cn(
                       "text-center pb-3 min-w-[90px]",
-                      m.isCurrent && "text-indigo-500"
+                      m.isCurrent && "text-teal-500"
                     )}
                   >
                     <div className="text-xs font-semibold">
                       {monthLabel(m.key)}
                     </div>
                     {m.isCurrent && (
-                      <div className="text-[9px] mt-0.5 text-indigo-500 font-medium uppercase tracking-wider">
+                      <div className="text-[9px] mt-0.5 text-teal-500 font-medium uppercase tracking-wider">
                         Hiện tại
                       </div>
                     )}
@@ -172,7 +172,7 @@ export function AvailableByRole({
                               <div
                                 className={cn(
                                   "h-14 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 hover:scale-105 relative",
-                                  m.isCurrent && "ring-2 ring-indigo-500/40"
+                                  m.isCurrent && "ring-2 ring-teal-500/40"
                                 )}
                                 style={{
                                   background: tone.bg,

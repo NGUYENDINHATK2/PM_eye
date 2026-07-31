@@ -46,6 +46,7 @@ import {
   userLoadCurrentMonth,
   userLoadToday,
 } from "@/lib/calculations";
+import { useAppData } from "@/lib/hooks/useAppData";
 import { ROLE_GROUPS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -70,7 +71,8 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 type View = "table" | "cards";
 type StatusFilter = "all" | "active" | "inactive";
@@ -87,9 +89,16 @@ export function EmployeesClient({
   initialSalaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
+  const { mutate, data: appData } = useAppData();
+  const canViewSalary = appData?.user.canViewSalary ?? false;
+  const isAdmin = appData?.user.isAdmin ?? false;
   const [profiles, setProfiles] = useState(initialProfiles);
-  const [allocations] = useState(initialAllocations);
+  const [allocations, setAllocations] = useState(initialAllocations);
   const [salaryHistory, setSalaryHistory] = useState(initialSalaryHistory);
+
+  useEffect(() => setProfiles(initialProfiles), [initialProfiles]);
+  useEffect(() => setAllocations(initialAllocations), [initialAllocations]);
+  useEffect(() => setSalaryHistory(initialSalaryHistory), [initialSalaryHistory]);
 
   // Dialog state
   const [editing, setEditing] = useState<Profile | null>(null);
@@ -114,7 +123,7 @@ export function EmployeesClient({
 
   const allRoles = useMemo(() => {
     const set = new Set<string>();
-    for (const p of profiles) set.add(p.role);
+    for (const p of profiles) set.add(p.job_role);
     return Array.from(set).sort();
   }, [profiles]);
 
@@ -146,14 +155,14 @@ export function EmployeesClient({
       list = list.filter((d) => !d.profile.is_active);
 
     if (roleFilter !== "all")
-      list = list.filter((d) => d.profile.role === roleFilter);
+      list = list.filter((d) => d.profile.job_role === roleFilter);
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (d) =>
           d.profile.full_name.toLowerCase().includes(q) ||
-          d.profile.role.toLowerCase().includes(q) ||
+          d.profile.job_role.toLowerCase().includes(q) ||
           (d.profile.email ?? "").toLowerCase().includes(q)
       );
     }
@@ -207,7 +216,7 @@ export function EmployeesClient({
   const roleDistribution = useMemo(() => {
     const map = new Map<string, number>();
     for (const d of activeList) {
-      map.set(d.profile.role, (map.get(d.profile.role) ?? 0) + 1);
+      map.set(d.profile.job_role, (map.get(d.profile.job_role) ?? 0) + 1);
     }
     return Array.from(map.entries())
       .map(([role, count]) => ({ role, count }))
@@ -226,7 +235,7 @@ export function EmployeesClient({
 
   function openEdit(p: Profile) {
     setEditing(p);
-    setRole(p.role);
+    setRole(p.job_role);
     setError(null);
     setSalaryInput(Number(p.base_salary));
     setSalaryEffectiveFrom(new Date().toISOString().slice(0, 10));
@@ -246,96 +255,127 @@ export function EmployeesClient({
     const startDateValue =
       (fd.get("start_date") as string) ||
       new Date().toISOString().slice(0, 10);
-    const payload = {
-      full_name: fd.get("full_name") as string,
-      email: (fd.get("email") as string) || null,
-      role,
-      base_salary: newSalary,
-      start_date: startDateValue,
-      is_active: fd.get("is_active") === "on",
-    };
-
-    if (editing) {
-      const { data, error: err } = await supabase
-        .from("profiles")
-        .update(payload)
-        .eq("id", editing.id)
-        .select()
-        .single();
-      if (err) {
-        setSaving(false);
-        setError(humanizeSupabaseError(err.message));
-        return;
-      }
-      if (data && newSalary !== Number(editing.base_salary) && newSalary > 0) {
-        const histPayload = {
-          profile_id: editing.id,
-          monthly_amount: newSalary,
-          effective_from: salaryEffectiveFrom,
-          note:
-            newSalary > Number(editing.base_salary)
-              ? `Tăng từ ${Number(editing.base_salary).toLocaleString("vi-VN")}`
-              : `Giảm từ ${Number(editing.base_salary).toLocaleString("vi-VN")}`,
+    try {
+      if (editing) {
+        const patchBody: Record<string, unknown> = {
+          id: editing.id,
+          full_name: fd.get("full_name") as string,
+          email: (fd.get("email") as string) || null,
+          job_role: role,
+          start_date: startDateValue,
+          is_active: fd.get("is_active") === "on",
         };
-        const { data: hist, error: histErr } = await supabase
-          .from("salary_history")
-          .insert(histPayload)
-          .select()
-          .single();
-        if (histErr) {
+        if (canViewSalary) patchBody.base_salary = newSalary;
+
+        const res = await fetch("/api/profiles", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patchBody),
+        });
+        const data = await res.json();
+        if (!res.ok) {
           setSaving(false);
-          setError(
-            "Cập nhật lương thành công nhưng không ghi được lịch sử: " +
-              humanizeSupabaseError(histErr.message)
-          );
+          setError(humanizeSupabaseError(data.message || "Lỗi cập nhật"));
           return;
         }
-        if (hist) setSalaryHistory((arr) => [hist as SalaryHistory, ...arr]);
-      }
-      setSaving(false);
-      if (data) {
-        setProfiles((arr) =>
-          arr.map((p) => (p.id === editing.id ? (data as Profile) : p))
-        );
+
+        if (
+          canViewSalary &&
+          newSalary !== Number(editing.base_salary) &&
+          newSalary > 0
+        ) {
+          const histRes = await fetch("/api/salary-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              profile_id: editing.id,
+              monthly_amount: newSalary,
+              effective_from: salaryEffectiveFrom,
+              note:
+                newSalary > Number(editing.base_salary)
+                  ? `Tăng từ ${Number(editing.base_salary).toLocaleString("vi-VN")}`
+                  : `Giảm từ ${Number(editing.base_salary).toLocaleString("vi-VN")}`,
+            }),
+          });
+          if (histRes.ok) {
+            const hist = (await histRes.json()) as SalaryHistory;
+            setSalaryHistory((arr) => [hist, ...arr]);
+            mutate((prev) => ({
+              ...prev,
+              salaryHistory: [hist, ...prev.salaryHistory],
+            }));
+          }
+        }
+
+        const next = data as Profile;
+        setProfiles((arr) => arr.map((p) => (p.id === editing.id ? next : p)));
+        mutate((prev) => ({
+          ...prev,
+          profiles: prev.profiles.map((p) => (p.id === editing.id ? next : p)),
+        }));
+        toast.success(`Đã cập nhật ${next.full_name}`);
+        setOpen(false);
+      } else {
+        // Tạo nhân sự = tạo auth user — chỉ admin, qua /api/admin/users
+        if (!isAdmin) {
+          setSaving(false);
+          setError("Chỉ admin được tạo nhân sự mới. Vào Tài khoản để cấp acc.");
+          return;
+        }
+        const password = String(fd.get("password") || "");
+        if (password.length < 6) {
+          setSaving(false);
+          setError("Cần mật khẩu ≥ 6 ký tự để tạo tài khoản đăng nhập.");
+          return;
+        }
+        const res = await fetch("/api/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: fd.get("email"),
+            password,
+            full_name: fd.get("full_name"),
+            job_role: role,
+            app_role: "member",
+            base_salary: canViewSalary ? newSalary : 0,
+            start_date: startDateValue,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setSaving(false);
+          setError(humanizeSupabaseError(json.message || "Không tạo được"));
+          return;
+        }
+        const next = json.user as Profile;
+        setProfiles((arr) => [next, ...arr]);
+        mutate((prev) => ({
+          ...prev,
+          profiles: [next, ...prev.profiles],
+        }));
+        toast.success(`Đã thêm ${next.full_name}`);
         setOpen(false);
       }
-    } else {
-      const { data, error: err } = await supabase
-        .from("profiles")
-        .insert(payload)
-        .select()
-        .single();
-      if (err) {
-        setSaving(false);
-        setError(humanizeSupabaseError(err.message));
-        return;
-      }
-      if (data && newSalary > 0) {
-        const histPayload = {
-          profile_id: (data as Profile).id,
-          monthly_amount: newSalary,
-          effective_from: startDateValue,
-          note: "Mức lương ban đầu",
-        };
-        const { data: hist } = await supabase
-          .from("salary_history")
-          .insert(histPayload)
-          .select()
-          .single();
-        if (hist) setSalaryHistory((arr) => [hist as SalaryHistory, ...arr]);
-      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Lỗi không xác định");
+    } finally {
       setSaving(false);
-      if (data) {
-        setProfiles((arr) => [data as Profile, ...arr]);
-        setOpen(false);
-      }
     }
   }
 
   async function remove(p: Profile) {
     if (!confirm(`Xóa ${p.full_name}?`)) return;
-    await supabase.from("profiles").delete().eq("id", p.id);
+    const { error: err } = await supabase.from("profiles").delete().eq("id", p.id);
+    if (err) {
+      toast.error(humanizeSupabaseError(err.message));
+      return;
+    }
     setProfiles((arr) => arr.filter((x) => x.id !== p.id));
+    mutate((prev) => ({
+      ...prev,
+      profiles: prev.profiles.filter((x) => x.id !== p.id),
+    }));
+    toast.success(`Đã xóa ${p.full_name}`);
   }
 
   return (
@@ -407,7 +447,7 @@ export function EmployeesClient({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp size={14} className="text-indigo-500" />
+              <TrendingUp size={14} className="text-teal-500" />
               Phân bố theo role
             </CardTitle>
             <CardDescription className="text-xs">
@@ -661,7 +701,9 @@ export function EmployeesClient({
                 <TableRow>
                   <TableHead className="pl-6">Tên</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Lương / tháng</TableHead>
+                  {canViewSalary && (
+                    <TableHead className="text-right">Lương / tháng</TableHead>
+                  )}
                   <TableHead>Tải hôm nay</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="pr-6 w-16"></TableHead>
@@ -685,7 +727,7 @@ export function EmployeesClient({
                       <TableCell className="pl-6">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
+                            <AvatarFallback className="text-xs bg-gradient-to-br from-teal-500 to-cyan-600 text-white">
                               {p.full_name?.[0]?.toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -700,11 +742,13 @@ export function EmployeesClient({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="brand">{p.role}</Badge>
+                        <Badge variant="brand">{p.job_role}</Badge>
                       </TableCell>
-                      <TableCell className="text-right tnum">
-                        {formatCurrency(p.base_salary)}
-                      </TableCell>
+                      {canViewSalary && (
+                        <TableCell className="text-right tnum">
+                          {formatCurrency(p.base_salary)}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -776,7 +820,9 @@ export function EmployeesClient({
               {editing ? "Sửa nhân sự" : "Thêm nhân sự"}
             </DialogTitle>
             <DialogDescription>
-              Lưu thông tin lương và vị trí để hệ thống tính chi phí.
+              {editing
+                ? "Cập nhật thông tin nhân sự."
+                : "Tạo tài khoản đăng nhập (member) + hồ sơ nhân sự. Đổi quyền tại Tài khoản."}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -800,7 +846,9 @@ export function EmployeesClient({
                   id="email"
                   name="email"
                   type="email"
+                  required={!editing}
                   defaultValue={editing?.email ?? ""}
+                  disabled={!!editing}
                 />
               </div>
               <div className="space-y-2">
@@ -827,29 +875,45 @@ export function EmployeesClient({
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {!editing && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2 min-h-[18px]">
-                  <Label htmlFor="base_salary" className="!mb-0">
-                    Lương / tháng (VND)
-                  </Label>
-                  {editing && historyCount(editing.id) > 0 && (
-                    <Badge variant="info" className="text-[9px] !py-0">
-                      {historyCount(editing.id)} lần đổi
-                    </Badge>
-                  )}
-                </div>
+                <Label htmlFor="password">Mật khẩu đăng nhập</Label>
                 <Input
-                  id="base_salary"
-                  name="base_salary"
-                  type="number"
-                  min="0"
-                  step="100000"
+                  id="password"
+                  name="password"
+                  type="password"
+                  minLength={6}
                   required
-                  value={salaryInput || ""}
-                  onChange={(e) => setSalaryInput(Number(e.target.value || 0))}
+                  autoComplete="new-password"
+                  placeholder="Tối thiểu 6 ký tự"
                 />
               </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {canViewSalary && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 min-h-[18px]">
+                    <Label htmlFor="base_salary" className="!mb-0">
+                      Lương / tháng (VND)
+                    </Label>
+                    {editing && historyCount(editing.id) > 0 && (
+                      <Badge variant="info" className="text-[9px] !py-0">
+                        {historyCount(editing.id)} lần đổi
+                      </Badge>
+                    )}
+                  </div>
+                  <Input
+                    id="base_salary"
+                    name="base_salary"
+                    type="number"
+                    min="0"
+                    step="100000"
+                    required
+                    value={salaryInput || ""}
+                    onChange={(e) => setSalaryInput(Number(e.target.value || 0))}
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="start_date">Ngày vào</Label>
                 <Input
@@ -864,7 +928,8 @@ export function EmployeesClient({
               </div>
             </div>
 
-            {editing &&
+            {canViewSalary &&
+              editing &&
               salaryInput > 0 &&
               salaryInput !== Number(editing.base_salary) && (
                 <div className="rounded-xl border bg-gradient-to-br from-amber-500/[0.06] to-transparent p-3 space-y-2">
@@ -894,7 +959,7 @@ export function EmployeesClient({
                 type="checkbox"
                 name="is_active"
                 defaultChecked={editing ? editing.is_active : true}
-                className="w-4 h-4 rounded border-input accent-indigo-500"
+                className="w-4 h-4 rounded border-input accent-teal-500"
               />
               Đang làm việc
             </label>
@@ -928,14 +993,14 @@ export function EmployeesClient({
 type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
 const toneMap: Record<Tone, { bg: string; text: string; iconBg: string }> = {
   indigo: {
-    bg: "bg-indigo-500/5 border-indigo-500/15",
-    text: "text-indigo-600 dark:text-indigo-400",
-    iconBg: "bg-indigo-500/10",
+    bg: "bg-teal-500/5 border-teal-500/15",
+    text: "text-teal-600 dark:text-teal-400",
+    iconBg: "bg-teal-500/10",
   },
   violet: {
-    bg: "bg-violet-500/5 border-violet-500/15",
-    text: "text-violet-600 dark:text-violet-400",
-    iconBg: "bg-violet-500/10",
+    bg: "bg-cyan-500/5 border-cyan-500/15",
+    text: "text-cyan-600 dark:text-cyan-400",
+    iconBg: "bg-cyan-500/10",
   },
   emerald: {
     bg: "bg-emerald-500/5 border-emerald-500/15",
@@ -1047,7 +1112,7 @@ function PersonCard({
     >
       <div className="flex items-start gap-3 mb-3">
         <Avatar className="h-11 w-11 ring-2 ring-primary/15 shrink-0">
-          <AvatarFallback className="text-sm bg-gradient-to-br from-indigo-500 to-violet-600 text-white font-semibold">
+          <AvatarFallback className="text-sm bg-gradient-to-br from-teal-500 to-cyan-600 text-white font-semibold">
             {profile.full_name?.[0]?.toUpperCase()}
           </AvatarFallback>
         </Avatar>
@@ -1057,7 +1122,7 @@ function PersonCard({
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             <Badge variant="brand" className="text-[10px] py-0">
-              {profile.role}
+              {profile.job_role}
             </Badge>
             {!profile.is_active && (
               <Badge variant="secondary" className="text-[10px] py-0">
@@ -1107,7 +1172,8 @@ function PersonCard({
         </div>
       </div>
 
-      {/* Footer: salary + history */}
+      {/* Footer: salary + history — chỉ khi admin (base_salary đã strip = 0 cho non-admin) */}
+      {Number(profile.base_salary) > 0 && (
       <div className="flex items-center justify-between mt-3 pt-3 border-t text-[11px]">
         <div>
           <div className="text-muted-foreground">Lương / tháng</div>
@@ -1121,6 +1187,7 @@ function PersonCard({
           </Badge>
         )}
       </div>
+      )}
     </div>
   );
 }

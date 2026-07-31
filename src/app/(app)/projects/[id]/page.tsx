@@ -2,22 +2,15 @@
 
 import { PageSkeleton } from "@/components/ui/skeleton";
 import { useAppData } from "@/lib/hooks/useAppData";
-import { useParams } from "next/navigation";
-import { notFound } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
 import { ProjectDetailClient } from "./ProjectDetailClient";
 
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { data, loading, error } = useAppData();
+  const { data, loading } = useAppData();
 
-  if (loading) return <PageSkeleton variant="detail" />;
-  if (error)
-    return (
-      <div className="text-center py-20 text-rose-500">
-        Lỗi tải dữ liệu: {error}
-      </div>
-    );
+  if (loading && !data) return <PageSkeleton variant="detail" />;
   if (!data) return null;
 
   const project = data.projects.find((p) => p.id === id);

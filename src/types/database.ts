@@ -1,8 +1,14 @@
+export type AppRole = "admin" | "manager" | "pm" | "member";
+
 export type Profile = {
   id: string;
   full_name: string;
   email: string | null;
-  role: string;
+  /** Chức danh: FE / BA / QA … */
+  job_role: string;
+  /** Quyền hệ thống */
+  app_role: AppRole;
+  /** Chỉ có khi caller là admin; non-admin = 0 / omitted */
   base_salary: number;
   start_date: string;
   is_active: boolean;
@@ -26,6 +32,8 @@ export type Project = {
   end_date: string | null;
   description: string | null;
   color: string;
+  /** PM phụ trách dự án */
+  manager_id: string | null;
   created_at: string;
 };
 
@@ -33,7 +41,7 @@ export type SalaryHistory = {
   id: string;
   profile_id: string;
   monthly_amount: number;
-  effective_from: string; // YYYY-MM-DD
+  effective_from: string;
   note: string | null;
   created_at: string;
 };
@@ -71,7 +79,7 @@ export type Allocation = {
   user_id: string;
   project_id: string;
   phase_id: string | null;
-  percent: number; // 0..1
+  percent: number;
   start_date: string;
   end_date: string;
   note: string | null;

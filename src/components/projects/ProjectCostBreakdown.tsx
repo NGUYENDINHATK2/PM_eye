@@ -69,7 +69,7 @@ export function ProjectCostBreakdown({
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp size={15} className="text-indigo-500" />
+              <TrendingUp size={15} className="text-teal-500" />
               Chi phí vận hành theo {granularity === "month" ? "tháng" : "tuần"}
             </CardTitle>
             <CardDescription>
@@ -91,7 +91,7 @@ export function ProjectCostBreakdown({
                   className={cn(
                     "px-3 h-7 rounded-md text-xs font-medium transition",
                     granularity === g
-                      ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                      ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -296,18 +296,18 @@ export function ProjectCostBreakdown({
                     key={p.key}
                     className={cn(
                       "border-t",
-                      isLast && "bg-indigo-500/[0.04] font-medium"
+                      isLast && "bg-teal-500/[0.04] font-medium"
                     )}
                   >
                     <td className="px-3 py-2.5">
                       <div className="text-sm">{p.label}</div>
                       {isLast && (
-                        <div className="text-[10px] text-indigo-500 font-medium uppercase tracking-wider">
+                        <div className="text-[10px] text-teal-500 font-medium uppercase tracking-wider">
                           Hiện tại
                         </div>
                       )}
                     </td>
-                    <td className="text-right tnum text-indigo-600 dark:text-indigo-400 px-3 py-2.5">
+                    <td className="text-right tnum text-teal-600 dark:text-teal-400 px-3 py-2.5">
                       {p.labor > 0 ? formatCurrency(p.labor) : "—"}
                     </td>
                     <td className="text-right tnum text-sky-600 dark:text-sky-400 px-3 py-2.5">

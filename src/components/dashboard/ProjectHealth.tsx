@@ -39,7 +39,7 @@ export function ProjectHealth({
             <div className="text-sm">Chưa có dự án nào.</div>
             <Link
               href="/projects"
-              className="text-xs text-indigo-500 hover:underline mt-1 inline-block"
+              className="text-xs text-teal-500 hover:underline mt-1 inline-block"
             >
               Tạo dự án đầu tiên →
             </Link>

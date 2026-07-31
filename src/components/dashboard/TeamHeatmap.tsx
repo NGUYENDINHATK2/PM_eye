@@ -106,7 +106,7 @@ export function TeamHeatmap({
                       <th
                         key={m.key}
                         className={`eyebrow text-center pb-3 w-16 ${
-                          m.isThisMonth ? "text-indigo-500" : ""
+                          m.isThisMonth ? "text-teal-500" : ""
                         }`}
                       >
                         {monthLabel(m.key)}
@@ -136,7 +136,7 @@ export function TeamHeatmap({
                               {p.full_name}
                             </div>
                             <div className="text-[10px] text-muted-foreground truncate">
-                              {p.role}
+                              {p.job_role}
                             </div>
                           </div>
                         </div>
@@ -161,7 +161,7 @@ export function TeamHeatmap({
                                   className={`h-10 rounded-lg flex items-center justify-center text-xs font-semibold tnum cursor-pointer transition-all duration-200 hover:scale-110 ${
                                     isCritical ? "animate-glow-pulse" : ""
                                   } ${
-                                    m.isThisMonth ? "ring-1 ring-indigo-500/40" : ""
+                                    m.isThisMonth ? "ring-1 ring-teal-500/40" : ""
                                   }`}
                                   style={cellStyle(load)}
                                 >

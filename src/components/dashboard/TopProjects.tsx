@@ -148,7 +148,7 @@ export function TopProjects({
                               boxShadow: `0 0 0 3px ${project.color}22`,
                             }}
                           />
-                          <span className="font-medium text-sm truncate group-hover:text-indigo-500 transition">
+                          <span className="font-medium text-sm truncate group-hover:text-teal-500 transition">
                             {project.name}
                           </span>
                           <ArrowUpRight

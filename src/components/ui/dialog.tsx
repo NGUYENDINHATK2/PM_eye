@@ -52,7 +52,7 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {/* Top accent line */}
-      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-teal-500/40 to-transparent pointer-events-none" />
 
       {children}
 

@@ -1,15 +1,11 @@
-import { PRIVATE_CACHE_HEADERS, requireApiAdmin } from "@/lib/api-auth";
-import type { OperatingExpense } from "@/types/database";
+import { PRIVATE_CACHE_HEADERS, requireRole } from "@/lib/api-auth";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/operating-expenses — admin only.
- * Non-admin sẽ nhận 403; client xử lý bằng cách show empty/locked state.
- */
+/** Member không xem expenses */
 export async function GET() {
-  const ctx = await requireApiAdmin();
+  const ctx = await requireRole(["admin", "manager", "pm"]);
   if (ctx instanceof NextResponse) return ctx;
 
   const { data, error } = await ctx.supabase
@@ -24,7 +20,5 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json((data ?? []) as OperatingExpense[], {
-    headers: PRIVATE_CACHE_HEADERS,
-  });
+  return NextResponse.json(data ?? [], { headers: PRIVATE_CACHE_HEADERS });
 }

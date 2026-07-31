@@ -19,10 +19,10 @@ export function EmptyState({
 }) {
   const toneStyles: Record<string, { bg: string; ring: string; glow: string; iconColor: string }> = {
     indigo: {
-      bg: "from-indigo-500/20 via-indigo-500/5 to-transparent",
-      ring: "ring-indigo-500/20",
-      glow: "from-indigo-500/30 to-violet-500/20",
-      iconColor: "text-indigo-500",
+      bg: "from-teal-500/20 via-teal-500/5 to-transparent",
+      ring: "ring-teal-500/20",
+      glow: "from-teal-500/30 to-cyan-500/20",
+      iconColor: "text-teal-500",
     },
     emerald: {
       bg: "from-emerald-500/20 via-emerald-500/5 to-transparent",
@@ -49,10 +49,10 @@ export function EmptyState({
       iconColor: "text-sky-500",
     },
     violet: {
-      bg: "from-violet-500/20 via-violet-500/5 to-transparent",
-      ring: "ring-violet-500/20",
-      glow: "from-violet-500/30 to-purple-500/20",
-      iconColor: "text-violet-500",
+      bg: "from-cyan-500/20 via-cyan-500/5 to-transparent",
+      ring: "ring-cyan-500/20",
+      glow: "from-cyan-500/30 to-purple-500/20",
+      iconColor: "text-cyan-500",
     },
   };
 

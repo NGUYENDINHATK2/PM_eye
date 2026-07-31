@@ -20,7 +20,7 @@ const badgeVariants = cva(
         info:
           "border-transparent bg-sky-500/10 text-sky-600 dark:text-sky-400 ring-1 ring-sky-500/20",
         brand:
-          "border-transparent bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 ring-1 ring-indigo-500/20",
+          "border-transparent bg-teal-500/10 text-teal-600 dark:text-teal-300 ring-1 ring-teal-500/20",
         outline: "text-foreground",
       },
     },

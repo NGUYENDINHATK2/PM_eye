@@ -38,8 +38,8 @@ export function CapacityStats({
       value: active.length.toString(),
       hint: "người",
       icon: Users,
-      tone: "from-indigo-500/30 to-indigo-500/10",
-      iconTone: "bg-indigo-500/10 text-indigo-500",
+      tone: "from-teal-500/30 to-teal-500/10",
+      iconTone: "bg-teal-500/10 text-teal-500",
     },
     {
       label: "Tải hôm nay",

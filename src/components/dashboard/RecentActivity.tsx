@@ -109,7 +109,7 @@ export function RecentActivity({
       type: "profile",
       date: new Date(p.created_at),
       title: `${p.full_name} tham gia team`,
-      subtitle: p.role,
+      subtitle: p.job_role,
       color: "hsl(238 84% 65%)",
       icon: <UserPlus size={12} />,
     });
@@ -122,7 +122,7 @@ export function RecentActivity({
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Activity size={15} className="text-indigo-500" />
+          <Activity size={15} className="text-teal-500" />
           Hoạt động gần đây
         </CardTitle>
         <CardDescription>

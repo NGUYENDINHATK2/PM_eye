@@ -5,15 +5,9 @@ import { useAppData } from "@/lib/hooks/useAppData";
 import { ExpensesClient } from "./ExpensesClient";
 
 export default function ExpensesPage() {
-  const { data, loading, error } = useAppData();
+  const { data, loading } = useAppData();
 
-  if (loading) return <PageSkeleton variant="table" />;
-  if (error)
-    return (
-      <div className="text-center py-20 text-rose-500">
-        Lỗi tải dữ liệu: {error}
-      </div>
-    );
+  if (loading && !data) return <PageSkeleton variant="table" />;
   if (!data) return null;
 
   return (
