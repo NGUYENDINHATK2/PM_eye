@@ -96,6 +96,18 @@ export function EmployeesClient({
   const [allocations, setAllocations] = useState(initialAllocations);
   const [salaryHistory, setSalaryHistory] = useState(initialSalaryHistory);
 
+  const teamByUserId = useMemo(() => {
+    const teams = appData?.teams ?? [];
+    const members = appData?.teamMembers ?? [];
+    const teamsById = new Map(teams.map((t) => [t.id, t]));
+    const map = new Map<string, { name: string; color: string }>();
+    for (const m of members) {
+      const t = teamsById.get(m.team_id);
+      if (t) map.set(m.user_id, { name: t.name, color: t.color });
+    }
+    return map;
+  }, [appData?.teams, appData?.teamMembers]);
+
   useEffect(() => setProfiles(initialProfiles), [initialProfiles]);
   useEffect(() => setAllocations(initialAllocations), [initialAllocations]);
   useEffect(() => setSalaryHistory(initialSalaryHistory), [initialSalaryHistory]);
@@ -690,6 +702,7 @@ export function EmployeesClient({
               status={d.status}
               historyCount={historyCount(d.profile.id)}
               canViewSalary={canViewSalary}
+              team={teamByUserId.get(d.profile.id) ?? null}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -702,6 +715,7 @@ export function EmployeesClient({
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-5">Tên</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Team</TableHead>
                 {canViewSalary && (
                   <TableHead className="text-right">Lương / tháng</TableHead>
                 )}
@@ -746,6 +760,21 @@ export function EmployeesClient({
                     </TableCell>
                     <TableCell>
                       <Badge variant="brand">{p.job_role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {teamByUserId.get(p.id) ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{
+                              background: teamByUserId.get(p.id)!.color,
+                            }}
+                          />
+                          {teamByUserId.get(p.id)!.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     {canViewSalary && (
                       <TableCell className="tnum text-right tabular-nums">
@@ -1160,6 +1189,7 @@ function PersonCard({
   status,
   historyCount,
   canViewSalary,
+  team,
   onEdit,
   onDelete,
 }: {
@@ -1170,6 +1200,7 @@ function PersonCard({
   status: ReturnType<typeof loadStatus>;
   historyCount: number;
   canViewSalary: boolean;
+  team: { name: string; color: string } | null;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1209,10 +1240,23 @@ function PersonCard({
           <div className="truncate text-sm font-semibold leading-none">
             {profile.full_name}
           </div>
-          <div className="mt-1.5 flex items-center gap-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <Badge variant="brand" className="py-0 text-[10px]">
               {profile.job_role}
             </Badge>
+            {team && (
+              <Badge
+                variant="secondary"
+                className="gap-1 py-0 text-[10px]"
+                style={{ borderColor: `${team.color}55` }}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: team.color }}
+                />
+                {team.name}
+              </Badge>
+            )}
             {!profile.is_active && (
               <Badge variant="secondary" className="py-0 text-[10px]">
                 Off

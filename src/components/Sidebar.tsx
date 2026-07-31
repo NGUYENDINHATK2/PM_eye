@@ -20,6 +20,7 @@ import {
   Shield,
   Sliders,
   Users,
+  UsersRound,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -54,6 +55,12 @@ const MENU_ITEMS: Item[] = [
     href: "/employees",
     label: "Nhân sự",
     icon: Users,
+    roles: ["admin", "manager", "pm"],
+  },
+  {
+    href: "/teams",
+    label: "Teams",
+    icon: UsersRound,
     roles: ["admin", "manager", "pm"],
   },
   {

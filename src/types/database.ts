@@ -96,3 +96,19 @@ export type OperatingExpense = {
   spent_date: string;
   created_at: string;
 };
+
+/** Nhóm nhân sự — không gắn dự án */
+export type Team = {
+  id: string;
+  name: string;
+  description: string | null;
+  leader_id: string | null;
+  color: string;
+  created_at: string;
+};
+
+export type TeamMember = {
+  team_id: string;
+  user_id: string;
+  created_at: string;
+};

@@ -1,4 +1,5 @@
 import {
+  canAccessTeams,
   canViewMoney,
   canViewSalary,
   filterProjectsForRole,
@@ -14,6 +15,8 @@ import type {
   ProjectPayment,
   ProjectPhase,
   SalaryHistory,
+  Team,
+  TeamMember,
 } from "@/types/database";
 
 export type ScopedBootstrap = {
@@ -32,6 +35,8 @@ export type ScopedBootstrap = {
   expenses: OperatingExpense[];
   payments: ProjectPayment[];
   salaryHistory: SalaryHistory[];
+  teams: Team[];
+  teamMembers: TeamMember[];
 };
 
 export function scopeBootstrapData(input: {
@@ -45,6 +50,8 @@ export function scopeBootstrapData(input: {
   expenses: OperatingExpense[];
   payments: ProjectPayment[];
   salaryHistory: SalaryHistory[];
+  teams?: Team[];
+  teamMembers?: TeamMember[];
 }): ScopedBootstrap {
   const { role, userId } = input;
 
@@ -102,6 +109,17 @@ export function scopeBootstrapData(input: {
 
   const salaryHistory = canViewSalary(role) ? input.salaryHistory : [];
 
+  // Teams: admin/manager/pm thấy hết; member chỉ team mình
+  let teams = input.teams ?? [];
+  let teamMembers = input.teamMembers ?? [];
+  if (!canAccessTeams(role)) {
+    const myTeamIds = new Set(
+      teamMembers.filter((m) => m.user_id === userId).map((m) => m.team_id)
+    );
+    teams = teams.filter((t) => myTeamIds.has(t.id));
+    teamMembers = teamMembers.filter((m) => myTeamIds.has(m.team_id));
+  }
+
   return {
     user: {
       id: userId,
@@ -118,5 +136,7 @@ export function scopeBootstrapData(input: {
     expenses,
     payments,
     salaryHistory,
+    teams,
+    teamMembers,
   };
 }

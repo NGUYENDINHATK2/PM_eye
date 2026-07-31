@@ -120,6 +120,28 @@ create table public.operating_expenses (
   created_at timestamptz not null default now()
 );
 
+-- 8. TEAMS — nhóm nhân sự (KHÔNG gắn dự án)
+create table public.teams (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  leader_id uuid references public.profiles(id) on delete set null,
+  color text not null default '#0d9488',
+  created_at timestamptz not null default now()
+);
+
+-- 9. TEAM_MEMBERS — mỗi người chỉ thuộc 1 team
+create table public.team_members (
+  team_id uuid not null references public.teams(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (team_id, user_id),
+  unique (user_id)
+);
+
+create index teams_leader_id_idx on public.teams (leader_id);
+create index team_members_user_id_idx on public.team_members (user_id);
+
 create index idx_alloc_user on public.allocations(user_id);
 create index idx_alloc_project on public.allocations(project_id);
 create index idx_alloc_dates on public.allocations(start_date, end_date);
@@ -243,6 +265,8 @@ alter table public.allocations enable row level security;
 alter table public.operating_expenses enable row level security;
 alter table public.project_payments enable row level security;
 alter table public.salary_history enable row level security;
+alter table public.teams enable row level security;
+alter table public.team_members enable row level security;
 
 -- PROFILES: member chỉ đọc chính; manager/pm/admin đọc roster
 create policy "profiles_select" on public.profiles
@@ -342,6 +366,38 @@ create policy "salary_admin_all" on public.salary_history
   using (public.is_admin())
   with check (public.is_admin());
 
+-- TEAMS — org groups, không gắn dự án
+create policy "teams_select" on public.teams
+  for select to authenticated
+  using (
+    public.app_role() in ('admin', 'manager', 'pm')
+    or exists (
+      select 1 from public.team_members tm
+      where tm.team_id = teams.id and tm.user_id = auth.uid()
+    )
+  );
+
+create policy "teams_write" on public.teams
+  for all to authenticated
+  using (public.app_role() in ('admin', 'manager'))
+  with check (public.app_role() in ('admin', 'manager'));
+
+create policy "team_members_select" on public.team_members
+  for select to authenticated
+  using (
+    public.app_role() in ('admin', 'manager', 'pm')
+    or user_id = auth.uid()
+    or exists (
+      select 1 from public.team_members tm2
+      where tm2.team_id = team_members.team_id and tm2.user_id = auth.uid()
+    )
+  );
+
+create policy "team_members_write" on public.team_members
+  for all to authenticated
+  using (public.app_role() in ('admin', 'manager'))
+  with check (public.app_role() in ('admin', 'manager'));
+
 -- =====================================================
 -- Column privileges — che base_salary với non-admin
 -- =====================================================
@@ -352,6 +408,8 @@ revoke all on table public.project_phases from anon, authenticated;
 revoke all on table public.allocations from anon, authenticated;
 revoke all on table public.operating_expenses from anon, authenticated;
 revoke all on table public.project_payments from anon, authenticated;
+revoke all on table public.teams from anon, authenticated;
+revoke all on table public.team_members from anon, authenticated;
 
 -- profiles: authenticated được các cột non-salary
 grant select (
@@ -382,6 +440,8 @@ grant select, insert, update, delete on public.project_phases to authenticated;
 grant select, insert, update, delete on public.allocations to authenticated;
 grant select, insert, update, delete on public.operating_expenses to authenticated;
 grant select, insert, update, delete on public.project_payments to authenticated;
+grant select, insert, update, delete on public.teams to authenticated;
+grant select, insert, update, delete on public.team_members to authenticated;
 
 -- salary_history: không grant cho authenticated — chỉ service_role / admin qua API
 -- (RLS vẫn có policy admin; cần grant SELECT cho authenticated để policy chạy)

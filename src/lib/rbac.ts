@@ -32,6 +32,15 @@ export function canAccessEmployees(role: AppRole | null | undefined): boolean {
   return role === "admin" || role === "manager" || role === "pm";
 }
 
+export function canAccessTeams(role: AppRole | null | undefined): boolean {
+  return canAccessEmployees(role);
+}
+
+/** Tạo / sửa / xoá team + thành viên */
+export function canWriteTeams(role: AppRole | null | undefined): boolean {
+  return role === "admin" || role === "manager";
+}
+
 export function canAccessExpenses(role: AppRole | null | undefined): boolean {
   return canViewMoney(role);
 }

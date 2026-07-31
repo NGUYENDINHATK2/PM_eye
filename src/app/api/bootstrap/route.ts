@@ -8,6 +8,8 @@ import type {
   ProjectPayment,
   ProjectPhase,
   SalaryHistory,
+  Team,
+  TeamMember,
 } from "@/types/database";
 import { NextResponse } from "next/server";
 
@@ -29,6 +31,8 @@ export async function GET() {
     expensesRes,
     paymentsRes,
     salaryRes,
+    teamsRes,
+    teamMembersRes,
   ] = await Promise.all([
     ctx.admin.from("profiles").select("*").order("created_at", { ascending: false }),
     ctx.admin.from("projects").select("*").order("created_at", { ascending: false }),
@@ -42,7 +46,21 @@ export async function GET() {
           .select("*")
           .order("effective_from", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
+    ctx.admin.from("teams").select("*").order("created_at", { ascending: false }),
+    ctx.admin.from("team_members").select("*"),
   ]);
+
+  // teams bảng chưa migrate → không phá bootstrap
+  const teamsMissing =
+    teamsRes.error &&
+    /relation .*teams.* does not exist|could not find the table/i.test(
+      teamsRes.error.message
+    );
+  const teamMembersMissing =
+    teamMembersRes.error &&
+    /relation .*team_members.* does not exist|could not find the table/i.test(
+      teamMembersRes.error.message
+    );
 
   const firstError =
     profilesRes.error ||
@@ -51,7 +69,9 @@ export async function GET() {
     allocationsRes.error ||
     expensesRes.error ||
     paymentsRes.error ||
-    salaryRes.error;
+    salaryRes.error ||
+    (!teamsMissing && teamsRes.error) ||
+    (!teamMembersMissing && teamMembersRes.error);
 
   if (firstError) {
     const msg = firstError.message ?? "db_error";
@@ -78,6 +98,10 @@ export async function GET() {
     expenses: (expensesRes.data ?? []) as OperatingExpense[],
     payments: (paymentsRes.data ?? []) as ProjectPayment[],
     salaryHistory: (salaryRes.data ?? []) as SalaryHistory[],
+    teams: teamsMissing ? [] : ((teamsRes.data ?? []) as Team[]),
+    teamMembers: teamMembersMissing
+      ? []
+      : ((teamMembersRes.data ?? []) as TeamMember[]),
   });
 
   return NextResponse.json(payload, { headers: PRIVATE_CACHE_HEADERS });

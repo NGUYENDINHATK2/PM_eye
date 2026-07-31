@@ -9,6 +9,8 @@ import type {
   ProjectPayment,
   ProjectPhase,
   SalaryHistory,
+  Team,
+  TeamMember,
 } from "@/types/database";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +42,8 @@ export type AppData = {
   expenses: OperatingExpense[];
   payments: ProjectPayment[];
   salaryHistory: SalaryHistory[];
+  teams: Team[];
+  teamMembers: TeamMember[];
 };
 
 type Ctx = {
@@ -101,7 +105,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             throw new Error(body?.message ?? `HTTP ${res.status}`);
           }
 
-          const payload = (await res.json()) as AppData;
+          const raw = (await res.json()) as AppData;
+          const payload: AppData = {
+            ...raw,
+            teams: raw.teams ?? [],
+            teamMembers: raw.teamMembers ?? [],
+          };
           startTransition(() => {
             setData(payload);
             setError(null);
