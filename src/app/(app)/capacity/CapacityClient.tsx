@@ -184,7 +184,7 @@ export function CapacityClient({
       {/* Toolbar */}
       <div className="space-y-3">
         {/* View tabs (responsive, wraps on mobile) */}
-        <div className="inline-flex rounded-xl border bg-card p-1 shadow-sm flex-wrap">
+        <div className="inline-flex flex-wrap rounded-2xl border border-border/60 bg-card/80 p-1 ring-1 ring-border/40 shadow-sm">
           {viewItems.map((v) => {
             const active = view === v.id;
             const Icon = v.icon;
@@ -194,10 +194,10 @@ export function CapacityClient({
                 type="button"
                 onClick={() => setView(v.id)}
                 className={cn(
-                  "inline-flex items-center gap-2 px-3 lg:px-4 h-9 rounded-lg text-xs lg:text-sm font-medium transition",
+                  "inline-flex h-9 items-center gap-2 rounded-xl px-3 text-xs font-medium transition lg:px-4 lg:text-sm",
                   active
-                    ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-500/30 dark:bg-teal-500"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 )}
               >
                 <Icon size={14} />
@@ -219,13 +219,13 @@ export function CapacityClient({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm tên / role…"
-              className="h-9 pl-7 pr-2 text-xs w-[180px] bg-card"
+              className="h-9 w-[180px] rounded-xl border-border/60 bg-card pl-7 pr-2 text-xs ring-1 ring-border/30"
             />
           </div>
 
           {/* Role filter */}
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-card shadow-sm">
+            <SelectTrigger className="h-9 w-[150px] rounded-xl border-border/60 bg-card text-xs font-medium shadow-sm ring-1 ring-border/30">
               <SelectValue placeholder="Tất cả role" />
             </SelectTrigger>
             <SelectContent>
@@ -242,7 +242,7 @@ export function CapacityClient({
 
           {/* Sort */}
           <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-            <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-card shadow-sm">
+            <SelectTrigger className="h-9 w-[150px] rounded-xl border-border/60 bg-card text-xs font-medium shadow-sm ring-1 ring-border/30">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -264,7 +264,7 @@ export function CapacityClient({
             </SelectContent>
           </Select>
 
-          <label className="inline-flex items-center gap-1.5 text-xs px-3 h-9 rounded-lg border bg-card shadow-sm cursor-pointer hover:border-primary/40 transition-colors">
+          <label className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 text-xs shadow-sm ring-1 ring-border/30 transition-colors hover:border-teal-500/30">
             <input
               type="checkbox"
               checked={onlyActive}

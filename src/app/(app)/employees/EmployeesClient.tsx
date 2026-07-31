@@ -5,13 +5,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog,
   DialogBody,
   DialogContent,
@@ -399,7 +392,7 @@ export function EmployeesClient({
       />
 
       {/* Hero KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiCard
           label="Active"
           value={activeList.length.toString()}
@@ -448,25 +441,25 @@ export function EmployeesClient({
       </div>
 
       {/* Role distribution + toolbar grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_2fr]">
         {/* Role distribution */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
+        <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+          <div className="border-b border-border/60 px-4 py-3.5 sm:px-5">
+            <div className="flex items-center gap-2 text-sm font-semibold">
               <TrendingUp size={14} className="text-teal-500" />
               Phân bố theo role
-            </CardTitle>
-            <CardDescription className="text-xs">
-              {roleDistribution.length} role · click chip để filter
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
+            </div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {roleDistribution.length} role · click để filter
+            </div>
+          </div>
+          <div className="px-4 py-3 sm:px-5">
             {roleDistribution.length === 0 ? (
-              <div className="text-xs text-muted-foreground py-4 text-center">
+              <div className="py-4 text-center text-xs text-muted-foreground">
                 Chưa có nhân sự active
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {roleDistribution.map((r) => {
                   const active = roleFilter === r.role;
                   return (
@@ -477,33 +470,41 @@ export function EmployeesClient({
                         setRoleFilter(active ? "all" : r.role)
                       }
                       className={cn(
-                        "w-full flex items-center gap-3 text-left group rounded-lg px-2 py-1.5 transition",
-                        active ? "bg-primary/10" : "hover:bg-muted/50"
+                        "group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors",
+                        active
+                          ? "bg-teal-500/10 ring-1 ring-teal-500/20"
+                          : "hover:bg-muted/50"
                       )}
                     >
                       <span
                         className={cn(
-                          "text-xs font-medium w-24 truncate",
-                          active ? "text-primary" : "text-foreground"
+                          "w-24 truncate text-xs font-medium",
+                          active
+                            ? "text-teal-700 dark:text-teal-300"
+                            : "text-foreground"
                         )}
                       >
                         {r.role}
                       </span>
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full transition-all"
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            active
+                              ? "bg-teal-500"
+                              : "bg-gradient-to-r from-teal-500/70 to-cyan-500/70"
+                          )}
                           style={{
                             width: `${(r.count / maxRoleCount) * 100}%`,
-                            background: active
-                              ? "hsl(var(--primary))"
-                              : "linear-gradient(90deg, hsl(var(--indigo)), hsl(var(--violet)))",
                           }}
                         />
                       </div>
                       <span
                         className={cn(
-                          "text-xs tnum tabular-nums w-6 text-right",
-                          active ? "text-primary font-medium" : "text-muted-foreground"
+                          "tnum w-6 text-right text-xs tabular-nums",
+                          active
+                            ? "font-medium text-teal-700 dark:text-teal-300"
+                            : "text-muted-foreground"
                         )}
                       >
                         {r.count}
@@ -513,178 +514,159 @@ export function EmployeesClient({
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Toolbar + view */}
-        <Card>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Danh sách · {filtered.length} / {profiles.length}
-              </div>
-              {/* View toggle */}
-              <div className="inline-flex rounded-lg border bg-card p-0.5 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setView("cards")}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-medium transition",
-                    view === "cards"
-                      ? "bg-accent text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <LayoutGrid size={13} />
-                  Grid
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("table")}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-medium transition",
-                    view === "table"
-                      ? "bg-accent text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <ListIcon size={13} />
-                  Table
-                </button>
+        <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+          <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div>
+              <div className="text-sm font-semibold">Danh sách nhân sự</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                {filtered.length} / {profiles.length}
+                {roleFilter !== "all" ? ` · lọc ${roleFilter}` : ""}
               </div>
             </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search
-                  size={13}
-                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-                />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm tên / role / email…"
-                  className="h-9 pl-7 pr-2 text-xs bg-card"
-                />
-              </div>
-
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="h-9 w-[140px] text-xs font-medium bg-card shadow-sm">
-                  <SelectValue placeholder="Tất cả role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    Tất cả role
-                  </SelectItem>
-                  {allRoles.map((r) => (
-                    <SelectItem key={r} value={r} className="text-xs">
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            <div className="inline-flex rounded-xl bg-muted/50 p-0.5 ring-1 ring-border/50">
+              <button
+                type="button"
+                onClick={() => setView("cards")}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
+                  view === "cards"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/50"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <SelectTrigger className="h-9 w-[120px] text-xs font-medium bg-card shadow-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active" className="text-xs">
-                    Active
-                  </SelectItem>
-                  <SelectItem value="inactive" className="text-xs">
-                    Inactive
-                  </SelectItem>
-                  <SelectItem value="all" className="text-xs">
-                    Tất cả
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={loadFilter}
-                onValueChange={(v) => setLoadFilter(v as LoadFilter)}
+                <LayoutGrid size={14} />
+                Grid
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("table")}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
+                  view === "table"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/50"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <SelectTrigger className="h-9 w-[130px] text-xs font-medium bg-card shadow-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    Mọi tải
-                  </SelectItem>
-                  <SelectItem value="bench" className="text-xs">
-                    Bench (0%)
-                  </SelectItem>
-                  <SelectItem value="under" className="text-xs">
-                    Dưới 50%
-                  </SelectItem>
-                  <SelectItem value="healthy" className="text-xs">
-                    Healthy (50-100)
-                  </SelectItem>
-                  <SelectItem value="over" className="text-xs">
-                    Quá tải (&gt;100)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
-                <SelectTrigger className="h-9 w-[140px] text-xs font-medium bg-card shadow-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default" className="text-xs">
-                    Mặc định
-                  </SelectItem>
-                  <SelectItem value="name" className="text-xs">
-                    Tên A→Z
-                  </SelectItem>
-                  <SelectItem value="load_desc" className="text-xs">
-                    Tải cao→thấp
-                  </SelectItem>
-                  <SelectItem value="load_asc" className="text-xs">
-                    Tải thấp→cao
-                  </SelectItem>
-                  <SelectItem value="salary_desc" className="text-xs">
-                    Lương cao→thấp
-                  </SelectItem>
-                  <SelectItem value="salary_asc" className="text-xs">
-                    Lương thấp→cao
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                <ListIcon size={14} />
+                Table
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
+            <div className="relative min-w-[200px] flex-1">
+              <Search
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm tên / role / email…"
+                className="h-10 pl-9"
+              />
+            </div>
+
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-10 w-[140px]">
+                <SelectValue placeholder="Tất cả role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả role</SelectItem>
+                {allRoles.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+            >
+              <SelectTrigger className="h-10 w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="all">Tất cả</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={loadFilter}
+              onValueChange={(v) => setLoadFilter(v as LoadFilter)}
+            >
+              <SelectTrigger className="h-10 w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Mọi tải</SelectItem>
+                <SelectItem value="bench">Bench (0%)</SelectItem>
+                <SelectItem value="under">Dưới 50%</SelectItem>
+                <SelectItem value="healthy">Healthy (50-100)</SelectItem>
+                <SelectItem value="over">Quá tải (&gt;100)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sort} onValueChange={(v) => setSort(v as Sort)}>
+              <SelectTrigger className="h-10 w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Mặc định</SelectItem>
+                <SelectItem value="name">Tên A→Z</SelectItem>
+                <SelectItem value="load_desc">Tải cao→thấp</SelectItem>
+                <SelectItem value="load_asc">Tải thấp→cao</SelectItem>
+                <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
+                <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* List */}
       {profiles.length === 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <EmptyState
-              icon={UserPlus}
-              tone="emerald"
-              title="Chưa có nhân sự nào"
-              description="Thêm thành viên đầu tiên để bắt đầu phân bổ vào dự án và tính chi phí lương."
-              action={
-                <Button variant="brand" onClick={openNew}>
-                  <UserPlus /> Thêm người đầu tiên
-                </Button>
-              }
-            />
-          </CardContent>
-        </Card>
+        <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+          <EmptyState
+            icon={UserPlus}
+            tone="emerald"
+            title="Chưa có nhân sự nào"
+            description="Thêm thành viên đầu tiên để bắt đầu phân bổ vào dự án và tính chi phí lương."
+            action={
+              <Button variant="brand" onClick={openNew}>
+                <UserPlus /> Thêm người đầu tiên
+              </Button>
+            }
+          />
+        </div>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            Không có ai khớp filter — thử xoá search hoặc đổi role.
-          </CardContent>
-        </Card>
+        <div className="overflow-hidden rounded-2xl bg-card px-4 py-14 text-center ring-1 ring-border/70">
+          <p className="text-sm text-muted-foreground">
+            Không có ai khớp filter —{" "}
+            <button
+              type="button"
+              className="font-medium text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
+              onClick={() => {
+                setSearch("");
+                setRoleFilter("all");
+                setStatusFilter("active");
+                setLoadFilter("all");
+              }}
+            >
+              Xóa lọc
+            </button>
+          </p>
+        </div>
       ) : view === "cards" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((d) => (
             <PersonCard
               key={d.profile.id}
@@ -700,122 +682,127 @@ export function EmployeesClient({
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="pl-6">Tên</TableHead>
-                  <TableHead>Role</TableHead>
-                  {canViewSalary && (
-                    <TableHead className="text-right">Lương / tháng</TableHead>
-                  )}
-                  <TableHead>Tải hôm nay</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="pr-6 w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((d) => {
-                  const p = d.profile;
-                  const load = d.load;
-                  const st = d.status;
-                  const badgeVariant =
-                    st === "critical" || st === "overloaded"
-                      ? "destructive"
-                      : st === "idle"
-                      ? "info"
-                      : st === "underused"
-                      ? "warning"
-                      : "success";
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="pl-6">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-xs bg-gradient-to-br from-teal-500 to-cyan-600 text-white">
-                              {p.full_name?.[0]?.toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{p.full_name}</div>
-                            {p.email && (
-                              <div className="text-xs text-muted-foreground">
-                                {p.email}
-                              </div>
-                            )}
+        <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="pl-5">Tên</TableHead>
+                <TableHead>Role</TableHead>
+                {canViewSalary && (
+                  <TableHead className="text-right">Lương / tháng</TableHead>
+                )}
+                <TableHead>Tải hôm nay</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead className="w-16 pr-5"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((d) => {
+                const p = d.profile;
+                const load = d.load;
+                const st = d.status;
+                const badgeVariant =
+                  st === "critical" || st === "overloaded"
+                    ? "destructive"
+                    : st === "idle"
+                    ? "info"
+                    : st === "underused"
+                    ? "warning"
+                    : "success";
+                return (
+                  <TableRow key={p.id} className="group hover:bg-muted/35">
+                    <TableCell className="pl-5">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 rounded-2xl">
+                          <AvatarFallback className="rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 text-xs text-white">
+                            {p.full_name?.[0]?.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium leading-none">
+                            {p.full_name}
                           </div>
+                          {p.email && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {p.email}
+                            </div>
+                          )}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="brand">{p.job_role}</Badge>
+                    </TableCell>
+                    {canViewSalary && (
+                      <TableCell className="tnum text-right tabular-nums">
+                        {formatCurrency(p.base_salary)}
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="brand">{p.job_role}</Badge>
-                      </TableCell>
-                      {canViewSalary && (
-                        <TableCell className="text-right tnum">
-                          {formatCurrency(p.base_salary)}
-                        </TableCell>
+                    )}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full transition-all"
+                            style={{
+                              width: `${Math.min(100, load * 100)}%`,
+                              background:
+                                load > 1
+                                  ? "hsl(var(--destructive))"
+                                  : load > 0.5
+                                  ? "hsl(var(--emerald))"
+                                  : load > 0
+                                  ? "hsl(var(--sky))"
+                                  : "hsl(var(--muted))",
+                            }}
+                          />
+                        </div>
+                        <span className="tnum w-9 text-right text-xs tabular-nums text-muted-foreground">
+                          {formatPercent(load)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {!p.is_active ? (
+                        <Badge variant="secondary">Off</Badge>
+                      ) : d.startingSoon ? (
+                        <Badge
+                          variant="info"
+                          title={`Tháng này TB ${formatPercent(d.monthLoad)}`}
+                        >
+                          Sắp bắt đầu
+                        </Badge>
+                      ) : (
+                        <Badge variant={badgeVariant}>
+                          {loadStatusLabel(st)}
+                        </Badge>
                       )}
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className="h-full transition-all"
-                              style={{
-                                width: `${Math.min(100, load * 100)}%`,
-                                background:
-                                  load > 1
-                                    ? "hsl(var(--destructive))"
-                                    : load > 0.5
-                                    ? "hsl(var(--emerald))"
-                                    : load > 0
-                                    ? "hsl(var(--sky))"
-                                    : "hsl(var(--muted))",
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs tnum text-muted-foreground w-9 text-right">
-                            {formatPercent(load)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {!p.is_active ? (
-                          <Badge variant="secondary">Off</Badge>
-                        ) : d.startingSoon ? (
-                          <Badge variant="info" title={`Tháng này TB ${formatPercent(d.monthLoad)}`}>
-                            Sắp bắt đầu
-                          </Badge>
-                        ) : (
-                          <Badge variant={badgeVariant}>
-                            {loadStatusLabel(st)}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="pr-6">
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(p)}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => remove(p)}
-                          >
-                            <Trash2 className="text-rose-500" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                    </TableCell>
+                    <TableCell className="pr-5">
+                      <div className="flex justify-end gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => openEdit(p)}
+                        >
+                          <Pencil size={15} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => remove(p)}
+                        >
+                          <Trash2 size={15} className="text-rose-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -1070,36 +1057,36 @@ export function EmployeesClient({
 }
 
 type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
-const toneMap: Record<Tone, { bg: string; text: string; iconBg: string }> = {
+const toneMap: Record<Tone, { gradient: string; accent: string }> = {
   indigo: {
-    bg: "bg-teal-500/5 border-teal-500/15",
-    text: "text-teal-600 dark:text-teal-400",
-    iconBg: "bg-teal-500/10",
+    gradient: "from-teal-500/15 to-transparent",
+    accent:
+      "from-teal-500/15 to-transparent text-teal-700 dark:text-teal-300 ring-teal-500/20",
   },
   violet: {
-    bg: "bg-cyan-500/5 border-cyan-500/15",
-    text: "text-cyan-600 dark:text-cyan-400",
-    iconBg: "bg-cyan-500/10",
+    gradient: "from-cyan-500/15 to-transparent",
+    accent:
+      "from-cyan-500/15 to-transparent text-cyan-700 dark:text-cyan-300 ring-cyan-500/20",
   },
   emerald: {
-    bg: "bg-emerald-500/5 border-emerald-500/15",
-    text: "text-emerald-600 dark:text-emerald-400",
-    iconBg: "bg-emerald-500/10",
+    gradient: "from-emerald-500/15 to-transparent",
+    accent:
+      "from-emerald-500/15 to-transparent text-emerald-700 dark:text-emerald-300 ring-emerald-500/20",
   },
   rose: {
-    bg: "bg-rose-500/5 border-rose-500/15",
-    text: "text-rose-600 dark:text-rose-400",
-    iconBg: "bg-rose-500/10",
+    gradient: "from-rose-500/15 to-transparent",
+    accent:
+      "from-rose-500/15 to-transparent text-rose-700 dark:text-rose-300 ring-rose-500/20",
   },
   amber: {
-    bg: "bg-amber-500/5 border-amber-500/15",
-    text: "text-amber-600 dark:text-amber-400",
-    iconBg: "bg-amber-500/10",
+    gradient: "from-amber-500/15 to-transparent",
+    accent:
+      "from-amber-500/15 to-transparent text-amber-700 dark:text-amber-300 ring-amber-500/20",
   },
   sky: {
-    bg: "bg-sky-500/5 border-sky-500/15",
-    text: "text-sky-600 dark:text-sky-400",
-    iconBg: "bg-sky-500/10",
+    gradient: "from-sky-500/15 to-transparent",
+    accent:
+      "from-sky-500/15 to-transparent text-sky-700 dark:text-sky-300 ring-sky-500/20",
   },
 };
 
@@ -1118,29 +1105,36 @@ function KpiCard({
 }) {
   const t = toneMap[tone];
   return (
-    <div className={cn("rounded-xl border p-3 lg:p-4 relative overflow-hidden", t.bg)}>
-      <div className="flex items-center justify-between mb-2">
-        <span
-          className={cn(
-            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
-            t.iconBg,
-            t.text
-          )}
-        >
-          {icon}
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-          {label}
-        </span>
-      </div>
-      <div className={cn("text-xl lg:text-2xl font-semibold tnum tracking-tight truncate", t.text)}>
-        {value}
-      </div>
-      {hint && (
-        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
-          {hint}
+    <div className="group relative overflow-hidden rounded-2xl bg-card p-4 ring-1 ring-border/70 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/25">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80",
+          t.gradient
+        )}
+      />
+      <div className="relative">
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className={cn(
+              "inline-flex h-9 w-9 items-center justify-center rounded-xl bg-background/70 ring-1 bg-gradient-to-br",
+              t.accent
+            )}
+          >
+            {icon}
+          </span>
+          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </span>
         </div>
-      )}
+        <div className="font-display mt-3 truncate text-xl font-semibold tracking-tight tnum lg:text-2xl">
+          {value}
+        </div>
+        {hint && (
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+            {hint}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1185,61 +1179,72 @@ function PersonCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl border bg-card p-4 transition-all hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30 group",
+        "group relative rounded-2xl bg-card p-4 ring-1 ring-border/70 transition-all",
+        "hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/25",
         !profile.is_active && "opacity-60"
       )}
     >
-      <div className="flex items-start gap-3 mb-3">
-        <Avatar className="h-11 w-11 ring-2 ring-primary/15 shrink-0">
-          <AvatarFallback className="text-sm bg-gradient-to-br from-teal-500 to-cyan-600 text-white font-semibold">
+      <div className="mb-3.5 flex items-start gap-3">
+        <Avatar className="h-11 w-11 shrink-0 rounded-2xl ring-2 ring-border/40">
+          <AvatarFallback className="rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 text-sm font-semibold text-white">
             {profile.full_name?.[0]?.toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-sm truncate">
+          <div className="truncate text-sm font-semibold leading-none">
             {profile.full_name}
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <Badge variant="brand" className="text-[10px] py-0">
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Badge variant="brand" className="py-0 text-[10px]">
               {profile.job_role}
             </Badge>
             {!profile.is_active && (
-              <Badge variant="secondary" className="text-[10px] py-0">
+              <Badge variant="secondary" className="py-0 text-[10px]">
                 Off
               </Badge>
             )}
           </div>
           {profile.email && (
-            <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+            <div className="mt-1 truncate text-xs text-muted-foreground">
               {profile.email}
             </div>
           )}
         </div>
-        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="ghost" size="icon" onClick={onEdit} className="h-7 w-7">
+        <div className="flex gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onEdit}
+            className="h-8 w-8"
+          >
             <Pencil className="!size-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onDelete} className="h-7 w-7">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onDelete}
+            className="h-8 w-8"
+          >
             <Trash2 className="!size-3.5 text-rose-500" />
           </Button>
         </div>
       </div>
 
       {/* Load bar */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-[11px]">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Tải hôm nay</span>
           {startingSoon ? (
-            <Badge variant="info" className="text-[10px] py-0">
+            <Badge variant="info" className="py-0 text-[10px]">
               Sắp bắt đầu · TB tháng {formatPercent(monthLoad)}
             </Badge>
           ) : (
-            <Badge variant={badgeVariant} className="text-[10px] py-0 tnum">
+            <Badge variant={badgeVariant} className="tnum py-0 text-[10px] tabular-nums">
               {formatPercent(load)} · {loadStatusLabel(status)}
             </Badge>
           )}
         </div>
-        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full rounded-full transition-all"
             style={{
@@ -1253,19 +1258,19 @@ function PersonCard({
 
       {/* Footer: salary + history — chỉ khi admin (base_salary đã strip = 0 cho non-admin) */}
       {Number(profile.base_salary) > 0 && (
-      <div className="flex items-center justify-between mt-3 pt-3 border-t text-[11px]">
-        <div>
-          <div className="text-muted-foreground">Lương / tháng</div>
-          <div className="font-semibold tnum text-sm gradient-text-indigo">
-            {formatCurrency(profile.base_salary)}
+        <div className="mt-3.5 flex items-center justify-between border-t border-border/60 pt-3.5 text-xs">
+          <div>
+            <div className="text-muted-foreground">Lương / tháng</div>
+            <div className="tnum text-sm font-semibold tabular-nums text-teal-700 dark:text-teal-300">
+              {formatCurrency(profile.base_salary)}
+            </div>
           </div>
+          {historyCount > 0 && (
+            <Badge variant="info" className="py-0 text-[9px]">
+              {historyCount} lần đổi
+            </Badge>
+          )}
         </div>
-        {historyCount > 0 && (
-          <Badge variant="info" className="text-[9px] py-0">
-            {historyCount} lần đổi
-          </Badge>
-        )}
-      </div>
       )}
     </div>
   );

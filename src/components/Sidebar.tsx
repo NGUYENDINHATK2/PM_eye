@@ -156,18 +156,18 @@ export function Sidebar({
 
       <aside
         className={cn(
-          "z-50 bg-card border-r flex flex-col",
+          "z-50 flex flex-col border-r border-border/60 bg-card/95 backdrop-blur-sm",
           "fixed inset-y-0 left-0 w-[272px] transition-transform duration-300 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
           "lg:sticky lg:top-0 lg:translate-x-0 lg:w-[248px] lg:h-screen lg:shrink-0"
         )}
       >
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5 group">
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group min-w-0">
             <LogoMark />
-            <div className="font-display font-bold tracking-tight text-lg leading-none">
+            <div className="font-display font-bold tracking-tight text-lg leading-none min-w-0">
               PM<span className="gradient-text">_Eye</span>
-              <div className="text-[10px] font-medium tracking-[0.16em] uppercase text-muted-foreground/80 mt-1.5">
+              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-muted-foreground/70 mt-1.5">
                 Ops console
               </div>
             </div>
@@ -185,24 +185,26 @@ export function Sidebar({
           <button
             type="button"
             onClick={onOpenSearch}
-            className="w-full h-9 px-3 rounded-xl border bg-background text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition flex items-center gap-2"
+            className="flex h-9 w-full items-center gap-2 rounded-2xl border border-border/60 bg-muted/40 px-3 text-sm text-muted-foreground ring-1 ring-transparent transition hover:border-teal-500/25 hover:bg-muted/70 hover:text-foreground hover:ring-teal-500/10"
           >
-            <Search size={14} />
+            <Search size={14} className="shrink-0 opacity-70" />
             <span className="flex-1 text-left">Tìm nhanh…</span>
-            <kbd className="text-[10px] px-1 py-0.5 rounded border">⌘K</kbd>
+            <kbd className="rounded-md border border-border/60 bg-background/80 px-1.5 py-0.5 text-[10px] font-medium">
+              ⌘K
+            </kbd>
           </button>
         </div>
 
         <div className="px-3 pb-4">
-          <div className="rounded-xl border bg-muted/40 p-2.5 flex items-center gap-3">
-            <Avatar className="h-9 w-9 ring-2 ring-primary/20 shrink-0">
-              <AvatarFallback className="text-sm bg-gradient-to-br from-teal-500 to-cyan-600 text-white font-semibold">
+          <div className="flex items-center gap-3 rounded-2xl border border-border/50 bg-muted/30 p-3 ring-1 ring-teal-500/[0.06]">
+            <Avatar className="h-9 w-9 shrink-0 ring-2 ring-teal-500/20">
+              <AvatarFallback className="bg-gradient-to-br from-teal-500 to-sky-600 text-sm font-semibold text-white">
                 {displayName?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <div className="font-semibold text-sm truncate">{displayName}</div>
-              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-0.5">
+              <div className="truncate text-sm font-semibold">{displayName}</div>
+              <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span className="status-dot" />
                 {roleLabel(appRole)}
               </div>
@@ -259,12 +261,12 @@ export function Sidebar({
 function LogoMark({ size = 36 }: { size?: number }) {
   return (
     <div
-      className="relative shrink-0 flex items-center justify-center rounded-xl text-white overflow-hidden"
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white ring-1 ring-white/20 transition group-hover:ring-teal-400/30"
       style={{
         width: size,
         height: size,
         background: "linear-gradient(135deg, hsl(var(--teal)), hsl(var(--sky)))",
-        boxShadow: "0 6px 16px -4px hsl(var(--teal) / 0.4)",
+        boxShadow: "0 8px 20px -6px hsl(var(--teal) / 0.45)",
       }}
     >
       <div
@@ -282,7 +284,7 @@ function LogoMark({ size = 36 }: { size?: number }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80 font-semibold">
+    <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/65">
       {children}
     </div>
   );
@@ -295,22 +297,26 @@ function NavLink({ item, active }: { item: Item; active: boolean }) {
       href={item.href}
       prefetch
       className={cn(
-        "group relative flex items-center gap-3 h-10 px-3 rounded-xl text-sm transition-colors",
+        "group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm transition-all",
         active
-          ? "chip-violet font-medium"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+          ? "bg-teal-500/[0.09] font-medium text-teal-900 ring-1 ring-teal-500/20 dark:text-teal-200"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
       )}
     >
       <span
         className={cn(
-          "flex items-center justify-center w-5 h-5 rounded-md shrink-0",
-          active ? "text-white" : "text-muted-foreground group-hover:text-foreground"
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+          active
+            ? "bg-teal-600 text-white shadow-sm dark:bg-teal-500"
+            : "text-muted-foreground group-hover:bg-muted group-hover:text-foreground"
         )}
       >
-        <Icon size={15} strokeWidth={active ? 2.4 : 2} />
+        <Icon size={14} strokeWidth={active ? 2.4 : 2} />
       </span>
       <span className="flex-1 truncate">{item.label}</span>
-      {active && <ChevronRight size={12} className="opacity-80" />}
+      {active && (
+        <ChevronRight size={12} className="shrink-0 text-teal-600/70 dark:text-teal-400/80" />
+      )}
     </Link>
   );
 }

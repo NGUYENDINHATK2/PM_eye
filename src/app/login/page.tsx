@@ -172,7 +172,7 @@ export default function LoginPage() {
               {features.map((f, i) => (
                 <div
                   key={f.title}
-                  className="flex items-start gap-3 p-3 rounded-2xl card-premium animate-fade-up"
+                    className="flex items-start gap-3 rounded-2xl border border-border/50 bg-card/80 p-3 ring-1 ring-border/30 card-premium animate-fade-up"
                   style={{ animationDelay: `${(i + 1) * 100}ms` }}
                 >
                   <div
@@ -226,8 +226,12 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="card-premium rounded-2xl p-7 sm:p-8">
-              <h2 className="font-display text-2xl font-semibold tracking-tight">
+            <div className="card-premium rounded-2xl p-7 ring-1 ring-border/50 sm:p-8">
+              <div className="mb-1 inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-700 ring-1 ring-teal-500/15 dark:text-teal-300">
+                <span className="status-dot" />
+                Secure access
+              </div>
+              <h2 className="mt-4 font-display text-2xl font-semibold tracking-tight">
                 Đăng nhập
               </h2>
               <p className="text-sm text-muted-foreground mt-1.5">
@@ -247,7 +251,7 @@ export default function LoginPage() {
                     autoComplete="email"
                     autoFocus
                     disabled={loading}
-                    className="h-11"
+                    className="h-11 rounded-xl border-border/70 bg-background/80 ring-1 ring-transparent transition focus-visible:ring-teal-500/25"
                   />
                 </div>
 
@@ -275,7 +279,7 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       autoComplete="current-password"
                       disabled={loading}
-                      className="h-11 pr-11"
+                      className="h-11 rounded-xl border-border/70 bg-background/80 pr-11 ring-1 ring-transparent transition focus-visible:ring-teal-500/25"
                     />
                     <button
                       type="button"

@@ -118,23 +118,25 @@ function DashboardView({
   ]);
 
   return (
-    <div className="space-y-6">
-      <WelcomeHero
-        userName={computed.displayName}
-        totalRevenue={computed.totalRevenue}
-        totalProfit={computed.totalProfit}
-        avgMargin={computed.avgMargin}
-        arOutstanding={computed.ar.totalInvoiced + computed.ar.totalPlanned}
-        warningsCount={computed.alerts.length}
-      />
+    <div className="space-y-5">
+      <section className="space-y-4 animate-fade-up">
+        <WelcomeHero
+          userName={computed.displayName}
+          totalRevenue={computed.totalRevenue}
+          totalProfit={computed.totalProfit}
+          avgMargin={computed.avgMargin}
+          arOutstanding={computed.ar.totalInvoiced + computed.ar.totalPlanned}
+          warningsCount={computed.alerts.length}
+        />
 
-      <StatCards
-        ongoingProjects={computed.ongoingProjects}
-        activePeople={computed.activeUserIds.size}
-        burnThisMonth={computed.burnThisMonth}
-        warnings={computed.alerts.length}
-        burnSpark={computed.timeline.map((t) => t.total)}
-      />
+        <StatCards
+          ongoingProjects={computed.ongoingProjects}
+          activePeople={computed.activeUserIds.size}
+          burnThisMonth={computed.burnThisMonth}
+          warnings={computed.alerts.length}
+          burnSpark={computed.timeline.map((t) => t.total)}
+        />
+      </section>
 
       <div
         className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up"

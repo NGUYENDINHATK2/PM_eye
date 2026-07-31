@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogBody,
@@ -323,85 +322,91 @@ export function AllocationsClient({
       />
 
       {/* View toolbar */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* View tabs */}
-          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setView("timeline")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
-                view === "timeline"
-                  ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <CalendarRange size={13} />
-              Timeline
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition",
-                view === "list"
-                  ? "bg-gradient-to-b from-teal-500 to-teal-600 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <List size={13} />
-              List
-            </button>
-          </div>
-
-          {view === "timeline" && (
-            <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
-              {(["3mo", "6mo", "12mo", "EOY", "year"] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRange(r)}
-                  className={cn(
-                    "px-3 h-8 rounded-md text-xs font-medium transition",
-                    range === r
-                      ? "bg-accent text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {r === "3mo"
-                    ? "3 tháng"
-                    : r === "6mo"
-                    ? "6 tháng"
-                    : r === "12mo"
-                    ? "12 tháng"
-                    : r === "year"
-                    ? "1 năm"
-                    : "Cuối năm"}
-                </button>
-              ))}
+      <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+        <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <div className="text-sm font-semibold">Chế độ xem</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              Timeline Gantt hoặc danh sách theo nhân sự
             </div>
-          )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
+              <button
+                type="button"
+                onClick={() => setView("timeline")}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
+                  view === "timeline"
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                )}
+              >
+                <CalendarRange size={13} />
+                Timeline
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("list")}
+                className={cn(
+                  "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
+                  view === "list"
+                    ? "bg-teal-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                )}
+              >
+                <List size={13} />
+                List
+              </button>
+            </div>
+
+            {view === "timeline" && (
+              <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
+                {(["3mo", "6mo", "12mo", "EOY", "year"] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRange(r)}
+                    className={cn(
+                      "h-9 rounded-lg px-3 text-xs font-medium transition",
+                      range === r
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                    )}
+                  >
+                    {r === "3mo"
+                      ? "3 tháng"
+                      : r === "6mo"
+                      ? "6 tháng"
+                      : r === "12mo"
+                      ? "12 tháng"
+                      : r === "year"
+                      ? "1 năm"
+                      : "Cuối năm"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {view === "timeline" && (
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            {/* Group by */}
+          <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 sm:px-5">
             <div className="inline-flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Nhóm theo
               </span>
-              <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+              <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
                 {(["person", "project"] as const).map((g) => (
                   <button
                     key={g}
                     type="button"
                     onClick={() => setGroupBy(g)}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-3 h-7 rounded-md text-xs font-medium transition",
+                      "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition",
                       groupBy === g
-                        ? "bg-accent text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                     )}
                   >
                     {g === "person" ? (
@@ -418,22 +423,21 @@ export function AllocationsClient({
               </div>
             </div>
 
-            {/* Density / zoom */}
             <div className="inline-flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                 Mật độ
               </span>
-              <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+              <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
                 {(["compact", "normal", "comfy"] as const).map((d) => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => setDensity(d)}
                     className={cn(
-                      "px-3 h-7 rounded-md text-xs font-medium transition",
+                      "h-8 rounded-lg px-3 text-xs font-medium transition",
                       density === d
-                        ? "bg-accent text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                        : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                     )}
                   >
                     {d === "compact" ? "Gọn" : d === "normal" ? "Vừa" : "To"}
@@ -446,14 +450,14 @@ export function AllocationsClient({
       </div>
 
       {(!profiles.length || !projects.length) && (
-        <Card>
-          <CardContent className="p-5 flex items-center gap-3 bg-amber-500/10 ring-1 ring-amber-500/20 text-amber-700 dark:text-amber-300">
-            <AlertTriangle size={16} />
+        <div className="overflow-hidden rounded-2xl bg-amber-500/8 ring-1 ring-amber-500/20">
+          <div className="flex items-center gap-3 px-4 py-3.5 text-amber-700 sm:px-5 dark:text-amber-300">
+            <AlertTriangle size={16} className="shrink-0" />
             <span className="text-sm">
               Bạn cần có ít nhất 1 nhân sự và 1 dự án trước khi phân bổ.
             </span>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {view === "timeline" ? (
@@ -471,125 +475,142 @@ export function AllocationsClient({
       ) : null}
 
       {view === "list" && (
-      <div className="space-y-3">
-        {profiles.map((p) => {
-          const items = grouped.get(p.id) ?? [];
-          const load = userLoadToday(p.id, allocations, today);
-          const st = loadStatus(load);
-          const variant =
-            st === "critical" || st === "overloaded"
-              ? "destructive"
-              : st === "idle"
-              ? "info"
-              : st === "underused"
-              ? "warning"
-              : "success";
-          return (
-            <Card key={p.id}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback className="text-xs">
-                        {p.full_name?.[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-semibold">{p.full_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.job_role}
+        <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+          <div className="border-b border-border/60 px-4 py-3.5 sm:px-5">
+            <div className="text-sm font-semibold">Danh sách phân bổ</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {profiles.length} nhân sự · {allocations.length} đợt phân bổ
+            </div>
+          </div>
+          <div className="divide-y divide-border/60">
+            {profiles.map((p) => {
+              const items = grouped.get(p.id) ?? [];
+              const load = userLoadToday(p.id, allocations, today);
+              const st = loadStatus(load);
+              const variant =
+                st === "critical" || st === "overloaded"
+                  ? "destructive"
+                  : st === "idle"
+                  ? "info"
+                  : st === "underused"
+                  ? "warning"
+                  : "success";
+              return (
+                <div key={p.id} className="px-4 py-4 sm:px-5">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 rounded-xl">
+                        <AvatarFallback className="rounded-xl text-xs">
+                          {p.full_name?.[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-semibold leading-none">
+                          {p.full_name}
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {p.job_role}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Tải hiện tại
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Tải hiện tại
+                        </div>
+                        <div className="text-sm font-semibold tnum">
+                          {formatPercent(load)}
+                        </div>
                       </div>
-                      <div className="text-sm font-semibold tnum">
-                        {formatPercent(load)}
-                      </div>
-                    </div>
-                    <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full transition-all"
-                        style={{
-                          width: `${Math.min(100, load * 100)}%`,
-                          background:
-                            load > 1
-                              ? "hsl(var(--destructive))"
-                              : load > 0.5
-                              ? "hsl(var(--emerald))"
-                              : load > 0
-                              ? "hsl(var(--sky))"
-                              : "hsl(var(--muted))",
-                        }}
-                      />
-                    </div>
-                    <Badge variant={variant}>{loadStatusLabel(st)}</Badge>
-                  </div>
-                </div>
-
-                {items.length === 0 && (
-                  <div className="text-xs text-muted-foreground italic">
-                    Chưa phân bổ.
-                  </div>
-                )}
-
-                {items.length > 0 && (
-                  <div className="space-y-2">
-                    {items.map((a) => {
-                      const proj = projectsById.get(a.project_id);
-                      const ph = a.phase_id ? phasesById.get(a.phase_id) : null;
-                      return (
+                      <div className="h-2 w-32 overflow-hidden rounded-full bg-muted ring-1 ring-border/40">
                         <div
-                          key={a.id}
-                          className="flex items-center gap-3 p-2.5 rounded-md bg-muted/40 hover:bg-muted/70 transition"
-                        >
-                          <span
-                            className="w-1 h-8 rounded-full shrink-0"
-                            style={{ background: proj?.color ?? "#888" }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">
-                              {proj?.name}
-                              {ph && (
-                                <span className="text-muted-foreground font-normal">
-                                  {" · "}
-                                  {ph.phase_name}
-                                </span>
-                              )}
+                          className="h-full transition-all"
+                          style={{
+                            width: `${Math.min(100, load * 100)}%`,
+                            background:
+                              load > 1
+                                ? "hsl(var(--destructive))"
+                                : load > 0.5
+                                ? "hsl(var(--emerald))"
+                                : load > 0
+                                ? "hsl(var(--sky))"
+                                : "hsl(var(--muted))",
+                          }}
+                        />
+                      </div>
+                      <Badge variant={variant}>{loadStatusLabel(st)}</Badge>
+                    </div>
+                  </div>
+
+                  {items.length === 0 && (
+                    <div className="text-xs italic text-muted-foreground">
+                      Chưa phân bổ.
+                    </div>
+                  )}
+
+                  {items.length > 0 && (
+                    <div className="space-y-2">
+                      {items.map((a) => {
+                        const proj = projectsById.get(a.project_id);
+                        const ph = a.phase_id
+                          ? phasesById.get(a.phase_id)
+                          : null;
+                        return (
+                          <div
+                            key={a.id}
+                            className="group flex items-center gap-3 rounded-xl bg-muted/25 px-3 py-2.5 ring-1 ring-border/40 transition hover:bg-muted/45 hover:ring-border/60"
+                          >
+                            <span
+                              className="h-8 w-1 shrink-0 rounded-full"
+                              style={{ background: proj?.color ?? "#888" }}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium">
+                                {proj?.name}
+                                {ph && (
+                                  <span className="font-normal text-muted-foreground">
+                                    {" · "}
+                                    {ph.phase_name}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">
+                                {formatDate(a.start_date)} →{" "}
+                                {formatDate(a.end_date)}
+                                {a.note && ` · ${a.note}`}
+                              </div>
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              {formatDate(a.start_date)} → {formatDate(a.end_date)}
-                              {a.note && ` · ${a.note}`}
+                            <Badge variant="brand">
+                              {formatPercent(a.percent)}
+                            </Badge>
+                            <div className="flex items-center gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9"
+                                onClick={() => openEdit(a)}
+                              >
+                                <Pencil size={15} />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9"
+                                onClick={() => remove(a.id)}
+                              >
+                                <Trash2 size={15} className="text-rose-500" />
+                              </Button>
                             </div>
                           </div>
-                          <Badge variant="brand">{formatPercent(a.percent)}</Badge>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openEdit(a)}
-                          >
-                            <Pencil />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => remove(a.id)}
-                          >
-                            <Trash2 className="text-rose-500" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <Dialog

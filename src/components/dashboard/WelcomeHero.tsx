@@ -58,22 +58,21 @@ export function WelcomeHero({
   const profitable = totalProfit > 0;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl card-premium shine animate-fade-up">
-      {/* Soft accent blobs */}
+    <div className="card-premium shine relative overflow-hidden rounded-2xl ring-1 ring-border/50 animate-fade-up">
       <div
         aria-hidden
-        className="absolute -top-32 -right-24 w-[24rem] h-[24rem] rounded-full blur-3xl pointer-events-none opacity-70"
+        className="pointer-events-none absolute -right-24 -top-32 h-[24rem] w-[24rem] rounded-full opacity-60 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, hsl(var(--indigo) / 0.18), transparent 60%)",
+            "radial-gradient(circle, hsl(var(--teal) / 0.14), transparent 60%)",
         }}
       />
       <div
         aria-hidden
-        className="absolute -bottom-32 -left-20 w-[20rem] h-[20rem] rounded-full blur-3xl pointer-events-none opacity-70"
+        className="pointer-events-none absolute -bottom-32 -left-20 h-[20rem] w-[20rem] rounded-full opacity-60 blur-3xl"
         style={{
           background:
-            "radial-gradient(circle, hsl(var(--violet) / 0.14), transparent 60%)",
+            "radial-gradient(circle, hsl(var(--sky) / 0.12), transparent 60%)",
         }}
       />
 
@@ -85,10 +84,10 @@ export function WelcomeHero({
             <span className="capitalize">{dateStr}</span>
           </div>
           <div
-            className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full border text-[11px] font-medium ${
+            className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium ring-1 ${
               statusOk
-                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                : "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 ring-emerald-500/15 dark:text-emerald-400"
+                : "border-amber-500/25 bg-amber-500/10 text-amber-700 ring-amber-500/15 dark:text-amber-400"
             }`}
           >
             {statusOk ? (
@@ -156,7 +155,7 @@ function KpiTile({
       border: "border-teal-500/20",
       bg: "bg-teal-500/5",
       iconText: "text-teal-600 dark:text-teal-400",
-      valueText: "gradient-text-indigo",
+      valueText: "gradient-text",
     },
     emerald: {
       border: "border-emerald-500/20",
@@ -179,7 +178,7 @@ function KpiTile({
   };
   const t = toneMap[tone];
   return (
-    <div className={`relative rounded-xl border ${t.border} ${t.bg} p-3.5 overflow-hidden`}>
+    <div className={`relative overflow-hidden rounded-xl border p-3.5 ring-1 ring-border/30 ${t.border} ${t.bg}`}>
       <div className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-medium ${t.iconText} mb-1.5`}>
         {icon}
         <span className="truncate">{label}</span>

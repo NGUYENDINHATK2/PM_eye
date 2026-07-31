@@ -443,10 +443,10 @@ export function ProjectDetailClient({
 
       {/* P&L summary — hero row (ẩn với member) */}
       {canViewMoney && (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="relative overflow-hidden">
-          <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-emerald-500/20 blur-3xl" />
-          <CardContent className="p-5 relative">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <Card className="relative overflow-hidden border-0 ring-1 ring-border/70">
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-3xl" />
+          <CardContent className="relative p-5">
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
               Doanh thu
             </div>
@@ -464,7 +464,7 @@ export function ProjectDetailClient({
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 ring-1 ring-border/70">
           <CardContent className="p-5">
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
               Chi phí tổng
@@ -485,9 +485,9 @@ export function ProjectDetailClient({
             </div>
           </CardContent>
         </Card>
-        <Card className="relative overflow-hidden">
+        <Card className="relative overflow-hidden border-0 ring-1 ring-border/70">
           <div
-            className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-3xl"
+            className="absolute -right-8 -top-8 h-24 w-24 rounded-full blur-3xl"
             style={{
               background:
                 finance.marginStatus === "loss"
@@ -499,7 +499,7 @@ export function ProjectDetailClient({
                   : "hsl(199 89% 50% / 0.2)",
             }}
           />
-          <CardContent className="p-5 relative">
+          <CardContent className="relative p-5">
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
               Lợi nhuận
             </div>
@@ -532,9 +532,9 @@ export function ProjectDetailClient({
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-0 ring-1 ring-border/70">
           <CardContent className="p-5">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Đã thu
             </div>
             <div className="text-2xl font-semibold mt-1 tnum text-emerald-500">
@@ -566,7 +566,7 @@ export function ProjectDetailClient({
 
       {/* Budget utilization */}
       {canViewMoney && finance.hasCap && (
-        <Card>
+        <Card className="border-0 ring-1 ring-border/70">
           <CardContent className="p-5">
             <div className="flex items-center justify-between gap-3 mb-2">
               <div>
@@ -631,7 +631,7 @@ export function ProjectDetailClient({
 
       {/* Payments (khách trả nhiều đợt) */}
       {canViewMoney && (
-      <Card>
+      <Card className="border-0 ring-1 ring-border/70">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
@@ -661,7 +661,7 @@ export function ProjectDetailClient({
                   onDelete={() => removePayment(pm)}
                 />
               ))}
-              <div className="pt-3 mt-2 border-t flex items-center justify-end gap-4 text-xs">
+              <div className="mt-2 flex items-center justify-end gap-4 border-t border-border/50 pt-3 text-xs">
                 <span className="text-muted-foreground">
                   Tổng kế hoạch:{" "}
                   <span className="tnum font-medium text-foreground">
@@ -694,8 +694,8 @@ export function ProjectDetailClient({
       )}
 
       {/* Team roster */}
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 space-y-0">
+      <Card className="border-0 ring-1 ring-border/70">
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
           <div>
             <CardTitle className="text-base">Team trên dự án</CardTitle>
             <CardDescription>
@@ -710,7 +710,7 @@ export function ProjectDetailClient({
                 : "Chưa có phân bổ trong tab này"}
             </CardDescription>
           </div>
-          <div className="flex gap-1">
+          <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
             {(
               [
                 ["today", "Hôm nay"],
@@ -723,10 +723,10 @@ export function ProjectDetailClient({
                 type="button"
                 onClick={() => setTeamTab(k)}
                 className={cn(
-                  "h-8 px-2.5 rounded-lg text-[11px] border transition",
+                  "h-8 rounded-lg px-2.5 text-[11px] font-medium transition",
                   teamTab === k
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "hover:bg-muted"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {label}
@@ -750,7 +750,7 @@ export function ProjectDetailClient({
                 return (
                   <div
                     key={m.profile.id}
-                    className="flex items-start gap-3 p-3 rounded-xl border bg-card/40 hover:bg-card transition"
+                    className="flex items-start gap-3 rounded-xl bg-muted/20 p-3.5 ring-1 ring-border/50 transition hover:bg-muted/35"
                   >
                     <Avatar className="h-10 w-10 shrink-0">
                       <AvatarFallback className="text-xs">
@@ -798,7 +798,7 @@ export function ProjectDetailClient({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-0 ring-1 ring-border/70">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
             <CardTitle className="text-base">Giai đoạn / Đợt</CardTitle>
@@ -830,8 +830,8 @@ export function ProjectDetailClient({
                   key={ph.id}
                   className={
                     active
-                      ? "p-4 rounded-xl border-2 border-teal-500/30 bg-gradient-to-br from-teal-500/[0.06] to-transparent transition shadow-sm"
-                      : "p-4 rounded-xl border bg-card/40 transition hover:bg-card"
+                      ? "rounded-xl bg-gradient-to-br from-teal-500/[0.06] to-transparent p-4 ring-2 ring-teal-500/25 transition"
+                      : "rounded-xl bg-muted/15 p-4 ring-1 ring-border/50 transition hover:bg-muted/25"
                   }
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -966,10 +966,10 @@ export function ProjectDetailClient({
 
       {/* Expenses on this project */}
       {canViewMoney && (
-      <Card>
+      <Card className="border-0 ring-1 ring-border/70">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
               <Receipt size={16} className="text-amber-500" />
               Chi phí vận hành
             </CardTitle>
@@ -995,7 +995,7 @@ export function ProjectDetailClient({
               {sortedExpenses.slice(0, 8).map((e) => (
                 <div
                   key={e.id}
-                  className="flex items-center gap-3 rounded-xl border px-3 py-2 text-sm"
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm ring-1 ring-border/50 transition hover:bg-muted/20"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">
@@ -1334,7 +1334,7 @@ function PaymentRow({
         };
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border bg-card/40 hover:bg-card transition">
+    <div className="flex items-center gap-3 rounded-xl bg-muted/15 p-3 ring-1 ring-border/50 transition hover:bg-muted/25">
       <div
         className={`w-9 h-9 rounded-lg ${tone.bg} ${tone.text} ring-1 ${tone.ring} flex items-center justify-center shrink-0`}
       >

@@ -352,12 +352,12 @@ export function ProjectsClient({
 
       {/* Hero KPIs */}
       {projects.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <KpiCard
             label="Tổng dự án"
             value={statsSummary.total.toString()}
             hint={`${statsSummary.ongoing} đang chạy`}
-            tone="indigo"
+            tone="teal"
             icon={<Briefcase size={14} />}
           />
           <KpiCard
@@ -368,7 +368,7 @@ export function ProjectsClient({
                 ? `${statsSummary.withRevenueCount} dự án có doanh thu`
                 : "Chưa có dự án nào ghi doanh thu"
             }
-            tone="violet"
+            tone="cyan"
             icon={<Wallet size={14} />}
           />
           <KpiCard
@@ -415,59 +415,61 @@ export function ProjectsClient({
 
       {/* Filter toolbar */}
       {projects.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative w-full sm:flex-1 sm:w-auto sm:min-w-[200px] sm:max-w-md">
+        <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 ring-1 ring-border/70 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm sm:flex-1">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               type="search"
-              placeholder="Tìm theo tên dự án hoặc khách hàng..."
+              placeholder="Tìm theo tên dự án hoặc khách hàng…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="h-10 pl-9"
             />
           </div>
 
-          <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm overflow-x-auto max-w-full">
-            {(["all", "ongoing", "planned", "paused", "completed"] as const).map(
-              (s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatusFilter(s)}
-                  className={cn(
-                    "px-3 h-7 rounded-md text-xs font-medium transition",
-                    statusFilter === s
-                      ? "bg-accent text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {s === "all" ? "Tất cả" : STATUS_LABEL[s]}
-                </button>
-              )
-            )}
-          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
+              {(["all", "ongoing", "planned", "paused", "completed"] as const).map(
+                (s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={cn(
+                      "h-8 rounded-lg px-3 text-xs font-medium transition",
+                      statusFilter === s
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {s === "all" ? "Tất cả" : STATUS_LABEL[s]}
+                  </button>
+                )
+              )}
+            </div>
 
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recent">Mới tạo trước</SelectItem>
-              <SelectItem value="name">Theo tên</SelectItem>
-              <SelectItem value="profit">Lợi nhuận cao</SelectItem>
-              <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="h-10 w-[160px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Mới tạo trước</SelectItem>
+                <SelectItem value="name">Theo tên</SelectItem>
+                <SelectItem value="profit">Lợi nhuận cao</SelectItem>
+                <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 
       <TooltipProvider delayDuration={100}>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {projects.length === 0 && (
-          <Card className="col-span-full">
+          <Card className="col-span-full border-0 ring-1 ring-border/70">
             <EmptyState
               icon={Briefcase}
               tone="indigo"
@@ -483,7 +485,7 @@ export function ProjectsClient({
         )}
 
         {projects.length > 0 && filteredProjects.length === 0 && (
-          <Card className="col-span-full">
+          <Card className="col-span-full border-0 ring-1 ring-border/70">
             <EmptyState
               icon={Search}
               tone="sky"
@@ -534,58 +536,65 @@ export function ProjectsClient({
               className="group relative animate-fade-up"
               style={{ animationDelay: `${idx * 40}ms` }}
             >
-              <Card className="relative overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 duration-300">
+              <Card className="relative overflow-hidden border-0 ring-1 ring-border/70 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:ring-border">
                 {/* Color stripe + glow */}
                 <div
-                  className="absolute top-0 inset-x-0 h-1.5"
+                  className="absolute inset-x-0 top-0 h-1"
                   style={{
-                    background: `linear-gradient(90deg, ${p.color}, ${p.color}aa)`,
+                    background: `linear-gradient(90deg, ${p.color}, ${p.color}88)`,
                   }}
                 />
                 <div
-                  className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 pointer-events-none"
+                  className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full opacity-[0.12] blur-3xl transition-opacity duration-500 group-hover:opacity-[0.22]"
                   style={{ background: p.color }}
                 />
 
-                <CardContent className="relative p-6 space-y-4">
+                <CardContent className="relative space-y-4 p-5 sm:p-6">
                   {/* Header: name + status + menu */}
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <div
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-border/50"
+                      style={{ background: `${p.color}18` }}
+                    >
+                      <Briefcase size={15} style={{ color: p.color }} />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <Link
                         href={`/projects/${p.id}`}
-                        className="font-semibold text-lg tracking-tight hover:text-teal-500 transition truncate block"
+                        className="block truncate font-display text-base font-semibold tracking-tight transition hover:text-teal-600 dark:hover:text-teal-400 sm:text-lg"
                       >
                         {p.name}
                       </Link>
                       {p.client && (
-                        <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                        <div className="mt-0.5 truncate text-xs text-muted-foreground">
                           {p.client}
                         </div>
                       )}
                     </div>
 
-                    <Badge
-                      variant={STATUS_VARIANT[p.status]}
-                      className="shrink-0 gap-1.5"
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{
-                          background:
-                            p.status === "ongoing"
-                              ? "rgb(16 185 129)"
-                              : p.status === "paused"
-                              ? "rgb(245 158 11)"
-                              : p.status === "completed"
-                              ? "rgb(148 163 184)"
-                              : "rgb(56 189 248)",
-                        }}
-                      />
-                      {STATUS_LABEL[p.status]}
-                    </Badge>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Badge
+                        variant={STATUS_VARIANT[p.status]}
+                        className="gap-1.5"
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{
+                            background:
+                              p.status === "ongoing"
+                                ? "rgb(16 185 129)"
+                                : p.status === "paused"
+                                ? "rgb(245 158 11)"
+                                : p.status === "completed"
+                                ? "rgb(148 163 184)"
+                                : "rgb(56 189 248)",
+                          }}
+                        />
+                        {STATUS_LABEL[p.status]}
+                      </Badge>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition w-7 h-7 rounded-md inline-flex items-center justify-center hover:bg-accent focus:outline-none">
+                      <DropdownMenu>
+                      <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-lg opacity-60 transition hover:bg-muted hover:opacity-100 focus:outline-none group-hover:opacity-100">
                         <MoreHorizontal size={14} />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
@@ -609,19 +618,22 @@ export function ProjectsClient({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </div>
 
                   {/* P&L hero */}
-                  {fin.hasRevenue ? (
-                    <ProfitBlock fin={fin} />
-                  ) : fin.hasCap ? (
-                    <CostCapBlock fin={fin} />
-                  ) : (
-                    <NoCapBlock fin={fin} />
-                  )}
+                  <div className="rounded-xl bg-muted/25 p-3.5 ring-1 ring-border/40">
+                    {fin.hasRevenue ? (
+                      <ProfitBlock fin={fin} />
+                    ) : fin.hasCap ? (
+                      <CostCapBlock fin={fin} />
+                    ) : (
+                      <NoCapBlock fin={fin} />
+                    )}
+                  </div>
 
                   {/* Team */}
-                  <div className="flex items-center gap-3 pt-3 border-t">
+                  <div className="flex items-center gap-3 border-t border-border/50 pt-3.5">
                     {members.length === 0 ? (
                       <div className="text-[11px] text-muted-foreground italic flex-1">
                         Chưa phân bổ ai
@@ -667,15 +679,13 @@ export function ProjectsClient({
 
                   {/* Meta footer */}
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <span
-                        className="inline-flex items-center justify-center w-4 h-4 rounded bg-muted text-[9px] font-semibold"
-                      >
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-muted/80 px-1 text-[10px] font-semibold tnum">
                         {phaseCount}
                       </span>
                       giai đoạn
                     </span>
-                    <span>
+                    <span className="truncate pl-2">
                       {p.start_date && p.end_date
                         ? `${formatDate(p.start_date)} → ${formatDate(p.end_date)}`
                         : p.start_date
@@ -689,7 +699,7 @@ export function ProjectsClient({
                     asChild
                     variant="secondary"
                     size="sm"
-                    className="w-full group/btn"
+                    className="group/btn w-full ring-1 ring-border/50"
                   >
                     <Link
                       href={`/projects/${p.id}`}
@@ -775,7 +785,7 @@ export function ProjectsClient({
             </div>
 
             {/* Revenue section */}
-            <div className="rounded-xl border bg-gradient-to-br from-emerald-500/[0.06] to-transparent p-4 space-y-3">
+            <div className="space-y-3 rounded-2xl bg-emerald-500/[0.06] p-4 ring-1 ring-emerald-500/15">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-4 rounded-full bg-emerald-500" />
                 <Label className="mb-0">Doanh thu (khách trả)</Label>
@@ -973,13 +983,13 @@ function ProfitBlock({ fin }: { fin: ProjectFinance }) {
   const costPct = fin.revenue > 0 ? Math.min(1.2, fin.totalSpent / fin.revenue) : 0;
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
+    <div className="space-y-2.5">
+      <div className="flex items-end justify-between gap-2">
         <div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             Profit
           </div>
-          <div className={cn("text-base font-semibold tnum", tone.text)}>
+          <div className={cn("mt-0.5 font-display text-lg font-semibold tnum", tone.text)}>
             {formatCurrency(fin.profit)}
           </div>
         </div>
@@ -1047,10 +1057,10 @@ function NoCapBlock({ fin }: { fin: ProjectFinance }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <div>
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+        <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           Đã tiêu (no cap)
         </div>
-        <div className="text-lg font-semibold tnum">
+        <div className="mt-0.5 font-display text-lg font-semibold tnum">
           {formatCurrency(fin.totalSpent)}
         </div>
       </div>
@@ -1059,37 +1069,43 @@ function NoCapBlock({ fin }: { fin: ProjectFinance }) {
   );
 }
 
-type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
-const TONE_MAP: Record<Tone, { bg: string; text: string; iconBg: string }> = {
-  indigo: {
-    bg: "bg-teal-500/5 border-teal-500/15",
+type Tone = "teal" | "cyan" | "emerald" | "rose" | "amber" | "sky";
+const TONE_MAP: Record<Tone, { bg: string; text: string; iconBg: string; ring: string }> = {
+  teal: {
+    bg: "bg-teal-500/[0.06]",
     text: "text-teal-600 dark:text-teal-400",
-    iconBg: "bg-teal-500/10",
+    iconBg: "bg-teal-500/10 ring-teal-500/20",
+    ring: "ring-teal-500/15",
   },
-  violet: {
-    bg: "bg-cyan-500/5 border-cyan-500/15",
+  cyan: {
+    bg: "bg-cyan-500/[0.06]",
     text: "text-cyan-600 dark:text-cyan-400",
-    iconBg: "bg-cyan-500/10",
+    iconBg: "bg-cyan-500/10 ring-cyan-500/20",
+    ring: "ring-cyan-500/15",
   },
   emerald: {
-    bg: "bg-emerald-500/5 border-emerald-500/15",
+    bg: "bg-emerald-500/[0.06]",
     text: "text-emerald-600 dark:text-emerald-400",
-    iconBg: "bg-emerald-500/10",
+    iconBg: "bg-emerald-500/10 ring-emerald-500/20",
+    ring: "ring-emerald-500/15",
   },
   rose: {
-    bg: "bg-rose-500/5 border-rose-500/15",
+    bg: "bg-rose-500/[0.06]",
     text: "text-rose-600 dark:text-rose-400",
-    iconBg: "bg-rose-500/10",
+    iconBg: "bg-rose-500/10 ring-rose-500/20",
+    ring: "ring-rose-500/15",
   },
   amber: {
-    bg: "bg-amber-500/5 border-amber-500/15",
+    bg: "bg-amber-500/[0.06]",
     text: "text-amber-600 dark:text-amber-400",
-    iconBg: "bg-amber-500/10",
+    iconBg: "bg-amber-500/10 ring-amber-500/20",
+    ring: "ring-amber-500/15",
   },
   sky: {
-    bg: "bg-sky-500/5 border-sky-500/15",
+    bg: "bg-sky-500/[0.06]",
     text: "text-sky-600 dark:text-sky-400",
-    iconBg: "bg-sky-500/10",
+    iconBg: "bg-sky-500/10 ring-sky-500/20",
+    ring: "ring-sky-500/15",
   },
 };
 
@@ -1109,32 +1125,36 @@ function KpiCard({
   const t = TONE_MAP[tone];
   return (
     <div
-      className={cn("rounded-xl border p-3 lg:p-4 relative overflow-hidden", t.bg)}
+      className={cn(
+        "relative overflow-hidden rounded-2xl p-3.5 ring-1 ring-border/70 lg:p-4",
+        t.bg,
+        t.ring
+      )}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2.5 flex items-start justify-between gap-2">
         <span
           className={cn(
-            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+            "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ring-1",
             t.iconBg,
             t.text
           )}
         >
           {icon}
         </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <span className="text-right text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
       </div>
       <div
         className={cn(
-          "text-base lg:text-lg font-semibold tnum tracking-tight truncate",
+          "truncate font-display text-base font-semibold tnum tracking-tight lg:text-lg",
           t.text
         )}
       >
         {value}
       </div>
       {hint && (
-        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+        <div className="mt-1 truncate text-[11px] leading-relaxed text-muted-foreground">
           {hint}
         </div>
       )}

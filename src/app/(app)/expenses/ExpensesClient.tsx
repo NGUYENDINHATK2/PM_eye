@@ -92,11 +92,11 @@ const CAT_LABEL: Record<string, string> = {
   other: "Khác",
 };
 const CAT_COLORS: Record<string, string> = {
-  server: "hsl(238 84% 67%)",
+  server: "hsl(173 58% 39%)",
   license: "hsl(199 89% 48%)",
-  outsource: "hsl(158 64% 52%)",
-  travel: "hsl(38 92% 50%)",
-  marketing: "hsl(330 81% 60%)",
+  outsource: "hsl(158 64% 42%)",
+  travel: "hsl(45 93% 47%)",
+  marketing: "hsl(187 71% 42%)",
   other: "hsl(215 16% 56%)",
 };
 
@@ -436,24 +436,30 @@ export function ExpensesClient({
       </div>
 
       {/* Toolbar */}
-      <Card>
-        <CardContent className="p-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative flex-1 min-w-[200px]">
+      <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+        <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <div className="text-sm font-semibold">Bộ lọc</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {filtered.length} khoản · {rangeLabel(range)}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px] flex-1 sm:flex-none sm:w-64">
               <Search
-                size={13}
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm mô tả khoản chi…"
-                className="h-9 pl-7 pr-2 text-xs bg-card"
+                className="h-10 pl-9"
               />
             </div>
 
             <Select value={catFilter} onValueChange={setCatFilter}>
-              <SelectTrigger className="h-9 w-[150px] text-xs font-medium bg-card shadow-sm">
+              <SelectTrigger className="h-10 w-[150px] text-xs font-medium">
                 <SelectValue placeholder="Mọi loại" />
               </SelectTrigger>
               <SelectContent>
@@ -469,7 +475,7 @@ export function ExpensesClient({
             </Select>
 
             <Select value={projFilter} onValueChange={setProjFilter}>
-              <SelectTrigger className="h-9 w-[160px] text-xs font-medium bg-card shadow-sm">
+              <SelectTrigger className="h-10 w-[160px] text-xs font-medium">
                 <SelectValue placeholder="Mọi dự án" />
               </SelectTrigger>
               <SelectContent>
@@ -487,17 +493,17 @@ export function ExpensesClient({
               </SelectContent>
             </Select>
 
-            <div className="inline-flex rounded-lg border bg-card p-1 shadow-sm">
+            <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
               {(["3mo", "6mo", "12mo", "ytd", "all"] as const).map((r) => (
                 <button
                   key={r}
                   type="button"
                   onClick={() => setRange(r)}
                   className={cn(
-                    "px-3 h-7 rounded-md text-xs font-medium transition",
+                    "h-9 rounded-lg px-3 text-xs font-medium transition",
                     range === r
-                      ? "bg-accent text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                      : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                   )}
                 >
                   {rangeLabel(r)}
@@ -505,13 +511,13 @@ export function ExpensesClient({
               ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Monthly stacked bar — 2/3 width */}
-        <Card className="lg:col-span-2">
+        <Card className="border-0 shadow-none ring-1 ring-border/70 lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Chi phí theo tháng</CardTitle>
             <CardDescription>
@@ -567,7 +573,7 @@ export function ExpensesClient({
                         <div className="rounded-lg border bg-popover/95 backdrop-blur-md px-3 py-2.5 shadow-lg text-xs min-w-[210px]">
                           <div className="flex justify-between gap-3 items-baseline mb-1.5">
                             <span className="font-semibold">{label}</span>
-                            <span className="tnum font-semibold text-primary">
+                            <span className="tnum font-semibold text-teal-700 dark:text-teal-300">
                               {formatCurrency(total)}
                             </span>
                           </div>
@@ -616,7 +622,7 @@ export function ExpensesClient({
         </Card>
 
         {/* Donut chart — category split */}
-        <Card>
+        <Card className="border-0 shadow-none ring-1 ring-border/70">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Phân bổ theo loại</CardTitle>
             <CardDescription>
@@ -681,9 +687,9 @@ export function ExpensesClient({
                           setCatFilter(active ? "all" : c.raw)
                         }
                         className={cn(
-                          "w-full flex items-center justify-between text-xs gap-2 px-1.5 py-1 rounded-md transition",
+                          "flex w-full items-center justify-between gap-2 rounded-lg px-1.5 py-1 text-xs transition",
                           active
-                            ? "bg-primary/10"
+                            ? "bg-teal-500/10 ring-1 ring-teal-500/20"
                             : "hover:bg-muted/50"
                         )}
                       >
@@ -712,7 +718,7 @@ export function ExpensesClient({
 
       {/* Project breakdown bar list */}
       {byProject.length > 0 && (
-        <Card>
+        <Card className="border-0 shadow-none ring-1 ring-border/70">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Chi phí theo dự án</CardTitle>
             <CardDescription>
@@ -736,8 +742,10 @@ export function ExpensesClient({
                       setProjFilter(active ? "all" : target);
                     }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-2 py-1.5 rounded-lg transition text-left",
-                      active ? "bg-primary/10" : "hover:bg-muted/50"
+                      "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition",
+                      active
+                        ? "bg-teal-500/10 ring-1 ring-teal-500/20"
+                        : "hover:bg-muted/45"
                     )}
                   >
                     <span className="flex items-center gap-2 w-44 shrink-0">
@@ -773,34 +781,32 @@ export function ExpensesClient({
       )}
 
       {/* Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-base">Lịch sử chi phí</CardTitle>
-              <CardDescription>
-                {filtered.length} khoản · sort theo ngày mới nhất
-              </CardDescription>
-            </div>
+      <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+        <div className="border-b border-border/60 px-4 py-3.5 sm:px-5">
+          <div className="text-sm font-semibold">Lịch sử chi phí</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            {filtered.length} khoản · sort theo ngày mới nhất
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-6">Ngày</TableHead>
-                <TableHead>Mô tả</TableHead>
-                <TableHead>Loại</TableHead>
-                <TableHead>Dự án</TableHead>
-                <TableHead className="text-right">Số tiền</TableHead>
-                <TableHead className="pr-6 w-20"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="p-0">
-                    {expenses.length === 0 ? (
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border/60 hover:bg-transparent">
+              <TableHead className="h-11 bg-muted/30 pl-5">Ngày</TableHead>
+              <TableHead className="h-11 bg-muted/30">Mô tả</TableHead>
+              <TableHead className="h-11 bg-muted/30">Loại</TableHead>
+              <TableHead className="h-11 bg-muted/30">Dự án</TableHead>
+              <TableHead className="h-11 bg-muted/30 text-right">
+                Số tiền
+              </TableHead>
+              <TableHead className="h-11 w-20 bg-muted/30 pr-5" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={6} className="p-0">
+                  {expenses.length === 0 ? (
+                    <div className="px-4 py-10">
                       <EmptyState
                         icon={Receipt}
                         tone="amber"
@@ -812,93 +818,100 @@ export function ExpensesClient({
                           </Button>
                         }
                       />
-                    ) : (
-                      <div className="py-10 text-center text-sm text-muted-foreground">
-                        Không có khoản nào khớp filter — thử bỏ search hoặc đổi
-                        range.
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered
-                  .slice()
-                  .sort(
-                    (a, b) =>
-                      new Date(b.spent_date).getTime() -
-                      new Date(a.spent_date).getTime()
-                  )
-                  .map((e) => {
-                    const proj = e.project_id
-                      ? projectsById.get(e.project_id)
-                      : null;
-                    return (
-                      <TableRow key={e.id}>
-                        <TableCell className="pl-6 text-xs whitespace-nowrap text-muted-foreground">
-                          {formatDate(e.spent_date)}
-                        </TableCell>
-                        <TableCell className="max-w-[280px]">
-                          <div className="truncate">{e.description || "—"}</div>
-                        </TableCell>
-                        <TableCell>
+                    </div>
+                  ) : (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      Không có khoản nào khớp filter — thử bỏ search hoặc đổi
+                      range.
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered
+                .slice()
+                .sort(
+                  (a, b) =>
+                    new Date(b.spent_date).getTime() -
+                    new Date(a.spent_date).getTime()
+                )
+                .map((e) => {
+                  const proj = e.project_id
+                    ? projectsById.get(e.project_id)
+                    : null;
+                  return (
+                    <TableRow
+                      key={e.id}
+                      className="group border-border/60 hover:bg-muted/35"
+                    >
+                      <TableCell className="whitespace-nowrap pl-5 text-xs text-muted-foreground">
+                        {formatDate(e.spent_date)}
+                      </TableCell>
+                      <TableCell className="max-w-[280px]">
+                        <div className="truncate font-medium">
+                          {e.description || "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] font-medium ring-1 ring-border/40"
+                          style={{
+                            background: `${CAT_COLORS[e.category]}14`,
+                            color: CAT_COLORS[e.category],
+                          }}
+                        >
                           <span
-                            className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md"
-                            style={{
-                              background: `${CAT_COLORS[e.category]}1a`,
-                              color: CAT_COLORS[e.category],
-                            }}
-                          >
+                            className="h-1.5 w-1.5 rounded-full"
+                            style={{ background: CAT_COLORS[e.category] }}
+                          />
+                          {CAT_LABEL[e.category] ?? e.category}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {proj ? (
+                          <span className="flex items-center gap-1.5">
                             <span
-                              className="w-1.5 h-1.5 rounded-full"
-                              style={{ background: CAT_COLORS[e.category] }}
+                              className="h-2 w-2 rounded-full"
+                              style={{ background: proj.color }}
                             />
-                            {CAT_LABEL[e.category] ?? e.category}
+                            {proj.name}
                           </span>
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {proj ? (
-                            <span className="flex items-center gap-1.5">
-                              <span
-                                className="w-2 h-2 rounded-full"
-                                style={{ background: proj.color }}
-                              />
-                              {proj.name}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground italic">
-                              Chung
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right tnum font-medium">
-                          {formatCurrency(e.amount)}
-                        </TableCell>
-                        <TableCell className="pr-6">
-                          <div className="flex gap-1 justify-end">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => openEdit(e)}
-                            >
-                              <Pencil />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => remove(e.id)}
-                            >
-                              <Trash2 className="text-rose-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                        ) : (
+                          <span className="italic text-muted-foreground">
+                            Chung
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="tnum text-right font-semibold">
+                        {formatCurrency(e.amount)}
+                      </TableCell>
+                      <TableCell className="pr-5">
+                        <div className="flex justify-end gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9"
+                            onClick={() => openEdit(e)}
+                          >
+                            <Pencil size={15} />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9"
+                            onClick={() => remove(e.id)}
+                          >
+                            <Trash2 size={15} className="text-rose-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Dialog */}
       <Dialog
@@ -1034,32 +1047,32 @@ function rangeLabel(r: Range): string {
 type Tone = "indigo" | "violet" | "emerald" | "rose" | "amber" | "sky";
 const toneMap: Record<Tone, { bg: string; text: string; iconBg: string }> = {
   indigo: {
-    bg: "bg-teal-500/5 border-teal-500/15",
+    bg: "bg-teal-500/5",
     text: "text-teal-600 dark:text-teal-400",
     iconBg: "bg-teal-500/10",
   },
   violet: {
-    bg: "bg-cyan-500/5 border-cyan-500/15",
+    bg: "bg-cyan-500/5",
     text: "text-cyan-600 dark:text-cyan-400",
     iconBg: "bg-cyan-500/10",
   },
   emerald: {
-    bg: "bg-emerald-500/5 border-emerald-500/15",
+    bg: "bg-emerald-500/5",
     text: "text-emerald-600 dark:text-emerald-400",
     iconBg: "bg-emerald-500/10",
   },
   rose: {
-    bg: "bg-rose-500/5 border-rose-500/15",
+    bg: "bg-rose-500/5",
     text: "text-rose-600 dark:text-rose-400",
     iconBg: "bg-rose-500/10",
   },
   amber: {
-    bg: "bg-amber-500/5 border-amber-500/15",
+    bg: "bg-amber-500/5",
     text: "text-amber-600 dark:text-amber-400",
     iconBg: "bg-amber-500/10",
   },
   sky: {
-    bg: "bg-sky-500/5 border-sky-500/15",
+    bg: "bg-sky-500/5",
     text: "text-sky-600 dark:text-sky-400",
     iconBg: "bg-sky-500/10",
   },
@@ -1081,19 +1094,23 @@ function KpiCard({
   const t = toneMap[tone];
   return (
     <div
-      className={cn("rounded-xl border p-3 lg:p-4 relative overflow-hidden", t.bg)}
+      className={cn(
+        "relative overflow-hidden rounded-2xl p-3 ring-1 ring-border/70 lg:p-4",
+        "bg-card",
+        t.bg
+      )}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <span
           className={cn(
-            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ring-1 ring-border/40",
             t.iconBg,
             t.text
           )}
         >
           {icon}
         </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
       </div>

@@ -86,8 +86,8 @@ export function StatCards({
       hint: "ongoing",
       href: "/projects",
       icon: Briefcase,
-      color: "hsl(var(--indigo))",
-      textClass: "gradient-text-indigo",
+      color: "hsl(var(--teal))",
+      textClass: "gradient-text",
       spark: fakeSpark(1),
     },
     {
@@ -97,8 +97,8 @@ export function StatCards({
       hint: "người",
       href: "/employees",
       icon: Users,
-      color: "hsl(var(--violet))",
-      textClass: "gradient-text-indigo",
+      color: "hsl(var(--sky))",
+      textClass: "gradient-text",
       spark: fakeSpark(3),
     },
     {
@@ -134,21 +134,20 @@ export function StatCards({
           className="group animate-fade-up"
           style={{ animationDelay: `${i * 70}ms` }}
         >
-          <div className="relative card-premium rounded-2xl overflow-hidden h-full shine">
-            {/* corner accent */}
+          <div className="card-premium shine group relative h-full overflow-hidden rounded-2xl ring-1 ring-border/45 transition hover:ring-teal-500/15">
             <div
               aria-hidden
-              className="absolute -top-12 -right-12 w-32 h-32 rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity duration-500"
+              className="absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-40 blur-3xl transition-opacity duration-500 group-hover:opacity-70"
               style={{ background: s.color }}
             />
 
-            <div className="relative p-4 sm:p-5 min-w-0">
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="relative min-w-0 p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between sm:mb-4">
                 <div
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white shrink-0"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white ring-1 ring-white/20 sm:h-10 sm:w-10"
                   style={{
-                    background: `linear-gradient(135deg, ${s.color}, ${s.color})`,
-                    boxShadow: `0 6px 16px -4px ${s.color}66`,
+                    background: `linear-gradient(135deg, ${s.color}, hsl(var(--sky) / 0.85))`,
+                    boxShadow: `0 6px 16px -4px ${s.color}55`,
                   }}
                 >
                   <s.icon size={15} strokeWidth={2.4} />

@@ -298,10 +298,10 @@ export function InsightsClient({ data }: { data: AppData }) {
                     type="button"
                     onClick={() => setStatusFilter(s)}
                     className={cn(
-                      "h-7 px-2.5 rounded-lg text-[11px] border transition",
+                      "h-7 rounded-lg border border-border/60 px-2.5 text-[11px] ring-1 ring-transparent transition",
                       statusFilter === s
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "hover:bg-muted"
+                        ? "border-teal-500/30 bg-teal-500/10 text-teal-800 ring-teal-500/20 dark:text-teal-300"
+                        : "hover:bg-muted/60"
                     )}
                   >
                     {s === "all"
@@ -333,12 +333,12 @@ export function InsightsClient({ data }: { data: AppData }) {
                   key={k}
                   type="button"
                   onClick={() => setSort(k)}
-                  className={cn(
-                    "h-7 px-2.5 rounded-lg text-[11px] border transition",
-                    sort === k
-                      ? "bg-accent text-accent-foreground border-primary/30"
-                      : "hover:bg-muted"
-                  )}
+                    className={cn(
+                      "h-7 rounded-lg border border-border/60 px-2.5 text-[11px] ring-1 ring-transparent transition",
+                      sort === k
+                        ? "border-teal-500/25 bg-teal-500/[0.08] text-teal-900 ring-teal-500/15 dark:text-teal-200"
+                        : "hover:bg-muted/60"
+                    )}
                 >
                   Sort: {label}
                 </button>
@@ -617,12 +617,12 @@ function Kpi({
     sky: "text-sky-600 dark:text-sky-400",
   };
   return (
-    <div className="rounded-xl border bg-card p-3.5">
+    <div className="rounded-2xl border border-border/50 bg-card/80 p-3.5 ring-1 ring-border/30 transition hover:border-teal-500/20">
       <div className={cn("flex items-center gap-1.5 text-[11px] font-medium", tones[tone])}>
         {icon}
         {label}
       </div>
-      <div className="text-lg font-semibold tracking-tight tnum mt-1 truncate">
+      <div className="mt-1 truncate text-lg font-semibold tracking-tight tnum">
         {value}
       </div>
     </div>
