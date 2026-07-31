@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldControl, FieldGrid } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,15 +31,18 @@ import { cn, formatCurrency, humanizeSupabaseError } from "@/lib/utils";
 import {
   Briefcase,
   CalendarDays,
+  Crown,
   Loader2,
   Plus,
+  Search,
   Shield,
   Trash2,
   User,
   UserCog,
+  Users,
   Wallet,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type UserRow = {
@@ -61,6 +66,8 @@ export function UsersAdminClient() {
 
   const [appRole, setAppRole] = useState<AppRole>("member");
   const [jobRole, setJobRole] = useState("BA");
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"all" | AppRole>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,109 +171,261 @@ export function UsersAdminClient() {
     await load();
   }
 
+  const counts = useMemo(() => {
+    const base = { admin: 0, manager: 0, pm: 0, member: 0, active: 0 };
+    for (const u of users) {
+      base[u.app_role] += 1;
+      if (u.is_active) base.active += 1;
+    }
+    return base;
+  }, [users]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return users.filter((u) => {
+      if (roleFilter !== "all" && u.app_role !== roleFilter) return false;
+      if (!q) return true;
+      return (
+        u.full_name.toLowerCase().includes(q) ||
+        (u.email ?? "").toLowerCase().includes(q) ||
+        u.job_role.toLowerCase().includes(q) ||
+        roleLabel(u.app_role).toLowerCase().includes(q)
+      );
+    });
+  }, [users, search, roleFilter]);
+
+  const roleCards = [
+    {
+      role: "admin" as const,
+      title: "Admin",
+      desc: "Full quyền · xem lương",
+      icon: Crown,
+      accent: "from-rose-500/15 to-transparent text-rose-600 dark:text-rose-400 ring-rose-500/20",
+    },
+    {
+      role: "manager" as const,
+      title: "Quản lý",
+      desc: "All dự án · không lương",
+      icon: Shield,
+      accent: "from-teal-500/15 to-transparent text-teal-700 dark:text-teal-300 ring-teal-500/20",
+    },
+    {
+      role: "pm" as const,
+      title: "PM",
+      desc: "Dự án mình phụ trách",
+      icon: Briefcase,
+      accent: "from-sky-500/15 to-transparent text-sky-700 dark:text-sky-300 ring-sky-500/20",
+    },
+    {
+      role: "member" as const,
+      title: "Member",
+      desc: "Dự án đang làm",
+      icon: Users,
+      accent: "from-slate-500/10 to-transparent text-slate-600 dark:text-slate-300 ring-border/60",
+    },
+  ];
+
+  function initials(name: string) {
+    return (
+      name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0]?.toUpperCase())
+        .join("") || "?"
+    );
+  }
+
+  function roleBadgeVariant(role: AppRole) {
+    if (role === "admin") return "destructive" as const;
+    if (role === "manager") return "brand" as const;
+    if (role === "pm") return "info" as const;
+    return "secondary" as const;
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Admin"
+        eyebrow="Admin · Access"
         title="Tài khoản & phân quyền"
-        subtitle="Tạo acc cấp dưới: Quản lý · PM · Member. Chỉ admin xem được quỹ lương."
+        subtitle="Cấp acc và quyền hệ thống. Hồ sơ HR / lương chi tiết quản ở Nhân sự."
         actions={
-          <Button variant="brand" onClick={openNew}>
+          <Button variant="brand" onClick={openNew} className="shadow-sm">
             <Plus size={16} /> Thêm tài khoản
           </Button>
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {(
-          [
-            ["manager", "Quản lý", "Xem all dự án, không lương"],
-            ["pm", "PM", "Dự án mình phụ trách"],
-            ["member", "Member", "Dự án đang làm, không tiền"],
-          ] as const
-        ).map(([role, title, desc]) => (
-          <div key={role} className="rounded-xl border p-3.5 bg-card">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Shield size={14} className="text-teal-600" />
-              {title}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1">{desc}</div>
-            <div className="text-lg font-semibold tnum mt-2">
-              {users.filter((u) => u.app_role === role).length}
-            </div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {roleCards.map((card) => {
+          const Icon = card.icon;
+          const active = roleFilter === card.role;
+          const count = counts[card.role];
+          return (
+            <button
+              key={card.role}
+              type="button"
+              onClick={() =>
+                setRoleFilter(active ? "all" : card.role)
+              }
+              className={cn(
+                "group relative overflow-hidden rounded-2xl p-4 text-left transition-all",
+                "bg-card ring-1 ring-border/70",
+                "hover:-translate-y-0.5 hover:shadow-md hover:ring-primary/25",
+                active && "ring-2 ring-primary/40 shadow-md"
+              )}
+            >
+              <div
+                className={cn(
+                  "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80",
+                  card.accent.split(" ").slice(0, 2).join(" ")
+                )}
+              />
+              <div className="relative">
+                <div className="flex items-start justify-between gap-2">
+                  <span
+                    className={cn(
+                      "inline-flex h-9 w-9 items-center justify-center rounded-xl ring-1 bg-background/70",
+                      card.accent
+                    )}
+                  >
+                    <Icon size={16} />
+                  </span>
+                  <span className="font-display text-2xl font-semibold tnum tracking-tight">
+                    {count}
+                  </span>
+                </div>
+                <div className="mt-3 text-sm font-semibold">{card.title}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
+                  {card.desc}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-[11px] uppercase tracking-wider text-muted-foreground">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium">Người dùng</th>
-              <th className="text-left px-4 py-3 font-medium">Quyền</th>
-              <th className="text-left px-4 py-3 font-medium">Chức danh</th>
-              <th className="text-right px-4 py-3 font-medium">Lương</th>
-              <th className="text-right px-4 py-3 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                  <Loader2 className="inline animate-spin mr-2" size={14} />
-                  Đang tải…
-                </td>
-              </tr>
-            )}
-            {!loading && users.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                  Chưa có tài khoản nào.
-                </td>
-              </tr>
-            )}
-            {users.map((u) => (
-              <tr key={u.id} className="border-t hover:bg-muted/30">
-                <td className="px-4 py-3">
-                  <div className="font-medium">{u.full_name}</div>
-                  <div className="text-xs text-muted-foreground">{u.email}</div>
-                  {!u.is_active && (
-                    <Badge variant="warning" className="mt-1">
-                      Inactive
-                    </Badge>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge
-                    variant={
-                      u.app_role === "admin"
-                        ? "destructive"
-                        : u.app_role === "manager"
-                        ? "brand"
-                        : u.app_role === "pm"
-                        ? "info"
-                        : "secondary"
-                    }
-                  >
+      <div className="overflow-hidden rounded-2xl bg-card ring-1 ring-border/70">
+        <div className="flex flex-col gap-3 border-b border-border/60 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <div className="text-sm font-semibold">Danh sách tài khoản</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {filtered.length} / {users.length} · {counts.active} đang hoạt động
+              {roleFilter !== "all" ? ` · lọc ${roleLabel(roleFilter)}` : ""}
+            </div>
+          </div>
+          <div className="relative w-full sm:w-72">
+            <Search
+              size={14}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm tên, email, quyền…"
+              className="h-10 pl-9"
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-muted-foreground">
+            <Loader2 className="animate-spin" size={16} />
+            Đang tải…
+          </div>
+        ) : users.length === 0 ? (
+          <div className="px-4 py-10">
+            <EmptyState
+              icon={Shield}
+              title="Chưa có tài khoản"
+              description="Tạo acc đầu tiên để cấp quyền manager / pm / member."
+              action={
+                <Button variant="brand" onClick={openNew}>
+                  <Plus size={16} /> Thêm tài khoản
+                </Button>
+              }
+            />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-4 py-14 text-center text-sm text-muted-foreground">
+            Không khớp bộ lọc.{" "}
+            <button
+              type="button"
+              className="font-medium text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
+              onClick={() => {
+                setSearch("");
+                setRoleFilter("all");
+              }}
+            >
+              Xóa lọc
+            </button>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {filtered.map((u) => (
+              <li
+                key={u.id}
+                className="group flex flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-muted/35 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar className="h-11 w-11 rounded-2xl">
+                    <AvatarFallback className="rounded-2xl text-[13px]">
+                      {initials(u.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-medium leading-none">
+                        {u.full_name}
+                      </span>
+                      {!u.is_active && (
+                        <Badge variant="warning" className="text-[10px]">
+                          Inactive
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-1.5 truncate text-xs text-muted-foreground">
+                      {u.email ?? "—"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end">
+                  <Badge variant={roleBadgeVariant(u.app_role)}>
                     {roleLabel(u.app_role)}
                   </Badge>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">{u.job_role}</td>
-                <td className="px-4 py-3 text-right tnum">
-                  {formatCurrency(u.base_salary)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(u)}>
-                    <UserCog size={14} />
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => remove(u)}>
-                    <Trash2 size={14} className="text-rose-500" />
-                  </Button>
-                </td>
-              </tr>
+                  <span className="min-w-[4.5rem] text-xs text-muted-foreground">
+                    {u.job_role}
+                  </span>
+                  <span className="min-w-[6.5rem] text-right text-sm font-medium tnum tabular-nums">
+                    {formatCurrency(u.base_salary)}
+                  </span>
+                  <div className="flex items-center gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9"
+                      onClick={() => openEdit(u)}
+                      title="Sửa"
+                    >
+                      <UserCog size={15} />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9"
+                      onClick={() => remove(u)}
+                      title="Xóa"
+                      disabled={u.app_role === "admin"}
+                    >
+                      <Trash2 size={15} className="text-rose-500" />
+                    </Button>
+                  </div>
+                </div>
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>

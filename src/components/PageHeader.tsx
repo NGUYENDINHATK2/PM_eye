@@ -23,9 +23,14 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("animate-fade-up mb-8", className)}>
+    <div className={cn("animate-fade-up relative mb-8", className)}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-4 -top-6 h-28 w-56 rounded-full bg-teal-500/[0.07] blur-3xl dark:bg-teal-400/[0.08]"
+      />
+
       {crumbs && crumbs.length > 0 && (
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+        <nav className="mb-3 flex items-center gap-1 text-xs text-muted-foreground">
           {crumbs.map((c, i) => {
             const isLast = i === crumbs.length - 1;
             return (
@@ -33,7 +38,7 @@ export function PageHeader({
                 {c.href && !isLast ? (
                   <Link
                     href={c.href}
-                    className="hover:text-foreground transition"
+                    className="transition hover:text-foreground"
                   >
                     {c.label}
                   </Link>
@@ -54,30 +59,33 @@ export function PageHeader({
         </nav>
       )}
 
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="relative flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0 flex-1">
           {eyebrow && (
-            <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-teal-700 dark:text-teal-400 mb-2 flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-teal-500" />
+            <div className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700 dark:text-teal-400">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-40" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-teal-500" />
+              </span>
               {eyebrow}
             </div>
           )}
           <h1
             className={cn(
-              "font-display text-2xl sm:text-3xl lg:text-[34px] font-semibold tracking-tight leading-[1.1]",
+              "font-display text-2xl font-semibold leading-[1.1] tracking-tight sm:text-3xl lg:text-[2.15rem]",
               highlight && "gradient-text"
             )}
           >
             {title}
           </h1>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-muted-foreground mt-2 max-w-2xl leading-relaxed">
+            <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               {subtitle}
             </p>
           )}
         </div>
         {actions && (
-          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
             {actions}
           </div>
         )}

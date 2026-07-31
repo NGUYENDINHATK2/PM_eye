@@ -41,23 +41,26 @@ export function AppShell({
 
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Desktop top bar */}
-        <header className="hidden lg:flex sticky top-0 z-30 h-14 items-center gap-3 px-6 border-b glass">
+        <header className="sticky top-0 z-30 hidden h-14 items-center gap-3 border-b border-border/60 px-6 glass lg:flex">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="flex-1 max-w-md h-9 px-3 rounded-xl border bg-background/80 text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 transition flex items-center gap-2"
+            className="flex h-10 max-w-md flex-1 items-center gap-2.5 rounded-xl border border-transparent bg-muted/55 px-3.5 text-sm text-muted-foreground transition hover:border-primary/25 hover:bg-muted hover:text-foreground"
           >
-            <Search size={14} />
+            <Search size={15} className="shrink-0 opacity-70" />
             <span className="flex-1 text-left">Tìm dự án, nhân sự, trang…</span>
-            <kbd className="text-[10px] px-1.5 py-0.5 rounded border bg-muted/50">⌘K</kbd>
+            <kbd className="rounded-md border bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              ⌘K
+            </kbd>
           </button>
 
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden xl:inline text-[11px] text-muted-foreground px-2 py-1 rounded-lg border bg-card">
+            <span className="hidden items-center gap-1.5 rounded-full bg-teal-500/10 px-2.5 py-1 text-[11px] font-semibold text-teal-700 ring-1 ring-teal-500/20 xl:inline-flex dark:text-teal-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
               {roleLabel(role)}
             </span>
             {refreshing && (
-              <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <Loader2 size={12} className="animate-spin" />
                 Đang đồng bộ
               </span>
@@ -68,7 +71,7 @@ export function AppShell({
               disabled={refreshing}
               title="Làm mới dữ liệu"
               className={cn(
-                "w-9 h-9 rounded-xl inline-flex items-center justify-center border bg-card hover:bg-accent transition",
+                "inline-flex h-10 w-10 items-center justify-center rounded-xl border border-transparent bg-muted/50 transition hover:bg-accent",
                 refreshing && "opacity-60"
               )}
             >
@@ -78,7 +81,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 min-w-0 p-4 lg:p-6 w-full max-w-full overflow-x-hidden">
+        <main className="min-w-0 w-full max-w-full flex-1 overflow-x-hidden p-4 sm:p-5 lg:p-7">
           {error && !data ? (
             <div className="max-w-md mx-auto mt-20 text-center space-y-4 animate-fade-up">
               <div className="text-rose-500 font-medium">Không tải được dữ liệu</div>
