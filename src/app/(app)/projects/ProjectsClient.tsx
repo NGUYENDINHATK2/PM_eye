@@ -1,8 +1,15 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
-import { ForceFitBadge } from "@/components/projects/ForceFitPanel";
-import { projectForceFit } from "@/lib/force-fit";
+import {
+  ForceFitBadge,
+  ForceFitMini,
+} from "@/components/projects/ForceFitPanel";
+import {
+  forceFitTone,
+  projectForceFit,
+  type ProjectForceFit,
+} from "@/lib/force-fit";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,12 +72,15 @@ import {
   Activity,
   ArrowUpRight,
   Briefcase,
+  Flame,
+  Gauge,
   MoreHorizontal,
   Pencil,
   Plus,
   Search,
   TrendingUp,
   Trash2,
+  Users,
   Wallet,
 } from "lucide-react";
 import { useAppData } from "@/lib/hooks/useAppData";
@@ -149,13 +159,36 @@ export function ProjectsClient({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<
-    "recent" | "name" | "profit" | "spent"
+    "recent" | "name" | "profit" | "spent" | "fit" | "power" | "difficulty"
   >("recent");
+  const [forceFilter, setForceFilter] = useState<
+    "all" | "risk" | "unset" | "ok" | "empty"
+  >("all");
 
   const profilesById = useMemo(
     () => new Map(profiles.map((p) => [p.id, p])),
     [profiles]
   );
+
+  /** Precompute lực chiến mọi dự án */
+  const forceByProject = useMemo(() => {
+    const map = new Map<string, ProjectForceFit>();
+    const today = new Date();
+    for (const p of projects) {
+      map.set(
+        p.id,
+        projectForceFit(
+          p,
+          allocations,
+          profilesById,
+          allocations,
+          today,
+          phases.filter((ph) => ph.project_id === p.id)
+        )
+      );
+    }
+    return map;
+  }, [projects, allocations, profilesById, phases]);
 
   function openNew() {
     setEditing(null);
@@ -283,6 +316,24 @@ export function ProjectsClient({
           (p.client ?? "").toLowerCase().includes(q)
       );
     }
+    if (forceFilter !== "all") {
+      arr = arr.filter((p) => {
+        const f = forceByProject.get(p.id);
+        if (!f) return false;
+        if (forceFilter === "empty") return f.verdict === "empty";
+        if (forceFilter === "unset") return f.verdict === "unset";
+        if (forceFilter === "risk") {
+          return (
+            f.verdict === "underpowered" ||
+            f.verdict === "understaffed" ||
+            f.verdict === "overloaded" ||
+            f.verdict === "tight"
+          );
+        }
+        // ok
+        return f.verdict === "balanced" || f.verdict === "strong";
+      });
+    }
     const sorted = [...arr];
     if (sortBy === "name") {
       sorted.sort((a, b) => a.name.localeCompare(b.name));
@@ -298,9 +349,36 @@ export function ProjectsClient({
         const fb = projectFinance(b, allocations, profilesById, expenses, undefined, salaryHistory);
         return fb.totalSpent - fa.totalSpent;
       });
+    } else if (sortBy === "fit") {
+      sorted.sort((a, b) => {
+        const fa = forceByProject.get(a.id)?.qualityFit ?? -1;
+        const fb = forceByProject.get(b.id)?.qualityFit ?? -1;
+        return fa - fb; // yếu trước
+      });
+    } else if (sortBy === "power") {
+      sorted.sort((a, b) => {
+        const fa = forceByProject.get(a.id)?.avgPower ?? 0;
+        const fb = forceByProject.get(b.id)?.avgPower ?? 0;
+        return fb - fa;
+      });
+    } else if (sortBy === "difficulty") {
+      sorted.sort(
+        (a, b) => Number(b.difficulty || 0) - Number(a.difficulty || 0)
+      );
     }
     return sorted;
-  }, [projects, statusFilter, search, sortBy, allocations, profilesById, expenses]);
+  }, [
+    projects,
+    statusFilter,
+    forceFilter,
+    search,
+    sortBy,
+    allocations,
+    profilesById,
+    expenses,
+    salaryHistory,
+    forceByProject,
+  ]);
 
   // Stats summary
   const statsSummary = useMemo(() => {
@@ -312,6 +390,12 @@ export function ProjectsClient({
     let lossCount = 0;
     let overBudgetCount = 0;
     let withRevenueCount = 0;
+    let forceRisk = 0;
+    let forceOk = 0;
+    let forceUnset = 0;
+    let forceEmpty = 0;
+    let fitSum = 0;
+    let fitCount = 0;
     for (const p of projects) {
       const f = projectFinance(
         p,
@@ -329,9 +413,26 @@ export function ProjectsClient({
         if (f.profit < 0) lossCount++;
       }
       if (f.hasCap && f.overBudget) overBudgetCount++;
+
+      const ff = forceByProject.get(p.id);
+      if (!ff || ff.verdict === "empty") forceEmpty++;
+      else if (ff.verdict === "unset") forceUnset++;
+      else if (
+        ff.verdict === "underpowered" ||
+        ff.verdict === "understaffed" ||
+        ff.verdict === "overloaded" ||
+        ff.verdict === "tight"
+      ) {
+        forceRisk++;
+      } else forceOk++;
+      if (ff?.qualityFit != null) {
+        fitSum += ff.qualityFit;
+        fitCount++;
+      }
     }
     const avgMargin =
       totalRevenue > 0 ? totalProfit / totalRevenue : 0;
+    const avgFit = fitCount > 0 ? fitSum / fitCount : null;
     return {
       total,
       ongoing,
@@ -342,19 +443,26 @@ export function ProjectsClient({
       lossCount,
       overBudgetCount,
       withRevenueCount,
+      forceRisk,
+      forceOk,
+      forceUnset,
+      forceEmpty,
+      avgFit,
     };
-  }, [projects, allocations, profilesById, expenses, salaryHistory]);
+  }, [projects, allocations, profilesById, expenses, salaryHistory, forceByProject]);
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Workspace · Dự án"
         title="Portfolio dự án"
-        subtitle="Theo dõi ngân sách, doanh thu, lợi nhuận và sức khỏe từng dự án trong portfolio."
+        subtitle="Lực chiến team, độ khó, Fit staffing — kèm P&L nếu bạn có quyền xem tiền."
         actions={
-          <Button variant="brand" onClick={openNew}>
-            <Plus /> Thêm dự án
-          </Button>
+          canWrite ? (
+            <Button variant="brand" onClick={openNew}>
+              <Plus /> Thêm dự án
+            </Button>
+          ) : undefined
         }
       />
 
@@ -363,8 +471,8 @@ export function ProjectsClient({
         <div
           className={
             canViewMoney
-              ? "grid grid-cols-2 gap-3 lg:grid-cols-5"
-              : "grid grid-cols-2 gap-3 lg:grid-cols-2"
+              ? "grid grid-cols-2 gap-3 lg:grid-cols-6"
+              : "grid grid-cols-2 gap-3 lg:grid-cols-4"
           }
         >
           <KpiCard
@@ -374,6 +482,31 @@ export function ProjectsClient({
             tone="teal"
             icon={<Briefcase size={14} />}
           />
+          <KpiCard
+            label="Fit TB"
+            value={
+              statsSummary.avgFit != null
+                ? `${Math.round(statsSummary.avgFit * 100)}%`
+                : "—"
+            }
+            hint="LC trung bình ÷ độ khó"
+            tone="amber"
+            icon={<Gauge size={14} />}
+          />
+          <KpiCard
+            label="Rủi ro lực"
+            value={statsSummary.forceRisk.toString()}
+            hint={`${statsSummary.forceOk} ổn · ${statsSummary.forceUnset} chưa đặt độ khó`}
+            tone={statsSummary.forceRisk > 0 ? "rose" : "emerald"}
+            icon={<Flame size={14} />}
+          />
+          <KpiCard
+            label="Chưa có team"
+            value={statsSummary.forceEmpty.toString()}
+            hint="Dự án chưa phân bổ ai"
+            tone="sky"
+            icon={<Users size={14} />}
+          />
           {canViewMoney && (
             <>
               <KpiCard
@@ -381,8 +514,8 @@ export function ProjectsClient({
                 value={formatCurrency(statsSummary.totalRevenue)}
                 hint={
                   statsSummary.withRevenueCount > 0
-                    ? `${statsSummary.withRevenueCount} dự án có doanh thu`
-                    : "Chưa có dự án nào ghi doanh thu"
+                    ? `${statsSummary.withRevenueCount} dự án có DT`
+                    : "Chưa ghi doanh thu"
                 }
                 tone="cyan"
                 icon={<Wallet size={14} />}
@@ -392,7 +525,11 @@ export function ProjectsClient({
                   statsSummary.totalProfit >= 0 ? "Lợi nhuận" : "Đang lỗ"
                 }
                 value={formatCurrency(statsSummary.totalProfit)}
-                hint={`Margin TB ${formatPercent(statsSummary.avgMargin)}`}
+                hint={
+                  statsSummary.lossCount + statsSummary.overBudgetCount > 0
+                    ? `${statsSummary.lossCount} lỗ · ${statsSummary.overBudgetCount} vượt cap`
+                    : `Margin TB ${formatPercent(statsSummary.avgMargin)}`
+                }
                 tone={
                   statsSummary.totalProfit >= 0
                     ? statsSummary.lossCount > 0
@@ -400,37 +537,16 @@ export function ProjectsClient({
                       : "emerald"
                     : "rose"
                 }
-                icon={<TrendingUp size={14} />}
-              />
-              <KpiCard
-                label="Đã tiêu"
-                value={formatCurrency(statsSummary.totalSpent)}
-                hint="Lương + vận hành"
-                tone="sky"
-                icon={<Activity size={14} />}
+                icon={
+                  statsSummary.lossCount + statsSummary.overBudgetCount > 0 ? (
+                    <AlertTriangle size={14} />
+                  ) : (
+                    <TrendingUp size={14} />
+                  )
+                }
               />
             </>
           )}
-          <KpiCard
-            label="Cảnh báo"
-            value={(
-              statsSummary.lossCount + statsSummary.overBudgetCount
-            ).toString()}
-            hint={
-              canViewMoney &&
-              (statsSummary.lossCount > 0 || statsSummary.overBudgetCount > 0)
-                ? `${statsSummary.lossCount} lỗ · ${statsSummary.overBudgetCount} vượt cap`
-                : canViewMoney
-                  ? "Tất cả OK"
-                  : `${statsSummary.ongoing} đang chạy`
-            }
-            tone={
-              statsSummary.lossCount + statsSummary.overBudgetCount > 0
-                ? "rose"
-                : "emerald"
-            }
-            icon={<AlertTriangle size={14} />}
-          />
         </div>
       )}
 
@@ -472,6 +588,22 @@ export function ProjectsClient({
               )}
             </div>
 
+            <Select
+              value={forceFilter}
+              onValueChange={(v) => setForceFilter(v as typeof forceFilter)}
+            >
+              <SelectTrigger className="h-10 w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Mọi lực chiến</SelectItem>
+                <SelectItem value="risk">Rủi ro / sát mức</SelectItem>
+                <SelectItem value="ok">Vừa / dư lực</SelectItem>
+                <SelectItem value="unset">Chưa đặt độ khó</SelectItem>
+                <SelectItem value="empty">Chưa có team</SelectItem>
+              </SelectContent>
+            </Select>
+
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
               <SelectTrigger className="h-10 w-[160px]">
                 <SelectValue />
@@ -479,6 +611,9 @@ export function ProjectsClient({
               <SelectContent>
                 <SelectItem value="recent">Mới tạo trước</SelectItem>
                 <SelectItem value="name">Theo tên</SelectItem>
+                <SelectItem value="fit">Fit yếu → mạnh</SelectItem>
+                <SelectItem value="power">LC TB cao</SelectItem>
+                <SelectItem value="difficulty">Độ khó cao</SelectItem>
                 {canViewMoney && (
                   <>
                     <SelectItem value="profit">Lợi nhuận cao</SelectItem>
@@ -533,15 +668,11 @@ export function ProjectsClient({
 
         {filteredProjects.map((p, idx) => {
           const fin = projectFinance(p, allocations, profilesById, expenses, undefined, salaryHistory);
-          const force = projectForceFit(
-            p,
-            allocations,
-            profilesById,
-            allocations,
-            new Date(),
-            phases.filter((ph) => ph.project_id === p.id)
-          );
+          const force =
+            forceByProject.get(p.id) ??
+            projectForceFit(p, allocations, profilesById, allocations);
           const phaseCount = phases.filter((ph) => ph.project_id === p.id).length;
+          const forceTone = forceFitTone(force.verdict);
 
           // Active team
           const today = new Date();
@@ -561,7 +692,12 @@ export function ProjectsClient({
               percent,
             }))
             .filter((m): m is { profile: Profile; percent: number } => !!m.profile)
-            .sort((a, b) => b.percent - a.percent);
+            .sort(
+              (a, b) =>
+                Number(b.profile.power_score || 0) -
+                  Number(a.profile.power_score || 0) ||
+                b.percent - a.percent
+            );
 
           return (
             <div
@@ -598,15 +734,22 @@ export function ProjectsClient({
                       >
                         {p.name}
                       </Link>
-                      {p.client && (
-                        <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {p.client}
-                        </div>
-                      )}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                        {p.client && (
+                          <span className="truncate">{p.client}</span>
+                        )}
+                        {p.manager_id && profilesById.get(p.manager_id) && (
+                          <>
+                            {p.client && <span>·</span>}
+                            <span className="truncate">
+                              PM {profilesById.get(p.manager_id)!.full_name}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-1">
-                      <ForceFitBadge fit={force} />
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                       <Badge
                         variant={STATUS_VARIANT[p.status]}
                         className="gap-1.5"
@@ -627,6 +770,7 @@ export function ProjectsClient({
                         {STATUS_LABEL[p.status]}
                       </Badge>
 
+                      {canWrite && (
                       <DropdownMenu>
                       <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-lg opacity-60 transition hover:bg-muted hover:opacity-100 focus:outline-none group-hover:opacity-100">
                         <MoreHorizontal size={14} />
@@ -652,8 +796,12 @@ export function ProjectsClient({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                      )}
                     </div>
                   </div>
+
+                  {/* Lực chiến — luôn hiện */}
+                  <ForceFitMini fit={force} />
 
                   {/* P&L hero — chỉ admin/manager/pm */}
                   {canViewMoney && (
@@ -672,7 +820,7 @@ export function ProjectsClient({
                   <div className="flex items-center gap-3 border-t border-border/50 pt-3.5">
                     {members.length === 0 ? (
                       <div className="text-[11px] text-muted-foreground italic flex-1">
-                        Chưa phân bổ ai
+                        Chưa phân bổ ai — mở chi tiết để gán team
                       </div>
                     ) : (
                       <>
@@ -691,7 +839,14 @@ export function ProjectsClient({
                                   {m.profile.full_name}
                                 </div>
                                 <div className="text-[10px] text-muted-foreground">
-                                  {m.profile.job_role} · {formatPercent(m.percent)}
+                                  {m.profile.job_role}
+                                  {m.profile.level
+                                    ? ` · ${m.profile.level}`
+                                    : ""}
+                                  {" · "}
+                                  LC {Math.round(Number(m.profile.power_score) || 0)}
+                                  {" · "}
+                                  {formatPercent(m.percent)}
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -702,12 +857,21 @@ export function ProjectsClient({
                             </div>
                           )}
                         </div>
-                        <div className="text-[11px] text-muted-foreground flex-1 truncate">
-                          {members.length} người ·{" "}
-                          {members
-                            .reduce((s, m) => s + m.percent, 0)
-                            .toFixed(1)}{" "}
-                          FTE
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[11px] text-muted-foreground">
+                            {members.length} người · {force.fte} FTE
+                          </div>
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            <ForceFitBadge fit={force} />
+                            {force.overloadedCount > 0 && (
+                              <Badge
+                                variant="warning"
+                                className="text-[10px]"
+                              >
+                                {force.overloadedCount} over load
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                       </>
                     )}
@@ -720,6 +884,17 @@ export function ProjectsClient({
                         {phaseCount}
                       </span>
                       giai đoạn
+                      {Number(p.difficulty) > 0 && (
+                        <span
+                          className={cn(
+                            "ml-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ring-1",
+                            forceTone.text,
+                            "ring-border/40"
+                          )}
+                        >
+                          Khó {p.difficulty}
+                        </span>
+                      )}
                     </span>
                     <span className="truncate pl-2">
                       {p.start_date && p.end_date
@@ -741,7 +916,7 @@ export function ProjectsClient({
                       href={`/projects/${p.id}`}
                       className="flex items-center justify-center gap-1.5"
                     >
-                      Mở chi tiết
+                      Chi tiết · AI Coach
                       <ArrowUpRight
                         size={12}
                         className="group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform"

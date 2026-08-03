@@ -344,3 +344,81 @@ export function ForceFitBadge({ fit }: { fit: ProjectForceFit }) {
     </Badge>
   );
 }
+
+/** Mini lực chiến trên card /projects */
+export function ForceFitMini({ fit }: { fit: ProjectForceFit }) {
+  const tone = forceFitTone(fit.verdict);
+  const fill =
+    fit.difficulty > 0 && fit.avgPower > 0
+      ? Math.min(100, (fit.avgPower / fit.difficulty) * 100)
+      : Math.min(100, fit.avgPower);
+
+  return (
+    <div className={cn("rounded-xl p-3 ring-1", tone.bg)}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium">
+          <Flame size={12} className={tone.text} />
+          <span className={tone.text}>{fit.label}</span>
+        </div>
+        <span className="tnum text-[11px] text-muted-foreground">
+          {fit.headcount} người · {fit.fte} FTE
+        </span>
+      </div>
+
+      <div className="mb-2 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg bg-background/60 px-1.5 py-1.5 ring-1 ring-border/40">
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            LC TB
+          </div>
+          <div className="tnum text-sm font-semibold tabular-nums">
+            {fit.avgPower || "—"}
+          </div>
+        </div>
+        <div className="rounded-lg bg-background/60 px-1.5 py-1.5 ring-1 ring-border/40">
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Độ khó
+          </div>
+          <div className="tnum text-sm font-semibold tabular-nums">
+            {fit.difficulty > 0 ? fit.difficulty : "—"}
+          </div>
+        </div>
+        <div className="rounded-lg bg-background/60 px-1.5 py-1.5 ring-1 ring-border/40">
+          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+            Fit
+          </div>
+          <div className="tnum text-sm font-semibold tabular-nums">
+            {fit.qualityFit != null
+              ? `${Math.round(fit.qualityFit * 100)}%`
+              : "—"}
+          </div>
+        </div>
+      </div>
+
+      <div className="h-1.5 overflow-hidden rounded-full bg-background/50 ring-1 ring-border/30">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${fill}%`, background: tone.bar }}
+        />
+      </div>
+
+      {fit.byRole.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {fit.byRole.slice(0, 4).map((r) => (
+            <span
+              key={r.role}
+              className="inline-flex items-center gap-1 rounded-full bg-background/70 px-1.5 py-0.5 text-[10px] ring-1 ring-border/40"
+            >
+              <span className="font-medium">{r.role}</span>
+              <span className="tnum text-muted-foreground">TB{r.avgPower}</span>
+            </span>
+          ))}
+          {fit.byRole.length > 4 && (
+            <span className="text-[10px] text-muted-foreground">
+              +{fit.byRole.length - 4}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
