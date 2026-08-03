@@ -59,8 +59,8 @@ import {
   formatPowerSalaryIndex,
   powerSalaryIndex,
   powerSalaryLabel,
-  resolveLeadSalaryRef,
-  type LeadSalaryRef,
+  resolveTopSalaryRef,
+  type SalaryPowerRef,
 } from "@/lib/power-salary";
 import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
@@ -184,9 +184,9 @@ export function EmployeesClient({
     return Array.from(set).sort();
   }, [profiles]);
 
-  /** Hệ quy chiếu: median lương Lead active (+ TB LC Lead). */
-  const leadRef = useMemo(
-    () => resolveLeadSalaryRef(profiles),
+  /** Hệ quy chiếu: người lương cao nhất (active). */
+  const salaryRef = useMemo(
+    () => resolveTopSalaryRef(profiles),
     [profiles]
   );
 
@@ -202,7 +202,7 @@ export function EmployeesClient({
       const value = powerSalaryIndex(
         Number(p.power_score) || 0,
         Number(p.base_salary) || 0,
-        leadRef
+        salaryRef
       );
       return {
         profile: p,
@@ -214,7 +214,7 @@ export function EmployeesClient({
         value,
       };
     });
-  }, [profiles, allocations, today, leadRef]);
+  }, [profiles, allocations, today, salaryRef]);
 
   const filtered = useMemo(() => {
     let list = decorated;
@@ -319,9 +319,9 @@ export function EmployeesClient({
       powerSalaryIndex(
         Number(powerScore) || 0,
         Number(salaryInput) || 0,
-        leadRef
+        salaryRef
       ),
-    [powerScore, salaryInput, leadRef]
+    [powerScore, salaryInput, salaryRef]
   );
 
   // Role distribution (top 6)
@@ -526,7 +526,7 @@ export function EmployeesClient({
         title="Quản lý nhân sự"
         subtitle={
           canViewSalary
-            ? "Level, lực chiến, lương và chỉ số LC/lương so chuẩn Lead."
+            ? "Level, lực chiến, lương và chỉ số LC/lương so người lương cao nhất."
             : "Chức danh, level, lực chiến và tải — hỗ trợ phân bổ đúng người đúng chỗ."
         }
         actions={
@@ -570,16 +570,18 @@ export function EmployeesClient({
         )}
         {canViewSalary && (
           <KpiCard
-            label="LC/lương vs Lead"
+            label="LC/lương vs mốc"
             value={
               avgValueIndex != null
                 ? formatPowerSalaryIndex(avgValueIndex)
                 : "—"
             }
             hint={
-              leadRef
-                ? `Mốc Lead ${formatCurrency(leadRef.salary)} · ${cheapCount} rẻ / ${expensiveCount} đắt`
-                : "Cần ≥1 Lead active có lương"
+              salaryRef
+                ? `Mốc ${formatCurrency(salaryRef.salary)}${
+                    salaryRef.name ? ` · ${salaryRef.name}` : ""
+                  } · ${cheapCount} rẻ / ${expensiveCount} đắt`
+                : "Cần ≥1 người active có lương"
             }
             tone="emerald"
             icon={<Scale size={14} />}
@@ -871,7 +873,7 @@ export function EmployeesClient({
               level={d.profile.level}
               power={Number(d.profile.power_score) || 0}
               valueIndex={d.value.index}
-              leadRef={leadRef}
+              salaryRef={salaryRef}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -1280,23 +1282,34 @@ export function EmployeesClient({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-xs font-medium text-teal-800 dark:text-teal-200">
                       <Gauge className="size-3.5" />
-                      LC / lương vs Lead
+                      LC / lương vs mốc
                     </div>
                     <ValueIndexBadge index={draftValue.index} />
                   </div>
                   <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                    {leadRef ? (
+                    {salaryRef ? (
                       <>
-                        Công thức: (LC÷LC_Lead) ÷ (Lương÷Lương_Lead). Mốc Lead{" "}
+                        Mốc = người lương cao nhất
+                        {salaryRef.name ? (
+                          <>
+                            {" "}
+                            (
+                            <span className="font-medium text-foreground">
+                              {salaryRef.name}
+                            </span>
+                            )
+                          </>
+                        ) : null}
+                        :{" "}
                         <span className="tnum font-medium text-foreground">
-                          {formatCurrency(leadRef.salary)}
+                          {formatCurrency(salaryRef.salary)}
                         </span>
                         {draftValue.salaryRatio != null && (
                           <>
                             {" "}
-                            · lương hiện tại{" "}
+                            · lương{" "}
                             <span className="tnum font-medium text-foreground">
-                              {Math.round(draftValue.salaryRatio * 100)}% Lead
+                              {Math.round(draftValue.salaryRatio * 100)}% mốc
                             </span>
                           </>
                         )}
@@ -1305,13 +1318,13 @@ export function EmployeesClient({
                             {" "}
                             · LC{" "}
                             <span className="tnum font-medium text-foreground">
-                              {Math.round(draftValue.powerRatio * 100)}% Lead
+                              {Math.round(draftValue.powerRatio * 100)}% mốc
                             </span>
                           </>
                         )}
                       </>
                     ) : (
-                      "Cần ít nhất 1 Lead active có lương để làm hệ quy chiếu."
+                      "Cần ít nhất 1 người active có lương để làm hệ quy chiếu."
                     )}
                   </p>
                 </div>
@@ -1535,7 +1548,7 @@ function ValueIndexBadge({
           <p className="font-medium">{meta.short}</p>
           <p className="mt-0.5 text-muted-foreground">{meta.hint}</p>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            ×1.0 = ngang Lead · &gt;1 rẻ hơn · &lt;1 đắt hơn
+            ×1.0 = ngang người lương cao nhất · &gt;1 rẻ hơn · &lt;1 đắt hơn
           </p>
         </TooltipContent>
       </Tooltip>
@@ -1555,7 +1568,7 @@ function PersonCard({
   level,
   power,
   valueIndex,
-  leadRef,
+  salaryRef,
   onEdit,
   onDelete,
 }: {
@@ -1570,7 +1583,7 @@ function PersonCard({
   level?: string | null;
   power: number;
   valueIndex: number | null;
-  leadRef: LeadSalaryRef | null;
+  salaryRef: SalaryPowerRef | null;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1707,17 +1720,15 @@ function PersonCard({
               </div>
             </div>
           </div>
-          {(historyCount > 0 || leadRef) && (
+          {(historyCount > 0 || salaryRef) && (
             <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-              {leadRef ? (
-                <span>
-                  Mốc Lead {formatCurrency(leadRef.salary)}
-                  {leadRef.sampleSize > 1
-                    ? ` · ${leadRef.sampleSize} Lead`
-                    : ""}
+              {salaryRef ? (
+                <span className="truncate">
+                  Mốc {formatCurrency(salaryRef.salary)}
+                  {salaryRef.name ? ` · ${salaryRef.name}` : ""}
                 </span>
               ) : (
-                <span>Chưa có Lead làm mốc</span>
+                <span>Chưa có mốc lương</span>
               )}
               {historyCount > 0 && (
                 <Badge variant="info" className="py-0 text-[9px]">

@@ -1,74 +1,80 @@
 /**
- * Hiệu suất lực chiến / lương — hệ quy chiếu = Lead.
+ * Hiệu suất lực chiến / lương — hệ quy chiếu = người lương cao nhất.
  *
- * index = (LC / LC_Lead) / (Lương / Lương_Lead)
- *       = (LC × Lương_Lead) / (LC_Lead × Lương)
+ * index = (LC / LC_mốc) / (Lương / Lương_mốc)
+ *       = (LC × Lương_mốc) / (LC_mốc × Lương)
  *
- * = 1 → ngang Lead (cùng LC trên mỗi đồng lương)
- * > 1 → "rẻ" hơn Lead (nhiều LC hơn mỗi đồng)
- * < 1 → "đắt" hơn Lead
+ * = 1 → ngang người lương cao nhất (cùng LC trên mỗi đồng)
+ * > 1 → "rẻ" hơn (nhiều LC hơn mỗi đồng)
+ * < 1 → "đắt" hơn
  */
 
-import {
-  DEFAULT_POWER_BY_LEVEL,
-  clampPower,
-  isDevLevel,
-} from "@/lib/levels";
+import { clampPower } from "@/lib/levels";
 import type { Profile } from "@/types/database";
 
-export const LEAD_POWER_REF = DEFAULT_POWER_BY_LEVEL.Lead; // 90
-
-export type LeadSalaryRef = {
-  /** Lương Lead dùng làm mốc (median các Lead active có lương) */
+export type SalaryPowerRef = {
+  /** Lương cao nhất (active, > 0) */
   salary: number;
-  /** LC Lead (mặc định 90; nếu có Lead thật → TB LC của họ) */
+  /** LC của đúng người đó */
   power: number;
-  /** Số Lead dùng để tính mốc */
-  sampleSize: number;
+  /** Tên người làm mốc (hiển thị UI) */
+  name: string | null;
+  profileId: string | null;
 };
 
-function median(nums: number[]): number {
-  if (nums.length === 0) return 0;
-  const a = [...nums].sort((x, y) => x - y);
-  const mid = Math.floor(a.length / 2);
-  return a.length % 2 === 0 ? (a[mid - 1]! + a[mid]!) / 2 : a[mid]!;
-}
+/** Lấy hệ quy chiếu = nhân sự active có lương cao nhất. */
+export function resolveTopSalaryRef(
+  profiles: Pick<
+    Profile,
+    "id" | "full_name" | "base_salary" | "power_score" | "is_active"
+  >[]
+): SalaryPowerRef | null {
+  let best: (typeof profiles)[number] | null = null;
+  let bestSalary = 0;
 
-/** Lấy hệ quy chiếu từ danh sách profile (ưu tiên Lead active có lương > 0). */
-export function resolveLeadSalaryRef(
-  profiles: Pick<Profile, "level" | "base_salary" | "power_score" | "is_active">[]
-): LeadSalaryRef | null {
-  const leads = profiles.filter(
-    (p) =>
-      p.is_active !== false &&
-      isDevLevel(p.level) &&
-      p.level === "Lead" &&
-      Number(p.base_salary) > 0
-  );
-  if (leads.length === 0) return null;
+  for (const p of profiles) {
+    if (p.is_active === false) continue;
+    const s = Number(p.base_salary);
+    if (!Number.isFinite(s) || s <= 0) continue;
+    const power =
+      Number(p.power_score) > 0 ? clampPower(Number(p.power_score)) : 0;
+    if (
+      s > bestSalary ||
+      (s === bestSalary &&
+        best &&
+        power > (Number(best.power_score) > 0 ? Number(best.power_score) : 0))
+    ) {
+      bestSalary = s;
+      best = p;
+    }
+  }
 
-  const salaries = leads.map((p) => Number(p.base_salary));
-  const powers = leads.map((p) =>
-    Number(p.power_score) > 0
-      ? clampPower(Number(p.power_score))
-      : LEAD_POWER_REF
-  );
+  if (!best || bestSalary <= 0) return null;
+
+  const power =
+    Number(best.power_score) > 0
+      ? clampPower(Number(best.power_score))
+      : 50;
 
   return {
-    salary: median(salaries),
-    power:
-      powers.reduce((s, n) => s + n, 0) / Math.max(1, powers.length) ||
-      LEAD_POWER_REF,
-    sampleSize: leads.length,
+    salary: bestSalary,
+    power,
+    name: best.full_name?.trim() || null,
+    profileId: best.id,
   };
 }
 
+/** @deprecated dùng resolveTopSalaryRef */
+export const resolveLeadSalaryRef = resolveTopSalaryRef;
+/** @deprecated dùng SalaryPowerRef */
+export type LeadSalaryRef = SalaryPowerRef;
+
 export type PowerSalaryIndex = {
-  /** (LC/LC_Lead) / (Lương/Lương_Lead) — null nếu thiếu data */
+  /** (LC/LC_mốc) / (Lương/Lương_mốc) — null nếu thiếu data */
   index: number | null;
-  /** Lương / Lương_Lead */
+  /** Lương / Lương_mốc */
   salaryRatio: number | null;
-  /** LC / LC_Lead */
+  /** LC / LC_mốc */
   powerRatio: number | null;
   /** LC trên mỗi triệu VND lương */
   lcPerMillion: number | null;
@@ -77,7 +83,7 @@ export type PowerSalaryIndex = {
 export function powerSalaryIndex(
   power: number,
   salary: number,
-  ref: LeadSalaryRef | null
+  ref: SalaryPowerRef | null
 ): PowerSalaryIndex {
   const p = Number(power);
   const s = Number(salary);
@@ -110,34 +116,34 @@ export function powerSalaryLabel(index: number | null): {
     return {
       short: "—",
       tone: "muted",
-      hint: "Thiếu lương hoặc chưa có Lead làm mốc",
+      hint: "Thiếu lương hoặc chưa có người làm mốc",
     };
   }
   if (index >= 1.25) {
     return {
-      short: "Rẻ vs Lead",
+      short: "Rẻ vs mốc",
       tone: "good",
-      hint: "Nhiều LC hơn mỗi đồng lương so với Lead",
+      hint: "Nhiều LC hơn mỗi đồng lương so với người lương cao nhất",
     };
   }
   if (index >= 0.9) {
     return {
-      short: "Ngang Lead",
+      short: "Ngang mốc",
       tone: "ok",
-      hint: "Tỷ lệ LC/lương gần hệ quy chiếu Lead",
+      hint: "Tỷ lệ LC/lương gần người lương cao nhất",
     };
   }
   if (index >= 0.7) {
     return {
       short: "Hơi đắt",
       tone: "warn",
-      hint: "Ít LC hơn mỗi đồng lương so với Lead",
+      hint: "Ít LC hơn mỗi đồng lương so với mốc lương cao nhất",
     };
   }
   return {
-    short: "Đắt vs Lead",
+    short: "Đắt vs mốc",
     tone: "bad",
-    hint: "LC thấp so với mức lương (chuẩn Lead)",
+    hint: "LC thấp so với mức lương (chuẩn người lương cao nhất)",
   };
 }
 
