@@ -1,13 +1,16 @@
 /**
- * LC vs lương — so với khung lương theo level (không so junior).
+ * LC vs lương — điều chỉnh lương theo level.
  *
- * score = (LC / LC_chuẩn_level) / (Lương / khung_lương_level)
+ * score = (LC / LC_chuẩn_level) / (Lương / khung_level)
  *
- * > 1 → lương thấp so với LC·level → cân nhắc tăng
+ * Khung level (dynamic):
+ *   ≥2 người active cùng level có lương → median lương level đó
+ *   (không thấp hơn DEFAULT_BAND)
+ *   còn lại → DEFAULT_BAND[level]
+ *
+ * > 1 → lương thấp so với LC·khung → cân nhắc tăng
  * ≈ 1 → đúng khung
- * < 1 → lương cao so với LC·level
- *
- * Ví dụ Principal LC 100 · 20tr · khung 32tr → 1 / (20/32) = 1.6
+ * < 1 → lương cao so với LC·khung
  */
 
 import {
@@ -16,9 +19,10 @@ import {
   isDevLevel,
   type DevLevel,
 } from "@/lib/levels";
+import type { Profile } from "@/types/database";
 
-/** Khung lương / tháng (VND) theo level — chỉnh cho khớp công ty. */
-export const SALARY_BAND_BY_LEVEL: Record<DevLevel, number> = {
+/** Sàn khung lương / tháng khi chưa đủ data cùng level. */
+export const DEFAULT_SALARY_BAND: Record<DevLevel, number> = {
   Intern: 5_000_000,
   Fresher: 9_000_000,
   Junior: 12_000_000,
@@ -36,11 +40,70 @@ export type EfficiencyResult = {
   lcPerMillion: number | null;
 };
 
-export function salaryBandForLevel(
-  level: string | null | undefined
+export type LevelBandRef = {
+  byLevel: Map<DevLevel, { band: number; sampleSize: number; source: "peers" | "default" }>;
+};
+
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const a = [...nums].sort((x, y) => x - y);
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 === 0 ? (a[mid - 1]! + a[mid]!) / 2 : a[mid]!;
+}
+
+type ProfileLite = Pick<
+  Profile,
+  "level" | "base_salary" | "power_score" | "is_active"
+>;
+
+/** Build khung lương dynamic theo data team. */
+export function buildLevelBandRef(profiles: ProfileLite[]): LevelBandRef {
+  const buckets = new Map<DevLevel, number[]>();
+  for (const p of profiles) {
+    if (p.is_active === false) continue;
+    if (!isDevLevel(p.level)) continue;
+    const s = Number(p.base_salary);
+    if (!Number.isFinite(s) || s <= 0) continue;
+    const list = buckets.get(p.level) ?? [];
+    list.push(s);
+    buckets.set(p.level, list);
+  }
+
+  const byLevel = new Map<
+    DevLevel,
+    { band: number; sampleSize: number; source: "peers" | "default" }
+  >();
+
+  for (const level of Object.keys(DEFAULT_SALARY_BAND) as DevLevel[]) {
+    const floor = DEFAULT_SALARY_BAND[level];
+    const peers = buckets.get(level) ?? [];
+    if (peers.length >= 2) {
+      const med = median(peers);
+      byLevel.set(level, {
+        band: Math.max(floor, med),
+        sampleSize: peers.length,
+        source: "peers",
+      });
+    } else {
+      byLevel.set(level, {
+        band: floor,
+        sampleSize: peers.length,
+        source: "default",
+      });
+    }
+  }
+
+  return { byLevel };
+}
+
+export function bandForLevel(
+  level: string | null | undefined,
+  ref: LevelBandRef | null | undefined
 ): number | null {
   if (!isDevLevel(level)) return null;
-  return SALARY_BAND_BY_LEVEL[level];
+  const fromRef = ref?.byLevel.get(level)?.band;
+  if (fromRef && fromRef > 0) return fromRef;
+  return DEFAULT_SALARY_BAND[level];
 }
 
 export function lcPerMillion(
@@ -66,7 +129,7 @@ export function personEfficiency(
   power: number,
   salary: number,
   level: string | null | undefined,
-  _ref?: unknown
+  ref?: LevelBandRef | null
 ): EfficiencyResult {
   const empty: EfficiencyResult = {
     score: null,
@@ -82,8 +145,8 @@ export function personEfficiency(
   if (!isDevLevel(level)) return empty;
 
   const stdLc = defaultPowerForLevel(level);
-  const band = SALARY_BAND_BY_LEVEL[level];
-  if (stdLc <= 0 || band <= 0) return empty;
+  const band = bandForLevel(level, ref);
+  if (!band || stdLc <= 0) return empty;
 
   const lcFit = clampPower(p) / stdLc;
   const payFit = s / band;
@@ -102,7 +165,7 @@ export function formatEfficiencyScore(score: number | null): string {
   return score.toFixed(1);
 }
 
-/** Giữ API cũ — không dùng mốc team nữa. */
-export function buildPayEfficiencyRef(_profiles?: unknown) {
-  return null;
+/** @deprecated */
+export function buildPayEfficiencyRef(profiles: ProfileLite[]) {
+  return buildLevelBandRef(profiles);
 }
