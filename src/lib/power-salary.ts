@@ -1,153 +1,166 @@
 /**
- * Hiệu suất lực chiến / lương — hệ quy chiếu = người lương cao nhất.
+ * Hiệu suất theo Level + LC + Lương.
  *
- * index = (LC / LC_mốc) / (Lương / Lương_mốc)
- *       = (LC × Lương_mốc) / (LC_mốc × Lương)
+ * Chuẩn LC  = default LC của level (Intern 20 … Principal 100)
+ * Chuẩn lương = median lương cùng level trong team (active, có lương)
+ *             fallback: median(lương / LC_chuẩn_level) × LC_chuẩn của người đó
  *
- * = 1 → ngang người lương cao nhất (cùng LC trên mỗi đồng)
- * > 1 → "rẻ" hơn (nhiều LC hơn mỗi đồng)
- * < 1 → "đắt" hơn
+ * score = (LC / LC_chuẩn) / (Lương / Lương_chuẩn)
+ *
+ * ≈ 1 → đúng chuẩn level (ổn)
+ * > 1 → LC cao hơn mức lương đang trả (tốt)
+ * < 1 → lương cao so với LC/level (thấp / đắt)
  */
 
-import { clampPower } from "@/lib/levels";
+import {
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+  type DevLevel,
+} from "@/lib/levels";
 import type { Profile } from "@/types/database";
 
-export type SalaryPowerRef = {
-  /** Lương cao nhất (active, > 0) */
-  salary: number;
-  /** LC của đúng người đó */
-  power: number;
-  /** Tên người làm mốc (hiển thị UI) */
-  name: string | null;
-  profileId: string | null;
+export type EfficiencyVerdict = "tot" | "on" | "thap" | "—";
+
+export type EfficiencyResult = {
+  score: number | null;
+  verdict: EfficiencyVerdict;
+  /** LC / LC_chuẩn_level */
+  lcFit: number | null;
+  /** Lương / Lương_chuẩn_level */
+  payFit: number | null;
 };
 
-/** Lấy hệ quy chiếu = nhân sự active có lương cao nhất. */
-export function resolveTopSalaryRef(
-  profiles: Pick<
-    Profile,
-    "id" | "full_name" | "base_salary" | "power_score" | "is_active"
-  >[]
-): SalaryPowerRef | null {
-  let best: (typeof profiles)[number] | null = null;
-  let bestSalary = 0;
+export type LevelPayBand = {
+  level: DevLevel;
+  medianSalary: number;
+  sampleSize: number;
+};
+
+function median(nums: number[]): number {
+  if (nums.length === 0) return 0;
+  const a = [...nums].sort((x, y) => x - y);
+  const mid = Math.floor(a.length / 2);
+  return a.length % 2 === 0 ? (a[mid - 1]! + a[mid]!) / 2 : a[mid]!;
+}
+
+type ProfileLite = Pick<
+  Profile,
+  "level" | "base_salary" | "power_score" | "is_active"
+>;
+
+/** Median lương theo từng level (active, lương > 0). */
+export function buildLevelPayBands(profiles: ProfileLite[]): {
+  byLevel: Map<DevLevel, LevelPayBand>;
+  /** median(lương / LC_chuẩn) toàn team — fallback khi level chưa đủ sample */
+  companyPayPerStandardLc: number | null;
+} {
+  const buckets = new Map<DevLevel, number[]>();
+  const payPerStd: number[] = [];
 
   for (const p of profiles) {
     if (p.is_active === false) continue;
-    const s = Number(p.base_salary);
-    if (!Number.isFinite(s) || s <= 0) continue;
-    const power =
-      Number(p.power_score) > 0 ? clampPower(Number(p.power_score)) : 0;
-    if (
-      s > bestSalary ||
-      (s === bestSalary &&
-        best &&
-        power > (Number(best.power_score) > 0 ? Number(best.power_score) : 0))
-    ) {
-      bestSalary = s;
-      best = p;
-    }
+    const salary = Number(p.base_salary);
+    if (!Number.isFinite(salary) || salary <= 0) continue;
+    if (!isDevLevel(p.level)) continue;
+
+    const list = buckets.get(p.level) ?? [];
+    list.push(salary);
+    buckets.set(p.level, list);
+
+    const stdLc = defaultPowerForLevel(p.level);
+    if (stdLc > 0) payPerStd.push(salary / stdLc);
   }
 
-  if (!best || bestSalary <= 0) return null;
-
-  const power =
-    Number(best.power_score) > 0
-      ? clampPower(Number(best.power_score))
-      : 50;
+  const byLevel = new Map<DevLevel, LevelPayBand>();
+  for (const [level, salaries] of buckets) {
+    byLevel.set(level, {
+      level,
+      medianSalary: median(salaries),
+      sampleSize: salaries.length,
+    });
+  }
 
   return {
-    salary: bestSalary,
-    power,
-    name: best.full_name?.trim() || null,
-    profileId: best.id,
+    byLevel,
+    companyPayPerStandardLc:
+      payPerStd.length > 0 ? median(payPerStd) : null,
   };
 }
 
-/** @deprecated dùng resolveTopSalaryRef */
-export const resolveLeadSalaryRef = resolveTopSalaryRef;
-/** @deprecated dùng SalaryPowerRef */
-export type LeadSalaryRef = SalaryPowerRef;
+function expectedSalaryForLevel(
+  level: DevLevel,
+  bands: ReturnType<typeof buildLevelPayBands>
+): number | null {
+  const band = bands.byLevel.get(level);
+  // ≥1 người cùng level có lương → dùng median level (kể cả chính họ)
+  if (band && band.medianSalary > 0) return band.medianSalary;
 
-export type PowerSalaryIndex = {
-  /** (LC/LC_mốc) / (Lương/Lương_mốc) — null nếu thiếu data */
-  index: number | null;
-  /** Lương / Lương_mốc */
-  salaryRatio: number | null;
-  /** LC / LC_mốc */
-  powerRatio: number | null;
-  /** LC trên mỗi triệu VND lương */
-  lcPerMillion: number | null;
-};
+  const stdLc = defaultPowerForLevel(level);
+  if (bands.companyPayPerStandardLc && stdLc > 0) {
+    return bands.companyPayPerStandardLc * stdLc;
+  }
+  return null;
+}
 
-export function powerSalaryIndex(
+export function efficiencyVerdict(score: number | null): EfficiencyVerdict {
+  if (score == null || !Number.isFinite(score)) return "—";
+  if (score >= 1.15) return "tot";
+  if (score >= 0.85) return "on";
+  return "thap";
+}
+
+export function efficiencyLabel(verdict: EfficiencyVerdict): string {
+  switch (verdict) {
+    case "tot":
+      return "Tốt";
+    case "on":
+      return "Ổn";
+    case "thap":
+      return "Thấp";
+    default:
+      return "—";
+  }
+}
+
+export function personEfficiency(
   power: number,
   salary: number,
-  ref: SalaryPowerRef | null
-): PowerSalaryIndex {
+  level: string | null | undefined,
+  bands: ReturnType<typeof buildLevelPayBands>
+): EfficiencyResult {
+  const empty: EfficiencyResult = {
+    score: null,
+    verdict: "—",
+    lcFit: null,
+    payFit: null,
+  };
+
   const p = Number(power);
   const s = Number(salary);
-  const lcPerMillion =
-    Number.isFinite(p) && p > 0 && Number.isFinite(s) && s > 0
-      ? p / (s / 1_000_000)
-      : null;
-
-  if (!ref || ref.salary <= 0 || ref.power <= 0) {
-    return { index: null, salaryRatio: null, powerRatio: null, lcPerMillion };
-  }
   if (!Number.isFinite(p) || p <= 0 || !Number.isFinite(s) || s <= 0) {
-    return { index: null, salaryRatio: null, powerRatio: null, lcPerMillion };
+    return empty;
   }
+  if (!isDevLevel(level)) return empty;
 
-  const salaryRatio = s / ref.salary;
-  const powerRatio = p / ref.power;
-  const index = powerRatio / salaryRatio;
+  const stdLc = defaultPowerForLevel(level);
+  const expectedPay = expectedSalaryForLevel(level, bands);
+  if (!expectedPay || expectedPay <= 0 || stdLc <= 0) return empty;
 
-  return { index, salaryRatio, powerRatio, lcPerMillion };
-}
+  const lcFit = clampPower(p) / stdLc;
+  const payFit = s / expectedPay;
+  if (payFit <= 0) return empty;
 
-/** Nhãn ngắn cho UI. */
-export function powerSalaryLabel(index: number | null): {
-  short: string;
-  tone: "good" | "ok" | "warn" | "bad" | "muted";
-  hint: string;
-} {
-  if (index == null || !Number.isFinite(index)) {
-    return {
-      short: "—",
-      tone: "muted",
-      hint: "Thiếu lương hoặc chưa có người làm mốc",
-    };
-  }
-  if (index >= 1.25) {
-    return {
-      short: "Rẻ vs mốc",
-      tone: "good",
-      hint: "Nhiều LC hơn mỗi đồng lương so với người lương cao nhất",
-    };
-  }
-  if (index >= 0.9) {
-    return {
-      short: "Ngang mốc",
-      tone: "ok",
-      hint: "Tỷ lệ LC/lương gần người lương cao nhất",
-    };
-  }
-  if (index >= 0.7) {
-    return {
-      short: "Hơi đắt",
-      tone: "warn",
-      hint: "Ít LC hơn mỗi đồng lương so với mốc lương cao nhất",
-    };
-  }
+  const score = lcFit / payFit;
   return {
-    short: "Đắt vs mốc",
-    tone: "bad",
-    hint: "LC thấp so với mức lương (chuẩn người lương cao nhất)",
+    score,
+    verdict: efficiencyVerdict(score),
+    lcFit,
+    payFit,
   };
 }
 
-export function formatPowerSalaryIndex(index: number | null): string {
-  if (index == null || !Number.isFinite(index)) return "—";
-  return `×${index.toFixed(2)}`;
+export function formatEfficiencyScore(score: number | null): string {
+  if (score == null || !Number.isFinite(score)) return "—";
+  return score.toFixed(2);
 }

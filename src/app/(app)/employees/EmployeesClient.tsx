@@ -56,9 +56,11 @@ import {
   isDevLevel,
 } from "@/lib/levels";
 import {
-  formatPowerSalaryIndex,
-  powerSalaryIndex,
-  resolveTopSalaryRef,
+  buildLevelPayBands,
+  efficiencyLabel,
+  formatEfficiencyScore,
+  personEfficiency,
+  type EfficiencyResult,
 } from "@/lib/power-salary";
 import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
@@ -174,11 +176,7 @@ export function EmployeesClient({
     return Array.from(set).sort();
   }, [profiles]);
 
-  /** Hệ quy chiếu: người lương cao nhất (active). */
-  const salaryRef = useMemo(
-    () => resolveTopSalaryRef(profiles),
-    [profiles]
-  );
+  const payBands = useMemo(() => buildLevelPayBands(profiles), [profiles]);
 
   // Decorated profiles với load HÔM NAY (đồng nhất với /allocations).
   // monthLoad dùng để smart-bench detection: chỉ gọi "Bench" khi cả today
@@ -189,10 +187,11 @@ export function EmployeesClient({
       const monthLoad = userLoadCurrentMonth(p.id, allocations, today);
       const trulyBench = todayLoad === 0 && monthLoad === 0;
       const startingSoon = todayLoad === 0 && monthLoad > 0;
-      const value = powerSalaryIndex(
+      const efficiency = personEfficiency(
         Number(p.power_score) || 0,
         Number(p.base_salary) || 0,
-        salaryRef
+        p.level,
+        payBands
       );
       return {
         profile: p,
@@ -201,10 +200,10 @@ export function EmployeesClient({
         trulyBench,
         startingSoon,
         status: loadStatus(todayLoad),
-        value,
+        efficiency,
       };
     });
-  }, [profiles, allocations, today, salaryRef]);
+  }, [profiles, allocations, today, payBands]);
 
   const filtered = useMemo(() => {
     let list = decorated;
@@ -260,11 +259,11 @@ export function EmployeesClient({
         );
       else if (sort === "value_desc")
         list.sort(
-          (a, b) => (b.value.index ?? -1) - (a.value.index ?? -1)
+          (a, b) => (b.efficiency.score ?? -1) - (a.efficiency.score ?? -1)
         );
       else if (sort === "value_asc")
         list.sort(
-          (a, b) => (a.value.index ?? 999) - (b.value.index ?? 999)
+          (a, b) => (a.efficiency.score ?? 999) - (b.efficiency.score ?? 999)
         );
       else if (sort === "load_desc") list.sort((a, b) => b.load - a.load);
       else if (sort === "load_asc") list.sort((a, b) => a.load - b.load);
@@ -812,7 +811,7 @@ export function EmployeesClient({
               team={teamByUserId.get(d.profile.id) ?? null}
               level={d.profile.level}
               power={Number(d.profile.power_score) || 0}
-              valueIndex={d.value.index}
+              efficiency={d.efficiency}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -903,8 +902,8 @@ export function EmployeesClient({
                       </TableCell>
                     )}
                     {canViewSalary && (
-                      <TableCell className="tnum text-right tabular-nums text-sm font-medium">
-                        {formatPowerSalaryIndex(d.value.index)}
+                      <TableCell className="text-right">
+                        <EfficiencyCell result={d.efficiency} />
                       </TableCell>
                     )}
                     <TableCell>
@@ -1404,7 +1403,7 @@ function PersonCard({
   team,
   level,
   power,
-  valueIndex,
+  efficiency,
   onEdit,
   onDelete,
 }: {
@@ -1418,7 +1417,7 @@ function PersonCard({
   team: { name: string; color: string } | null;
   level?: string | null;
   power: number;
-  valueIndex: number | null;
+  efficiency: EfficiencyResult;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1554,11 +1553,30 @@ function PersonCard({
           </div>
           <div className="text-right">
             <div className="text-muted-foreground">Hiệu suất</div>
-            <div className="tnum text-sm font-semibold tabular-nums">
-              {formatPowerSalaryIndex(valueIndex)}
-            </div>
+            <EfficiencyCell result={efficiency} />
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function EfficiencyCell({ result }: { result: EfficiencyResult }) {
+  const label = efficiencyLabel(result.verdict);
+  const tone =
+    result.verdict === "tot"
+      ? "text-emerald-700 dark:text-emerald-300"
+      : result.verdict === "thap"
+        ? "text-rose-600 dark:text-rose-300"
+        : "text-foreground";
+
+  return (
+    <div className={cn("tnum font-semibold tabular-nums", tone)}>
+      <span className="text-sm">{formatEfficiencyScore(result.score)}</span>
+      {result.verdict !== "—" && (
+        <span className="ml-1 text-[10px] font-medium opacity-80">
+          {label}
+        </span>
       )}
     </div>
   );
