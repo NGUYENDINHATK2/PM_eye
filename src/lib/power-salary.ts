@@ -1,39 +1,30 @@
 /**
- * Hiệu suất theo Level + LC + Lương.
+ * LC vs lương — phục vụ điều chỉnh lương.
  *
- * Chuẩn LC  = default LC của level (Intern 20 … Principal 100)
- * Chuẩn lương = median lương cùng level trong team (active, có lương)
- *             fallback: median(lương / LC_chuẩn_level) × LC_chuẩn của người đó
+ * LC/triệu = power / (salary / 1e6)
+ * score    = (LC/triệu của người) / (median LC/triệu toàn team active)
  *
- * score = (LC / LC_chuẩn) / (Lương / Lương_chuẩn)
- *
- * ≈ 1 → đúng chuẩn level (ổn)
- * > 1 → LC cao hơn mức lương đang trả (tốt)
- * < 1 → lương cao so với LC/level (thấp / đắt)
+ * > 1 → đang "rẻ" (nhiều LC mỗi triệu hơn median) → cân nhắc tăng lương
+ * ≈ 1 → ngang team
+ * < 1 → đang "đắt" (ít LC mỗi triệu hơn median) → xem lại mức lương / LC
  */
 
-import {
-  clampPower,
-  defaultPowerForLevel,
-  isDevLevel,
-  type DevLevel,
-} from "@/lib/levels";
+import { clampPower } from "@/lib/levels";
 import type { Profile } from "@/types/database";
 
-export type EfficiencyVerdict = "tot" | "on" | "thap" | "—";
+export type EfficiencyVerdict = "re" | "on" | "dat" | "—";
 
 export type EfficiencyResult = {
+  /** So với median team (1 = ngang) */
   score: number | null;
   verdict: EfficiencyVerdict;
-  /** LC / LC_chuẩn_level */
-  lcFit: number | null;
-  /** Lương / Lương_chuẩn_level */
-  payFit: number | null;
+  /** LC trên mỗi triệu VND */
+  lcPerMillion: number | null;
 };
 
-export type LevelPayBand = {
-  level: DevLevel;
-  medianSalary: number;
+export type PayEfficiencyRef = {
+  /** Median LC/triệu của team active có lương */
+  medianLcPerMillion: number;
   sampleSize: number;
 };
 
@@ -44,80 +35,58 @@ function median(nums: number[]): number {
   return a.length % 2 === 0 ? (a[mid - 1]! + a[mid]!) / 2 : a[mid]!;
 }
 
+export function lcPerMillion(
+  power: number,
+  salary: number
+): number | null {
+  const p = Number(power);
+  const s = Number(salary);
+  if (!Number.isFinite(p) || p <= 0 || !Number.isFinite(s) || s <= 0) {
+    return null;
+  }
+  return clampPower(p) / (s / 1_000_000);
+}
+
 type ProfileLite = Pick<
   Profile,
-  "level" | "base_salary" | "power_score" | "is_active"
+  "base_salary" | "power_score" | "is_active"
 >;
 
-/** Median lương theo từng level (active, lương > 0). */
-export function buildLevelPayBands(profiles: ProfileLite[]): {
-  byLevel: Map<DevLevel, LevelPayBand>;
-  /** median(lương / LC_chuẩn) toàn team — fallback khi level chưa đủ sample */
-  companyPayPerStandardLc: number | null;
-} {
-  const buckets = new Map<DevLevel, number[]>();
-  const payPerStd: number[] = [];
-
+/** Mốc so sánh = median LC/triệu cả team (không theo level). */
+export function buildPayEfficiencyRef(
+  profiles: ProfileLite[]
+): PayEfficiencyRef | null {
+  const values: number[] = [];
   for (const p of profiles) {
     if (p.is_active === false) continue;
-    const salary = Number(p.base_salary);
-    if (!Number.isFinite(salary) || salary <= 0) continue;
-    if (!isDevLevel(p.level)) continue;
-
-    const list = buckets.get(p.level) ?? [];
-    list.push(salary);
-    buckets.set(p.level, list);
-
-    const stdLc = defaultPowerForLevel(p.level);
-    if (stdLc > 0) payPerStd.push(salary / stdLc);
+    const v = lcPerMillion(Number(p.power_score), Number(p.base_salary));
+    if (v != null) values.push(v);
   }
-
-  const byLevel = new Map<DevLevel, LevelPayBand>();
-  for (const [level, salaries] of buckets) {
-    byLevel.set(level, {
-      level,
-      medianSalary: median(salaries),
-      sampleSize: salaries.length,
-    });
-  }
-
+  if (values.length === 0) return null;
   return {
-    byLevel,
-    companyPayPerStandardLc:
-      payPerStd.length > 0 ? median(payPerStd) : null,
+    medianLcPerMillion: median(values),
+    sampleSize: values.length,
   };
 }
 
-function expectedSalaryForLevel(
-  level: DevLevel,
-  bands: ReturnType<typeof buildLevelPayBands>
-): number | null {
-  const band = bands.byLevel.get(level);
-  // ≥1 người cùng level có lương → dùng median level (kể cả chính họ)
-  if (band && band.medianSalary > 0) return band.medianSalary;
-
-  const stdLc = defaultPowerForLevel(level);
-  if (bands.companyPayPerStandardLc && stdLc > 0) {
-    return bands.companyPayPerStandardLc * stdLc;
-  }
-  return null;
-}
+/** @deprecated alias — UI cũ */
+export const buildLevelPayBands = buildPayEfficiencyRef;
 
 export function efficiencyVerdict(score: number | null): EfficiencyVerdict {
   if (score == null || !Number.isFinite(score)) return "—";
-  if (score >= 1.15) return "tot";
+  if (score >= 1.15) return "re"; // rẻ hơn median → nhiều LC/đồng
   if (score >= 0.85) return "on";
-  return "thap";
+  return "dat";
 }
 
 export function efficiencyLabel(verdict: EfficiencyVerdict): string {
   switch (verdict) {
-    case "tot":
-      return "Tốt";
+    case "re":
+      return "Rẻ";
     case "on":
       return "Ổn";
-    case "thap":
-      return "Thấp";
+    case "dat":
+      return "Đắt";
     default:
       return "—";
   }
@@ -126,41 +95,36 @@ export function efficiencyLabel(verdict: EfficiencyVerdict): string {
 export function personEfficiency(
   power: number,
   salary: number,
-  level: string | null | undefined,
-  bands: ReturnType<typeof buildLevelPayBands>
+  _level: string | null | undefined,
+  ref: PayEfficiencyRef | null
 ): EfficiencyResult {
   const empty: EfficiencyResult = {
     score: null,
     verdict: "—",
-    lcFit: null,
-    payFit: null,
+    lcPerMillion: null,
   };
 
-  const p = Number(power);
-  const s = Number(salary);
-  if (!Number.isFinite(p) || p <= 0 || !Number.isFinite(s) || s <= 0) {
-    return empty;
+  const lpm = lcPerMillion(power, salary);
+  if (lpm == null) return empty;
+  if (!ref || ref.medianLcPerMillion <= 0) {
+    return { score: null, verdict: "—", lcPerMillion: lpm };
   }
-  if (!isDevLevel(level)) return empty;
 
-  const stdLc = defaultPowerForLevel(level);
-  const expectedPay = expectedSalaryForLevel(level, bands);
-  if (!expectedPay || expectedPay <= 0 || stdLc <= 0) return empty;
-
-  const lcFit = clampPower(p) / stdLc;
-  const payFit = s / expectedPay;
-  if (payFit <= 0) return empty;
-
-  const score = lcFit / payFit;
+  const score = lpm / ref.medianLcPerMillion;
   return {
     score,
     verdict: efficiencyVerdict(score),
-    lcFit,
-    payFit,
+    lcPerMillion: lpm,
   };
 }
 
 export function formatEfficiencyScore(score: number | null): string {
   if (score == null || !Number.isFinite(score)) return "—";
-  return score.toFixed(2);
+  // Một số gọn: 1.26 → 1.3
+  return score.toFixed(1);
+}
+
+export function formatLcPerMillion(value: number | null): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return value.toFixed(1);
 }

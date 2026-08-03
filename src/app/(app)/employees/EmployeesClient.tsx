@@ -56,8 +56,7 @@ import {
   isDevLevel,
 } from "@/lib/levels";
 import {
-  buildLevelPayBands,
-  efficiencyLabel,
+  buildPayEfficiencyRef,
   formatEfficiencyScore,
   personEfficiency,
   type EfficiencyResult,
@@ -176,7 +175,8 @@ export function EmployeesClient({
     return Array.from(set).sort();
   }, [profiles]);
 
-  const payBands = useMemo(() => buildLevelPayBands(profiles), [profiles]);
+  /** Mốc = median LC/triệu cả team — để so ai rẻ/đắt so với lực chiến. */
+  const payRef = useMemo(() => buildPayEfficiencyRef(profiles), [profiles]);
 
   // Decorated profiles với load HÔM NAY (đồng nhất với /allocations).
   // monthLoad dùng để smart-bench detection: chỉ gọi "Bench" khi cả today
@@ -191,7 +191,7 @@ export function EmployeesClient({
         Number(p.power_score) || 0,
         Number(p.base_salary) || 0,
         p.level,
-        payBands
+        payRef
       );
       return {
         profile: p,
@@ -203,7 +203,7 @@ export function EmployeesClient({
         efficiency,
       };
     });
-  }, [profiles, allocations, today, payBands]);
+  }, [profiles, allocations, today, payRef]);
 
   const filtered = useMemo(() => {
     let list = decorated;
@@ -753,12 +753,8 @@ export function EmployeesClient({
                   <>
                     <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
                     <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
-                    <SelectItem value="value_desc">
-                      LC vs lương·level cao→thấp
-                    </SelectItem>
-                    <SelectItem value="value_asc">
-                      LC vs lương·level thấp→cao
-                    </SelectItem>
+                    <SelectItem value="value_desc">LC/lương cao→thấp</SelectItem>
+                    <SelectItem value="value_asc">LC/lương thấp→cao</SelectItem>
                   </>
                 )}
               </SelectContent>
@@ -834,7 +830,7 @@ export function EmployeesClient({
                   <TableHead className="text-right">Lương</TableHead>
                 )}
                 {canViewSalary && (
-                  <TableHead className="text-right">LC/lương·level</TableHead>
+                  <TableHead className="text-right">LC/lương</TableHead>
                 )}
                 <TableHead>Tải hôm nay</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -906,8 +902,8 @@ export function EmployeesClient({
                       </TableCell>
                     )}
                     {canViewSalary && (
-                      <TableCell className="text-right">
-                        <EfficiencyCell result={d.efficiency} />
+                      <TableCell className="tnum text-right text-sm font-medium tabular-nums">
+                        {formatEfficiencyScore(d.efficiency.score)}
                       </TableCell>
                     )}
                     <TableCell>
@@ -1556,31 +1552,12 @@ function PersonCard({
             </div>
           </div>
           <div className="text-right">
-            <div className="text-muted-foreground">LC vs lương·level</div>
-            <EfficiencyCell result={efficiency} />
+            <div className="text-muted-foreground">LC/lương</div>
+            <div className="tnum text-sm font-semibold tabular-nums">
+              {formatEfficiencyScore(efficiency.score)}
+            </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function EfficiencyCell({ result }: { result: EfficiencyResult }) {
-  const label = efficiencyLabel(result.verdict);
-  const tone =
-    result.verdict === "tot"
-      ? "text-emerald-700 dark:text-emerald-300"
-      : result.verdict === "thap"
-        ? "text-rose-600 dark:text-rose-300"
-        : "text-foreground";
-
-  return (
-    <div className={cn("tnum font-semibold tabular-nums", tone)}>
-      <span className="text-sm">{formatEfficiencyScore(result.score)}</span>
-      {result.verdict !== "—" && (
-        <span className="ml-1 text-[10px] font-medium opacity-80">
-          {label}
-        </span>
       )}
     </div>
   );
