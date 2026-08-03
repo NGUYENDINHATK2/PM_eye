@@ -62,6 +62,9 @@ create table public.projects (
   description text,
   color text not null default '#0d9488',
   manager_id uuid references public.profiles(id) on delete set null,
+  -- Độ khó / yêu cầu lực chiến (0 = chưa set, 1–100)
+  difficulty numeric not null default 0
+    check (difficulty >= 0 and difficulty <= 100),
   created_at timestamptz not null default now()
 );
 

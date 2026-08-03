@@ -1,5 +1,6 @@
 "use client";
 
+import { AiCoachCard, useAiCoach } from "@/components/ai/AiCoachCard";
 import { PageHeader } from "@/components/PageHeader";
 import { AvailableByRole } from "@/components/capacity/AvailableByRole";
 import { BigHeatmap } from "@/components/capacity/BigHeatmap";
@@ -9,6 +10,7 @@ import { CapacityForecast } from "@/components/capacity/CapacityForecast";
 import { CapacityStats } from "@/components/capacity/CapacityStats";
 import { CapacityTrend } from "@/components/capacity/CapacityTrend";
 import { WhereTimeGoes } from "@/components/capacity/WhereTimeGoes";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,9 +25,11 @@ import type { Allocation, Profile, Project } from "@/types/database";
 import {
   Activity,
   BarChart3,
+  Bot,
   CalendarRange,
   Gauge,
   Layers,
+  Loader2,
   PieChart,
   Search,
   TrendingUp,
@@ -58,6 +62,7 @@ export function CapacityClient({
   const [onlyActive, setOnlyActive] = useState(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("default");
+  const ai = useAiCoach("/api/ai/capacity-brief");
 
   const today = useMemo(() => new Date(), []);
 
@@ -177,6 +182,28 @@ export function CapacityClient({
         eyebrow="Workspace · Capacity"
         title="Năng lực team"
         subtitle="7 góc nhìn cho cùng 1 bộ data — chuyển nhanh giữa forecast, heatmap, trend, phân bố để tìm thông tin bạn cần."
+        actions={
+          <Button
+            variant="brand"
+            disabled={ai.loading}
+            onClick={() => void ai.run()}
+          >
+            {ai.loading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Bot />
+            )}
+            {ai.loading ? "AI đang đọc…" : "AI Capacity Brief"}
+          </Button>
+        }
+      />
+
+      <AiCoachCard
+        title="AI Coach · Capacity"
+        loading={ai.loading}
+        error={ai.error}
+        result={ai.result}
+        onRegenerate={() => void ai.run()}
       />
 
       <CapacityStats profiles={profiles} allocations={allocations} />

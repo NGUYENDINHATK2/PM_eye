@@ -1,6 +1,8 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ForceFitBadge } from "@/components/projects/ForceFitPanel";
+import { projectForceFit } from "@/lib/force-fit";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -180,6 +182,10 @@ export function ProjectsClient({
     setError(null);
     setSaving(true);
     const fd = new FormData(e.currentTarget);
+    const difficulty = Math.min(
+      100,
+      Math.max(0, Math.round(Number(fd.get("difficulty") || 0)))
+    );
     const payload = {
       name: fd.get("name") as string,
       client: (fd.get("client") as string) || null,
@@ -190,6 +196,7 @@ export function ProjectsClient({
       revenue: canViewMoney ? Number(fd.get("revenue") || 0) : 0,
       billing_type: billingType,
       mm_rate: canViewMoney ? Number(fd.get("mm_rate") || 0) : 0,
+      difficulty,
       status,
       start_date: (fd.get("start_date") as string) || null,
       end_date: (fd.get("end_date") as string) || null,
@@ -526,6 +533,14 @@ export function ProjectsClient({
 
         {filteredProjects.map((p, idx) => {
           const fin = projectFinance(p, allocations, profilesById, expenses, undefined, salaryHistory);
+          const force = projectForceFit(
+            p,
+            allocations,
+            profilesById,
+            allocations,
+            new Date(),
+            phases.filter((ph) => ph.project_id === p.id)
+          );
           const phaseCount = phases.filter((ph) => ph.project_id === p.id).length;
 
           // Active team
@@ -591,6 +606,7 @@ export function ProjectsClient({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-1">
+                      <ForceFitBadge fit={force} />
                       <Badge
                         variant={STATUS_VARIANT[p.status]}
                         className="gap-1.5"
@@ -868,6 +884,25 @@ export function ProjectsClient({
                 </div>
               </>
             )}
+            <div className="space-y-2 rounded-2xl bg-amber-500/[0.06] p-4 ring-1 ring-amber-500/15">
+              <Label htmlFor="difficulty">
+                Độ khó = mức LC trung bình team cần (0–100)
+              </Label>
+              <Input
+                id="difficulty"
+                name="difficulty"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                placeholder="0 = chưa đánh giá · gợi ý 55"
+                defaultValue={editing?.difficulty ?? 0}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Cùng thang với LC cá nhân: Intern 20 · Fresher 35 · Junior 50 ·
+                Middle 65 · Senior 80 · Lead 90. Fit = LC TB team ÷ độ khó.
+              </p>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Trạng thái</Label>

@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { ForceFitPanel } from "@/components/projects/ForceFitPanel";
 import { ProjectCostBreakdown } from "@/components/projects/ProjectCostBreakdown";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -103,9 +104,15 @@ export function ProjectDetailClient({
   salaryHistory: SalaryHistory[];
 }) {
   const supabase = createClient();
-  const { data: appData } = useAppData();
+  const { data: appData, mutate } = useAppData();
   const canViewMoney = appData?.user.canViewMoney ?? false;
   const canViewSalary = appData?.user.canViewSalary ?? false;
+  const canEditForce =
+    appData?.user.role === "admin" ||
+    appData?.user.role === "manager" ||
+    appData?.user.role === "pm";
+  const [projectState, setProjectState] = useState(project);
+  useEffect(() => setProjectState(project), [project]);
   const [phases, setPhases] = useState(initialPhases);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
@@ -135,14 +142,14 @@ export function ProjectDetailClient({
   const finance = useMemo(
     () =>
       projectFinance(
-        project,
+        projectState,
         allAllocations,
         profilesById,
         expenses,
         new Date(),
         salaryHistory
       ),
-    [project, allAllocations, profilesById, expenses, salaryHistory]
+    [projectState, allAllocations, profilesById, expenses, salaryHistory]
   );
 
   // Team roster theo tab: hôm nay / sắp tới / tất cả
@@ -440,6 +447,24 @@ export function ProjectDetailClient({
             </Badge>
           </div>
         }
+      />
+
+      <ForceFitPanel
+        project={projectState}
+        allocations={allocations}
+        allAllocations={allAllocations}
+        profiles={profiles}
+        phases={phases}
+        canEdit={canEditForce}
+        onDifficultySaved={(difficulty) => {
+          setProjectState((p) => ({ ...p, difficulty }));
+          mutate((prev) => ({
+            ...prev,
+            projects: prev.projects.map((p) =>
+              p.id === projectState.id ? { ...p, difficulty } : p
+            ),
+          }));
+        }}
       />
 
       {/* P&L summary — hero row (ẩn với member) */}
@@ -771,6 +796,10 @@ export function ProjectDetailClient({
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {m.profile.job_role}
+                        {m.profile.level ? ` · ${m.profile.level}` : ""}
+                        {Number(m.profile.power_score) > 0
+                          ? ` · LC ${Math.round(Number(m.profile.power_score))}`
+                          : ""}
                       </div>
                       <div className="mt-2 space-y-1">
                         {m.slots.map((s, i) => (

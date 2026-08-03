@@ -47,6 +47,11 @@ export type Project = {
   color: string;
   /** PM phụ trách dự án */
   manager_id: string | null;
+  /**
+   * Độ khó = mức LC trung bình team cần có (0 = chưa set, 1–100).
+   * Fit = (Σ power×% / Σ%) ÷ difficulty — cùng thang, ổn định.
+   */
+  difficulty: number;
   created_at: string;
 };
 

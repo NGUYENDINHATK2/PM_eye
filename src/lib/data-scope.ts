@@ -111,7 +111,14 @@ export function scopeBootstrapData(input: {
   profiles = profiles
     .map(normalizeProfile)
     .map((p) => stripProfileSalary(p, role));
-  projects = projects.map((p) => stripProjectMoney(p, role));
+  projects = projects
+    .map((p) => ({
+      ...p,
+      difficulty: Number.isFinite(Number(p.difficulty))
+        ? Math.min(100, Math.max(0, Number(p.difficulty)))
+        : 0,
+    }))
+    .map((p) => stripProjectMoney(p, role));
 
   let expenses = input.expenses.filter(
     (e) => e.project_id == null || projectIds.has(e.project_id)
