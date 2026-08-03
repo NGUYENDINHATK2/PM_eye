@@ -1,5 +1,6 @@
 "use client";
 
+import { HealthBadge } from "@/components/projects/HealthBadge";
 import {
   Card,
   CardContent,
@@ -7,115 +8,133 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatPercent } from "@/lib/utils";
 import type { ProjectFinance } from "@/lib/calculations";
-import type { Project } from "@/types/database";
-import Link from "next/link";
+import {
+  projectHealth,
+  type ProjectHealthScore,
+} from "@/lib/project-health";
+import { cn, formatPercent } from "@/lib/utils";
+import type {
+  Allocation,
+  Profile,
+  Project,
+  ProjectPhase,
+} from "@/types/database";
 import { Briefcase, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+import { useMemo } from "react";
 
 export function ProjectHealth({
   items,
+  phases,
+  allocations,
+  profiles,
+  canViewMoney,
 }: {
   items: { project: Project; finance: ProjectFinance }[];
+  phases: ProjectPhase[];
+  allocations: Allocation[];
+  profiles: Profile[];
+  canViewMoney: boolean;
 }) {
-  const ongoing = items.filter((i) => i.project.status === "ongoing");
-  const list = (ongoing.length > 0 ? ongoing : items).slice(0, 6);
+  const profilesById = useMemo(
+    () => new Map(profiles.map((p) => [p.id, p])),
+    [profiles]
+  );
+
+  const scored = useMemo(() => {
+    return items
+      .filter((i) => i.project.status === "ongoing" || i.project.status === "planned")
+      .map(({ project, finance }) => {
+        const health = projectHealth({
+          project,
+          phases,
+          allocations,
+          profilesById,
+          finance,
+          canViewMoney,
+        });
+        return { project, finance, health };
+      })
+      .sort((a, b) => rankTone(b.health) - rankTone(a.health))
+      .slice(0, 8);
+  }, [items, phases, allocations, profilesById, canViewMoney]);
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Sức khỏe dự án</CardTitle>
         <CardDescription>
-          Ngân sách vs đã tiêu — tính đến hôm nay
+          Staffing · Tiền · Tiến độ · Người — Đỏ / Vàng / Xanh
         </CardDescription>
       </CardHeader>
       <CardContent>
         {items.length === 0 && (
-          <div className="text-center py-10 px-4">
-            <div className="w-10 h-10 mx-auto rounded-2xl bg-muted flex items-center justify-center mb-3">
+          <div className="px-4 py-10 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-muted">
               <Briefcase size={16} className="text-muted-foreground" />
             </div>
             <div className="text-sm">Chưa có dự án nào.</div>
             <Link
               href="/projects"
-              className="text-xs text-teal-500 hover:underline mt-1 inline-block"
+              className="mt-1 inline-block text-xs text-teal-500 hover:underline"
             >
               Tạo dự án đầu tiên →
             </Link>
           </div>
         )}
 
-        <div className="space-y-4">
-          {list.map(({ project, finance }) => {
-            const pct = Math.min(1.2, finance.utilization);
-            const barGradient = finance.overBudget
-              ? "linear-gradient(90deg, #fb7185, #f43f5e)"
-              : finance.utilization > 0.85
-              ? "linear-gradient(90deg, #fbbf24, #f59e0b)"
-              : "linear-gradient(90deg, #34d399, #10b981)";
-
-            return (
-              <Link
-                key={project.id}
-                href={`/projects/${project.id}`}
-                className="block group"
-              >
-                <div className="flex items-center justify-between mb-2 gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{
-                        background: project.color,
-                        boxShadow: `0 0 0 3px ${project.color}22`,
-                      }}
-                    />
-                    <span className="font-medium text-sm truncate">
-                      {project.name}
-                    </span>
-                    <ArrowUpRight
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 -translate-x-1 group-hover:translate-x-0 transition-all text-muted-foreground shrink-0"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {finance.overBudget && (
-                      <Badge variant="destructive">Vượt</Badge>
-                    )}
-                    {!finance.overBudget && finance.utilization > 0.85 && (
-                      <Badge variant="warning">Sắp hết</Badge>
-                    )}
-                    <span
-                      className={`text-xs font-semibold tnum ${
-                        finance.overBudget
-                          ? "text-rose-500"
-                          : finance.utilization > 0.85
-                          ? "text-amber-500"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {formatPercent(finance.utilization)}
-                    </span>
-                  </div>
-                </div>
-                <div className="relative h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+        <div className="space-y-3">
+          {scored.map(({ project, finance, health }) => (
+            <Link
+              key={project.id}
+              href={`/projects/${project.id}`}
+              className="group block rounded-xl px-1 py-1.5 transition hover:bg-muted/40"
+            >
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{
-                      width: `${Math.min(100, pct * 100)}%`,
-                      background: barGradient,
+                      background: project.color,
+                      boxShadow: `0 0 0 3px ${project.color}22`,
                     }}
                   />
+                  <span className="truncate text-sm font-medium">
+                    {project.name}
+                  </span>
+                  <ArrowUpRight
+                    size={12}
+                    className="shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100"
+                  />
                 </div>
-                <div className="flex justify-between text-[11px] text-muted-foreground mt-1.5 tnum">
-                  <span>{formatCurrency(finance.totalSpent)}</span>
-                  <span>của {formatCurrency(finance.budget)}</span>
+                <HealthBadge health={health} compact />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {health.axes.slice(0, 4).map((ax) => (
+                  <span
+                    key={ax.key}
+                    className={cn(
+                      "rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground ring-1 ring-border/50"
+                    )}
+                  >
+                    {ax.label}: {ax.detail}
+                  </span>
+                ))}
+              </div>
+              {canViewMoney && finance.hasCap && (
+                <div className="mt-1.5 text-[10px] text-muted-foreground tnum">
+                  Budget {formatPercent(finance.utilization)}
                 </div>
-              </Link>
-            );
-          })}
+              )}
+            </Link>
+          ))}
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function rankTone(h: ProjectHealthScore): number {
+  return h.tone === "red" ? 3 : h.tone === "yellow" ? 2 : h.tone === "green" ? 1 : 0;
 }

@@ -753,8 +753,12 @@ export function EmployeesClient({
                   <>
                     <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
                     <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
-                    <SelectItem value="value_desc">Hiệu suất cao→thấp</SelectItem>
-                    <SelectItem value="value_asc">Hiệu suất thấp→cao</SelectItem>
+                    <SelectItem value="value_desc">
+                      LC vs lương·level cao→thấp
+                    </SelectItem>
+                    <SelectItem value="value_asc">
+                      LC vs lương·level thấp→cao
+                    </SelectItem>
                   </>
                 )}
               </SelectContent>
@@ -830,7 +834,7 @@ export function EmployeesClient({
                   <TableHead className="text-right">Lương</TableHead>
                 )}
                 {canViewSalary && (
-                  <TableHead className="text-right">Hiệu suất</TableHead>
+                  <TableHead className="text-right">LC/lương·level</TableHead>
                 )}
                 <TableHead>Tải hôm nay</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -1552,7 +1556,7 @@ function PersonCard({
             </div>
           </div>
           <div className="text-right">
-            <div className="text-muted-foreground">Hiệu suất</div>
+            <div className="text-muted-foreground">LC vs lương·level</div>
             <EfficiencyCell result={efficiency} />
           </div>
         </div>

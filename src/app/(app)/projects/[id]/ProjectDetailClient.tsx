@@ -2,7 +2,12 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { ForceFitPanel } from "@/components/projects/ForceFitPanel";
+import {
+  HealthAxesRow,
+  HealthBadge,
+} from "@/components/projects/HealthBadge";
 import { ProjectCostBreakdown } from "@/components/projects/ProjectCostBreakdown";
+import { ProjectRisksPanel } from "@/components/projects/ProjectRisksPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +49,13 @@ import {
   projectFinance,
 } from "@/lib/calculations";
 import { useAppData } from "@/lib/hooks/useAppData";
+import {
+  PHASE_STATUS_OPTIONS,
+  effectivePhaseStatus,
+  normalizePhaseStatus,
+  phaseStatusLabel,
+} from "@/lib/phase-status";
+import { projectHealth } from "@/lib/project-health";
 import { createClient } from "@/lib/supabase/client";
 import {
   cn,
@@ -61,6 +73,7 @@ import type {
   Project,
   ProjectPayment,
   ProjectPhase,
+  ProjectRisk,
   RequiredRole,
   SalaryHistory,
 } from "@/types/database";
@@ -117,9 +130,13 @@ export function ProjectDetailClient({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectPhase | null>(null);
   const [reqRoles, setReqRoles] = useState<RequiredRole[]>([]);
+  const [phaseStatus, setPhaseStatus] = useState<"planning" | "active" | "done">(
+    "planning"
+  );
   const [phaseError, setPhaseError] = useState<string | null>(null);
   const [phaseSaving, setPhaseSaving] = useState(false);
   const [teamTab, setTeamTab] = useState<TeamTab>("today");
+  const [risks, setRisks] = useState<ProjectRisk[]>([]);
 
   // Payments
   const [payments, setPayments] = useState(initialPayments);
@@ -150,6 +167,28 @@ export function ProjectDetailClient({
         salaryHistory
       ),
     [projectState, allAllocations, profilesById, expenses, salaryHistory]
+  );
+
+  const health = useMemo(
+    () =>
+      projectHealth({
+        project: projectState,
+        phases,
+        allocations: allAllocations,
+        profilesById,
+        finance,
+        canViewMoney,
+        risks,
+      }),
+    [
+      projectState,
+      phases,
+      allAllocations,
+      profilesById,
+      finance,
+      canViewMoney,
+      risks,
+    ]
   );
 
   // Team roster theo tab: hôm nay / sắp tới / tất cả
@@ -238,6 +277,7 @@ export function ProjectDetailClient({
   function openNew() {
     setEditing(null);
     setReqRoles([]);
+    setPhaseStatus("planning");
     setPhaseError(null);
     setOpen(true);
   }
@@ -245,6 +285,7 @@ export function ProjectDetailClient({
   function openEdit(ph: ProjectPhase) {
     setEditing(ph);
     setReqRoles(Array.isArray(ph.required_roles) ? ph.required_roles : []);
+    setPhaseStatus(normalizePhaseStatus(ph.status));
     setPhaseError(null);
     setOpen(true);
   }
@@ -261,6 +302,7 @@ export function ProjectDetailClient({
       end_date: fd.get("end_date") as string,
       phase_budget: Number(fd.get("phase_budget") || 0),
       required_roles: reqRoles,
+      status: phaseStatus,
     };
     if (editing) {
       const { data, error: err } = await supabase
@@ -449,6 +491,21 @@ export function ProjectDetailClient({
         }
       />
 
+      <div className="rounded-2xl bg-card p-5 ring-1 ring-border/70 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="font-display text-base font-semibold tracking-tight">
+              Sức khỏe dự án
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Staffing · Tiền · Tiến độ · Người
+            </p>
+          </div>
+          <HealthBadge health={health} />
+        </div>
+        <HealthAxesRow health={health} />
+      </div>
+
       <ForceFitPanel
         project={projectState}
         allocations={allocations}
@@ -465,6 +522,13 @@ export function ProjectDetailClient({
             ),
           }));
         }}
+      />
+
+      <ProjectRisksPanel
+        projectId={projectState.id}
+        profiles={profiles}
+        canEdit={canEditForce}
+        onChange={setRisks}
       />
 
       {/* P&L summary — hero row (ẩn với member) */}
@@ -872,7 +936,26 @@ export function ProjectDetailClient({
                       <div className="min-w-0">
                         <div className="font-medium flex items-center gap-2 flex-wrap">
                           {ph.phase_name}
-                          {active && <Badge variant="success">Đang chạy</Badge>}
+                          {(() => {
+                            const st = effectivePhaseStatus(ph);
+                            const variant =
+                              st === "delayed"
+                                ? "destructive"
+                                : st === "active"
+                                  ? "success"
+                                  : st === "done"
+                                    ? "secondary"
+                                    : "info";
+                            return (
+                              <Badge variant={variant}>
+                                {phaseStatusLabel(st)}
+                              </Badge>
+                            );
+                          })()}
+                          {active &&
+                            effectivePhaseStatus(ph) === "planning" && (
+                              <Badge variant="success">Trong kỳ</Badge>
+                            )}
                           {totalMissing > 0 && (
                             <Badge variant="destructive">
                               Thiếu {totalMissing.toFixed(1)} người
@@ -1068,16 +1151,38 @@ export function ProjectDetailClient({
           </DialogHeader>
           <form onSubmit={savePhase} key={editing?.id ?? "new-phase"}>
             <DialogBody>
-              <Field>
-                <Label htmlFor="phase_name">Tên giai đoạn</Label>
-                <Input
-                  id="phase_name"
-                  name="phase_name"
-                  required
-                  placeholder="Ví dụ: MVP, Maintenance, UAT"
-                  defaultValue={editing?.phase_name ?? ""}
-                />
-              </Field>
+              <FieldGrid>
+                <Field>
+                  <Label htmlFor="phase_name">Tên giai đoạn</Label>
+                  <Input
+                    id="phase_name"
+                    name="phase_name"
+                    required
+                    placeholder="Ví dụ: MVP, Maintenance, UAT"
+                    defaultValue={editing?.phase_name ?? ""}
+                  />
+                </Field>
+                <Field>
+                  <Label>Trạng thái</Label>
+                  <Select
+                    value={phaseStatus}
+                    onValueChange={(v) =>
+                      setPhaseStatus(normalizePhaseStatus(v))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PHASE_STATUS_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {phaseStatusLabel(s)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGrid>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:items-end">
                 <Field>
                   <Label htmlFor="start_date">Bắt đầu</Label>

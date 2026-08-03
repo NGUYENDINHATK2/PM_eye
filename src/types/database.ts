@@ -52,6 +52,24 @@ export type Project = {
    * Fit = (Σ power×% / Σ%) ÷ difficulty — cùng thang, ổn định.
    */
   difficulty: number;
+  /** Team org phụ trách chính — cần chạy add_project_ops.sql */
+  team_id?: string | null;
+  created_at: string;
+};
+
+export type RiskKind = "blocker" | "risk";
+export type RiskSeverity = "critical" | "warn" | "info";
+export type RiskStatus = "open" | "done";
+
+export type ProjectRisk = {
+  id: string;
+  project_id: string;
+  title: string;
+  kind: RiskKind;
+  severity: RiskSeverity;
+  status: RiskStatus;
+  owner_id: string | null;
+  note: string | null;
   created_at: string;
 };
 
@@ -80,6 +98,7 @@ export type ProjectPayment = {
 
 export type RequiredRole = { role: string; count: number };
 
+/** planning | active | done — app chuẩn hoá; "delayed" chỉ tính khi hiển thị */
 export type ProjectPhase = {
   id: string;
   project_id: string;
@@ -115,7 +134,7 @@ export type OperatingExpense = {
   created_at: string;
 };
 
-/** Nhóm nhân sự — không gắn dự án */
+/** Nhóm nhân sự — có thể gắn vào projects.team_id */
 export type Team = {
   id: string;
   name: string;

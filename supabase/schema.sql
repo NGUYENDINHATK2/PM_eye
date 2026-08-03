@@ -77,7 +77,9 @@ create table public.project_phases (
   end_date date not null,
   phase_budget numeric not null default 0,
   required_roles jsonb not null default '[]'::jsonb,
-  status text not null default 'planned',
+  -- planning | active | done (UI có thể hiện "delayed" khi quá hạn)
+  status text not null default 'planning'
+    check (status in ('planning', 'active', 'done')),
   created_at timestamptz not null default now()
 );
 
@@ -130,7 +132,7 @@ create table public.operating_expenses (
   created_at timestamptz not null default now()
 );
 
--- 8. TEAMS — nhóm nhân sự (KHÔNG gắn dự án)
+-- 8. TEAMS — nhóm nhân sự (có thể gắn vào projects.team_id)
 create table public.teams (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -149,8 +151,35 @@ create table public.team_members (
   unique (user_id)
 );
 
+-- projects.team_id sau khi có bảng teams
+alter table public.projects
+  add column team_id uuid references public.teams (id) on delete set null;
+
+comment on column public.projects.team_id is 'Team phụ trách chính (org team)';
+
+-- 10. PROJECT_RISKS — blocker / rủi ro
+create table public.project_risks (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects (id) on delete cascade,
+  title text not null,
+  kind text not null default 'risk'
+    check (kind in ('blocker', 'risk')),
+  severity text not null default 'warn'
+    check (severity in ('critical', 'warn', 'info')),
+  status text not null default 'open'
+    check (status in ('open', 'done')),
+  owner_id uuid references public.profiles (id) on delete set null,
+  note text,
+  created_at timestamptz not null default now()
+);
+
 create index teams_leader_id_idx on public.teams (leader_id);
 create index team_members_user_id_idx on public.team_members (user_id);
+create index projects_team_id_idx on public.projects (team_id);
+create index project_risks_project_id_idx on public.project_risks (project_id);
+create index project_risks_open_idx
+  on public.project_risks (project_id)
+  where status = 'open';
 
 create index idx_alloc_user on public.allocations(user_id);
 create index idx_alloc_project on public.allocations(project_id);
@@ -277,6 +306,7 @@ alter table public.project_payments enable row level security;
 alter table public.salary_history enable row level security;
 alter table public.teams enable row level security;
 alter table public.team_members enable row level security;
+alter table public.project_risks enable row level security;
 
 -- PROFILES: member chỉ đọc chính; manager/pm/admin đọc roster
 create policy "profiles_select" on public.profiles
@@ -408,6 +438,22 @@ create policy "team_members_write" on public.team_members
   using (public.app_role() in ('admin', 'manager'))
   with check (public.app_role() in ('admin', 'manager'));
 
+-- PROJECT_RISKS
+create policy "project_risks_select" on public.project_risks
+  for select to authenticated
+  using (public.can_access_project(project_id));
+
+create policy "project_risks_write" on public.project_risks
+  for all to authenticated
+  using (
+    public.app_role() in ('admin', 'manager', 'pm')
+    and public.can_write_project(project_id)
+  )
+  with check (
+    public.app_role() in ('admin', 'manager', 'pm')
+    and public.can_write_project(project_id)
+  );
+
 -- =====================================================
 -- Column privileges — che base_salary với non-admin
 -- =====================================================
@@ -420,6 +466,7 @@ revoke all on table public.operating_expenses from anon, authenticated;
 revoke all on table public.project_payments from anon, authenticated;
 revoke all on table public.teams from anon, authenticated;
 revoke all on table public.team_members from anon, authenticated;
+revoke all on table public.project_risks from anon, authenticated;
 
 -- profiles: authenticated được các cột non-salary
 grant select (
@@ -455,6 +502,7 @@ grant select, insert, update, delete on public.operating_expenses to authenticat
 grant select, insert, update, delete on public.project_payments to authenticated;
 grant select, insert, update, delete on public.teams to authenticated;
 grant select, insert, update, delete on public.team_members to authenticated;
+grant select, insert, update, delete on public.project_risks to authenticated;
 
 -- salary_history: không grant cho authenticated — chỉ service_role / admin qua API
 -- (RLS vẫn có policy admin; cần grant SELECT cho authenticated để policy chạy)

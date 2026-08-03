@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { HealthBadge } from "@/components/projects/HealthBadge";
 import {
   ForceFitBadge,
   ForceFitMini,
@@ -10,6 +11,8 @@ import {
   projectForceFit,
   type ProjectForceFit,
 } from "@/lib/force-fit";
+import { downloadCsv } from "@/lib/export-csv";
+import { projectHealth } from "@/lib/project-health";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,6 +78,7 @@ import {
   Flame,
   Gauge,
   MoreHorizontal,
+  Download,
   Pencil,
   Plus,
   Search,
@@ -152,8 +156,10 @@ export function ProjectsClient({
   const [status, setStatus] = useState<string>("planned");
   const [billingType, setBillingType] = useState<string>("fixed");
   const [managerId, setManagerId] = useState<string>("none");
+  const [teamId, setTeamId] = useState<string>("none");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const teams = appData?.teams ?? [];
 
   // Filters / sort
   const [search, setSearch] = useState("");
@@ -190,12 +196,87 @@ export function ProjectsClient({
     return map;
   }, [projects, allocations, profilesById, phases]);
 
+  const healthByProject = useMemo(() => {
+    const map = new Map<
+      string,
+      ReturnType<typeof projectHealth>
+    >();
+    for (const p of projects) {
+      const fin = projectFinance(
+        p,
+        allocations,
+        profilesById,
+        expenses,
+        new Date(),
+        salaryHistory
+      );
+      map.set(
+        p.id,
+        projectHealth({
+          project: p,
+          phases,
+          allocations,
+          profilesById,
+          finance: fin,
+          canViewMoney,
+        })
+      );
+    }
+    return map;
+  }, [
+    projects,
+    phases,
+    allocations,
+    profilesById,
+    expenses,
+    salaryHistory,
+    canViewMoney,
+  ]);
+
+  function exportHealthCsv() {
+    downloadCsv(
+      `pm-eye-project-health-${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        "Tên",
+        "Status",
+        "Health",
+        "Staffing",
+        "Tiền",
+        "Tiến độ",
+        "Người",
+        "Fit",
+        "Team",
+      ],
+      projects.map((p) => {
+        const h = healthByProject.get(p.id);
+        const team = teams.find((t) => t.id === p.team_id);
+        const axis = (k: string) =>
+          h?.axes.find((a) => a.key === k)?.detail ?? "";
+        return [
+          p.name,
+          p.status,
+          h?.label ?? "",
+          axis("staffing"),
+          axis("money"),
+          axis("schedule"),
+          axis("people"),
+          h?.fit.qualityFit != null
+            ? h.fit.qualityFit.toFixed(2)
+            : "",
+          team?.name ?? "",
+        ];
+      })
+    );
+    toast.success("Đã tải CSV sức khỏe dự án");
+  }
+
   function openNew() {
     setEditing(null);
     setColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]);
     setStatus("planned");
     setBillingType("fixed");
     setManagerId("none");
+    setTeamId("none");
     setError(null);
     setOpen(true);
   }
@@ -206,6 +287,7 @@ export function ProjectsClient({
     setStatus(p.status);
     setBillingType(p.billing_type ?? "fixed");
     setManagerId(p.manager_id ?? "none");
+    setTeamId(p.team_id ?? "none");
     setError(null);
     setOpen(true);
   }
@@ -236,6 +318,7 @@ export function ProjectsClient({
       description: (fd.get("description") as string) || null,
       color,
       manager_id: managerId === "none" ? null : managerId,
+      team_id: teamId === "none" ? null : teamId,
     };
 
     if (editing) {
@@ -456,13 +539,19 @@ export function ProjectsClient({
       <PageHeader
         eyebrow="Workspace · Dự án"
         title="Portfolio dự án"
-        subtitle="Lực chiến team, độ khó, Fit staffing — kèm P&L nếu bạn có quyền xem tiền."
+        subtitle="Health (Staffing·Tiền·Tiến độ·Người), Fit team, P&L theo quyền."
         actions={
-          canWrite ? (
-            <Button variant="brand" onClick={openNew}>
-              <Plus /> Thêm dự án
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={exportHealthCsv}>
+              <Download className="!size-3.5" />
+              Export CSV
             </Button>
-          ) : undefined
+            {canWrite && (
+              <Button variant="brand" onClick={openNew}>
+                <Plus /> Thêm dự án
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -800,7 +889,19 @@ export function ProjectsClient({
                     </div>
                   </div>
 
-                  {/* Lực chiến — luôn hiện */}
+                  {healthByProject.get(p.id) && (
+                    <div className="flex items-center justify-between gap-2">
+                      <HealthBadge health={healthByProject.get(p.id)!} />
+                      {p.team_id &&
+                        teams.find((t) => t.id === p.team_id) && (
+                          <span className="truncate text-[10px] text-muted-foreground">
+                            {teams.find((t) => t.id === p.team_id)!.name}
+                          </span>
+                        )}
+                    </div>
+                  )}
+
+                  {/* Fit staffing */}
                   <ForceFitMini fit={force} />
 
                   {/* P&L hero — chỉ admin/manager/pm */}
@@ -1119,6 +1220,29 @@ export function ProjectsClient({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Team phụ trách</Label>
+              <Select value={teamId} onValueChange={setTeamId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn team" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Chưa gán —</SelectItem>
+                  {teams.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {teams.length === 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Chưa có team — tạo ở trang Teams. Cần chạy{" "}
+                  <code className="font-mono">add_project_ops.sql</code> để lưu
+                  gắn kết.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Màu</Label>

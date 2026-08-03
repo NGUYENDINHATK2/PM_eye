@@ -187,7 +187,8 @@ export function InsightsClient({ data }: { data: AppData }) {
   }, [computed.finances, sort, statusFilter]);
 
   function exportPortfolio() {
-    const rows: (string | number)[][] = [
+    downloadCsv(
+      `pm-eye-portfolio-${new Date().toISOString().slice(0, 10)}.csv`,
       [
         "Dự án",
         "Status",
@@ -199,7 +200,7 @@ export function InsightsClient({ data }: { data: AppData }) {
         "Utilization %",
         "Client",
       ],
-      ...portfolio.map(({ project, finance }) => [
+      portfolio.map(({ project, finance }) => [
         project.name,
         project.status,
         Math.round(finance.revenue),
@@ -209,11 +210,7 @@ export function InsightsClient({ data }: { data: AppData }) {
         finance.hasCap ? Math.round(finance.budget) : "",
         finance.hasCap ? Math.round(finance.utilization * 100) : "",
         project.client ?? "",
-      ]),
-    ];
-    downloadCsv(
-      `pm-eye-portfolio-${new Date().toISOString().slice(0, 10)}.csv`,
-      rows
+      ])
     );
   }
 

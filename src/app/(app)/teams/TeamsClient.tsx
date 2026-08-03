@@ -226,7 +226,7 @@ export function TeamsClient({
       <PageHeader
         eyebrow="Workspace · Tổ chức"
         title="Teams"
-        subtitle="Nhóm nhân sự theo team + tổng lực chiến — mỗi team một leader. Không gắn dự án."
+        subtitle="Nhóm nhân sự + tổng lực chiến. Gắn team vào dự án ở trang Dự án (cần add_project_ops.sql)."
         actions={
           canWrite ? (
             <Button variant="brand" onClick={openNew}>

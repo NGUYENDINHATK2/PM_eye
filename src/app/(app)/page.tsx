@@ -7,6 +7,7 @@ import { ProjectHealth } from "@/components/dashboard/ProjectHealth";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { TeamHeatmap } from "@/components/dashboard/TeamHeatmap";
+import { ThisWeekPanel } from "@/components/dashboard/ThisWeekPanel";
 import { TopProjects } from "@/components/dashboard/TopProjects";
 import { WelcomeHero } from "@/components/dashboard/WelcomeHero";
 import { MoneyGate } from "@/components/RoleGate";
@@ -155,6 +156,16 @@ function DashboardView({
       </section>
 
       <div
+        className="grid grid-cols-1 gap-4 lg:grid-cols-3 animate-fade-up"
+        style={{ animationDelay: "80ms" }}
+      >
+        <div className="lg:col-span-2">
+          <ThisWeekPanel alerts={computed.alerts} />
+        </div>
+        <AlertList alerts={computed.alerts} />
+      </div>
+
+      <div
         className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up"
         style={{ animationDelay: "120ms" }}
       >
@@ -175,7 +186,15 @@ function DashboardView({
             />
           </MoneyGate>
         </div>
-        <AlertList alerts={computed.alerts} />
+        <div className="animate-fade-up">
+          <ProjectHealth
+            items={computed.finances}
+            phases={phases}
+            allocations={allocations}
+            profiles={profiles}
+            canViewMoney={canMoney}
+          />
+        </div>
       </div>
 
       <MoneyGate>
@@ -188,18 +207,10 @@ function DashboardView({
         </div>
       </MoneyGate>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div
-          className="lg:col-span-2 animate-fade-up"
-          style={{ animationDelay: "280ms" }}
-        >
+      <div className="grid grid-cols-1 gap-4">
+        <div className="animate-fade-up" style={{ animationDelay: "280ms" }}>
           <TeamHeatmap profiles={profiles} allocations={allocations} />
         </div>
-        <MoneyGate>
-          <div className="animate-fade-up" style={{ animationDelay: "340ms" }}>
-            <ProjectHealth items={computed.finances} />
-          </div>
-        </MoneyGate>
       </div>
 
       <div className="animate-fade-up" style={{ animationDelay: "400ms" }}>

@@ -105,7 +105,7 @@ export function ForceFitPanel({
             {fit.hint}
           </p>
           <p className="mt-1 text-[10px] text-muted-foreground/80">
-            Fit = LC trung bình team ÷ độ khó (cùng thang 1–100)
+            Fit = team có đủ lực cho độ khó chưa (LC TB ÷ độ khó)
           </p>
         </div>
 
