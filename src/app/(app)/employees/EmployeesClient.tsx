@@ -58,9 +58,7 @@ import {
 import {
   formatPowerSalaryIndex,
   powerSalaryIndex,
-  powerSalaryLabel,
   resolveTopSalaryRef,
-  type SalaryPowerRef,
 } from "@/lib/power-salary";
 import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
@@ -78,22 +76,14 @@ import type {
   SalaryHistory,
 } from "@/types/database";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Activity,
   Briefcase,
   CalendarDays,
   Flame,
-  Gauge,
   LayoutGrid,
   List as ListIcon,
   Mail,
   Pencil,
-  Scale,
   Search,
   Sparkles,
   Trash2,
@@ -301,29 +291,6 @@ export function EmployeesClient({
       ? activeList.reduce((s, d) => s + Number(d.profile.power_score || 0), 0) /
         activeList.length
       : 0;
-  const valueSamples = activeList.filter((d) => d.value.index != null);
-  const avgValueIndex =
-    valueSamples.length > 0
-      ? valueSamples.reduce((s, d) => s + (d.value.index ?? 0), 0) /
-        valueSamples.length
-      : null;
-  const cheapCount = valueSamples.filter(
-    (d) => (d.value.index ?? 0) >= 1.25
-  ).length;
-  const expensiveCount = valueSamples.filter(
-    (d) => (d.value.index ?? 0) < 0.7
-  ).length;
-
-  const draftValue = useMemo(
-    () =>
-      powerSalaryIndex(
-        Number(powerScore) || 0,
-        Number(salaryInput) || 0,
-        salaryRef
-      ),
-    [powerScore, salaryInput, salaryRef]
-  );
-
   // Role distribution (top 6)
   const roleDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -524,11 +491,7 @@ export function EmployeesClient({
       <PageHeader
         eyebrow="Workspace · Team"
         title="Quản lý nhân sự"
-        subtitle={
-          canViewSalary
-            ? "Level, lực chiến, lương và chỉ số LC/lương so người lương cao nhất."
-            : "Chức danh, level, lực chiến và tải — hỗ trợ phân bổ đúng người đúng chỗ."
-        }
+        subtitle="Chức danh, level, lực chiến và tải — hỗ trợ phân bổ đúng người đúng chỗ."
         actions={
           <Button variant="brand" onClick={openNew}>
             <UserPlus />
@@ -541,7 +504,7 @@ export function EmployeesClient({
       <div
         className={
           canViewSalary
-            ? "grid grid-cols-2 gap-3 lg:grid-cols-7"
+            ? "grid grid-cols-2 gap-3 lg:grid-cols-6"
             : "grid grid-cols-2 gap-3 lg:grid-cols-5"
         }
       >
@@ -566,25 +529,6 @@ export function EmployeesClient({
             hint={`TB ${formatCurrency(avgSalary)} / người`}
             tone="violet"
             icon={<Wallet size={14} />}
-          />
-        )}
-        {canViewSalary && (
-          <KpiCard
-            label="LC/lương vs mốc"
-            value={
-              avgValueIndex != null
-                ? formatPowerSalaryIndex(avgValueIndex)
-                : "—"
-            }
-            hint={
-              salaryRef
-                ? `Mốc ${formatCurrency(salaryRef.salary)}${
-                    salaryRef.name ? ` · ${salaryRef.name}` : ""
-                  } · ${cheapCount} rẻ / ${expensiveCount} đắt`
-                : "Cần ≥1 người active có lương"
-            }
-            tone="emerald"
-            icon={<Scale size={14} />}
           />
         )}
         <KpiCard
@@ -810,12 +754,8 @@ export function EmployeesClient({
                   <>
                     <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
                     <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
-                    <SelectItem value="value_desc">
-                      LC/lương cao→thấp
-                    </SelectItem>
-                    <SelectItem value="value_asc">
-                      LC/lương thấp→cao
-                    </SelectItem>
+                    <SelectItem value="value_desc">Hiệu suất cao→thấp</SelectItem>
+                    <SelectItem value="value_asc">Hiệu suất thấp→cao</SelectItem>
                   </>
                 )}
               </SelectContent>
@@ -873,7 +813,6 @@ export function EmployeesClient({
               level={d.profile.level}
               power={Number(d.profile.power_score) || 0}
               valueIndex={d.value.index}
-              salaryRef={salaryRef}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -889,10 +828,10 @@ export function EmployeesClient({
                 <TableHead>Level / LC</TableHead>
                 <TableHead>Team</TableHead>
                 {canViewSalary && (
-                  <TableHead className="text-right">Lương / tháng</TableHead>
+                  <TableHead className="text-right">Lương</TableHead>
                 )}
                 {canViewSalary && (
-                  <TableHead className="text-right">LC/lương</TableHead>
+                  <TableHead className="text-right">Hiệu suất</TableHead>
                 )}
                 <TableHead>Tải hôm nay</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -964,8 +903,8 @@ export function EmployeesClient({
                       </TableCell>
                     )}
                     {canViewSalary && (
-                      <TableCell className="text-right">
-                        <ValueIndexBadge index={d.value.index} compact />
+                      <TableCell className="tnum text-right tabular-nums text-sm font-medium">
+                        {formatPowerSalaryIndex(d.value.index)}
                       </TableCell>
                     )}
                     <TableCell>
@@ -1277,59 +1216,6 @@ export function EmployeesClient({
                 </FieldGrid>
               </div>
 
-              {canViewSalary && (
-                <div className="rounded-2xl bg-teal-500/[0.06] px-4 py-3.5 ring-1 ring-teal-500/15">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs font-medium text-teal-800 dark:text-teal-200">
-                      <Gauge className="size-3.5" />
-                      LC / lương vs mốc
-                    </div>
-                    <ValueIndexBadge index={draftValue.index} />
-                  </div>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
-                    {salaryRef ? (
-                      <>
-                        Mốc = người lương cao nhất
-                        {salaryRef.name ? (
-                          <>
-                            {" "}
-                            (
-                            <span className="font-medium text-foreground">
-                              {salaryRef.name}
-                            </span>
-                            )
-                          </>
-                        ) : null}
-                        :{" "}
-                        <span className="tnum font-medium text-foreground">
-                          {formatCurrency(salaryRef.salary)}
-                        </span>
-                        {draftValue.salaryRatio != null && (
-                          <>
-                            {" "}
-                            · lương{" "}
-                            <span className="tnum font-medium text-foreground">
-                              {Math.round(draftValue.salaryRatio * 100)}% mốc
-                            </span>
-                          </>
-                        )}
-                        {draftValue.powerRatio != null && (
-                          <>
-                            {" "}
-                            · LC{" "}
-                            <span className="tnum font-medium text-foreground">
-                              {Math.round(draftValue.powerRatio * 100)}% mốc
-                            </span>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      "Cần ít nhất 1 người active có lương để làm hệ quy chiếu."
-                    )}
-                  </p>
-                </div>
-              )}
-
               {canViewSalary &&
                 editing &&
                 salaryInput > 0 &&
@@ -1507,55 +1393,6 @@ function KpiCard({
   );
 }
 
-function ValueIndexBadge({
-  index,
-  compact,
-}: {
-  index: number | null;
-  compact?: boolean;
-}) {
-  const meta = powerSalaryLabel(index);
-  const toneClass =
-    meta.tone === "good"
-      ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 ring-emerald-500/20"
-      : meta.tone === "ok"
-        ? "text-teal-700 dark:text-teal-300 bg-teal-500/10 ring-teal-500/20"
-        : meta.tone === "warn"
-          ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 ring-amber-500/20"
-          : meta.tone === "bad"
-            ? "text-rose-700 dark:text-rose-300 bg-rose-500/10 ring-rose-500/20"
-            : "text-muted-foreground bg-muted/60 ring-border/50";
-
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-semibold ring-1",
-              toneClass
-            )}
-          >
-            <span className="tnum tabular-nums">
-              {formatPowerSalaryIndex(index)}
-            </span>
-            {!compact && index != null && (
-              <span className="font-medium opacity-80">{meta.short}</span>
-            )}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[220px] text-xs">
-          <p className="font-medium">{meta.short}</p>
-          <p className="mt-0.5 text-muted-foreground">{meta.hint}</p>
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            ×1.0 = ngang người lương cao nhất · &gt;1 rẻ hơn · &lt;1 đắt hơn
-          </p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
 function PersonCard({
   profile,
   load,
@@ -1568,7 +1405,6 @@ function PersonCard({
   level,
   power,
   valueIndex,
-  salaryRef,
   onEdit,
   onDelete,
 }: {
@@ -1583,7 +1419,6 @@ function PersonCard({
   level?: string | null;
   power: number;
   valueIndex: number | null;
-  salaryRef: SalaryPowerRef | null;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1701,42 +1536,28 @@ function PersonCard({
         </div>
       </div>
 
-      {/* Footer: salary + LC/lương — chỉ admin */}
+      {/* Footer: lương + hiệu suất — chỉ admin */}
       {canViewSalary && (
-        <div className="mt-3.5 space-y-2.5 border-t border-border/60 pt-3.5 text-xs">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-muted-foreground">Lương / tháng</div>
-              <div className="tnum text-sm font-semibold tabular-nums text-teal-700 dark:text-teal-300">
-                {Number(profile.base_salary) > 0
-                  ? formatCurrency(profile.base_salary)
-                  : "—"}
-              </div>
+        <div className="mt-3.5 flex items-end justify-between gap-2 border-t border-border/60 pt-3.5 text-xs">
+          <div>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              Lương
+              {historyCount > 0 && (
+                <span className="text-[10px] opacity-70">· {historyCount}</span>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-muted-foreground">LC/lương</div>
-              <div className="mt-0.5">
-                <ValueIndexBadge index={valueIndex} />
-              </div>
+            <div className="tnum text-sm font-semibold tabular-nums text-teal-700 dark:text-teal-300">
+              {Number(profile.base_salary) > 0
+                ? formatCurrency(profile.base_salary)
+                : "—"}
             </div>
           </div>
-          {(historyCount > 0 || salaryRef) && (
-            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-              {salaryRef ? (
-                <span className="truncate">
-                  Mốc {formatCurrency(salaryRef.salary)}
-                  {salaryRef.name ? ` · ${salaryRef.name}` : ""}
-                </span>
-              ) : (
-                <span>Chưa có mốc lương</span>
-              )}
-              {historyCount > 0 && (
-                <Badge variant="info" className="py-0 text-[9px]">
-                  {historyCount} lần đổi
-                </Badge>
-              )}
+          <div className="text-right">
+            <div className="text-muted-foreground">Hiệu suất</div>
+            <div className="tnum text-sm font-semibold tabular-nums">
+              {formatPowerSalaryIndex(valueIndex)}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
