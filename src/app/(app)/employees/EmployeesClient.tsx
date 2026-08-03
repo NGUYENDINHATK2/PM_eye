@@ -55,6 +55,13 @@ import {
   defaultPowerForLevel,
   isDevLevel,
 } from "@/lib/levels";
+import {
+  formatPowerSalaryIndex,
+  powerSalaryIndex,
+  powerSalaryLabel,
+  resolveLeadSalaryRef,
+  type LeadSalaryRef,
+} from "@/lib/power-salary";
 import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -71,14 +78,22 @@ import type {
   SalaryHistory,
 } from "@/types/database";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Activity,
   Briefcase,
   CalendarDays,
   Flame,
+  Gauge,
   LayoutGrid,
   List as ListIcon,
   Mail,
   Pencil,
+  Scale,
   Search,
   Sparkles,
   Trash2,
@@ -102,7 +117,9 @@ type Sort =
   | "load_desc"
   | "load_asc"
   | "power_desc"
-  | "power_asc";
+  | "power_asc"
+  | "value_desc"
+  | "value_asc";
 
 export function EmployeesClient({
   initialProfiles,
@@ -167,6 +184,12 @@ export function EmployeesClient({
     return Array.from(set).sort();
   }, [profiles]);
 
+  /** Hệ quy chiếu: median lương Lead active (+ TB LC Lead). */
+  const leadRef = useMemo(
+    () => resolveLeadSalaryRef(profiles),
+    [profiles]
+  );
+
   // Decorated profiles với load HÔM NAY (đồng nhất với /allocations).
   // monthLoad dùng để smart-bench detection: chỉ gọi "Bench" khi cả today
   // và cả tháng đều = 0 → tránh hiểu nhầm với người có alloc bắt đầu mai.
@@ -176,6 +199,11 @@ export function EmployeesClient({
       const monthLoad = userLoadCurrentMonth(p.id, allocations, today);
       const trulyBench = todayLoad === 0 && monthLoad === 0;
       const startingSoon = todayLoad === 0 && monthLoad > 0;
+      const value = powerSalaryIndex(
+        Number(p.power_score) || 0,
+        Number(p.base_salary) || 0,
+        leadRef
+      );
       return {
         profile: p,
         load: todayLoad,
@@ -183,9 +211,10 @@ export function EmployeesClient({
         trulyBench,
         startingSoon,
         status: loadStatus(todayLoad),
+        value,
       };
     });
-  }, [profiles, allocations, today]);
+  }, [profiles, allocations, today, leadRef]);
 
   const filtered = useMemo(() => {
     let list = decorated;
@@ -239,6 +268,14 @@ export function EmployeesClient({
         list.sort(
           (a, b) => Number(a.profile.power_score) - Number(b.profile.power_score)
         );
+      else if (sort === "value_desc")
+        list.sort(
+          (a, b) => (b.value.index ?? -1) - (a.value.index ?? -1)
+        );
+      else if (sort === "value_asc")
+        list.sort(
+          (a, b) => (a.value.index ?? 999) - (b.value.index ?? 999)
+        );
       else if (sort === "load_desc") list.sort((a, b) => b.load - a.load);
       else if (sort === "load_asc") list.sort((a, b) => a.load - b.load);
     }
@@ -264,6 +301,28 @@ export function EmployeesClient({
       ? activeList.reduce((s, d) => s + Number(d.profile.power_score || 0), 0) /
         activeList.length
       : 0;
+  const valueSamples = activeList.filter((d) => d.value.index != null);
+  const avgValueIndex =
+    valueSamples.length > 0
+      ? valueSamples.reduce((s, d) => s + (d.value.index ?? 0), 0) /
+        valueSamples.length
+      : null;
+  const cheapCount = valueSamples.filter(
+    (d) => (d.value.index ?? 0) >= 1.25
+  ).length;
+  const expensiveCount = valueSamples.filter(
+    (d) => (d.value.index ?? 0) < 0.7
+  ).length;
+
+  const draftValue = useMemo(
+    () =>
+      powerSalaryIndex(
+        Number(powerScore) || 0,
+        Number(salaryInput) || 0,
+        leadRef
+      ),
+    [powerScore, salaryInput, leadRef]
+  );
 
   // Role distribution (top 6)
   const roleDistribution = useMemo(() => {
@@ -465,7 +524,11 @@ export function EmployeesClient({
       <PageHeader
         eyebrow="Workspace · Team"
         title="Quản lý nhân sự"
-        subtitle="Chức danh, level, lực chiến và tải — hỗ trợ phân bổ đúng người đúng chỗ."
+        subtitle={
+          canViewSalary
+            ? "Level, lực chiến, lương và chỉ số LC/lương so chuẩn Lead."
+            : "Chức danh, level, lực chiến và tải — hỗ trợ phân bổ đúng người đúng chỗ."
+        }
         actions={
           <Button variant="brand" onClick={openNew}>
             <UserPlus />
@@ -478,7 +541,7 @@ export function EmployeesClient({
       <div
         className={
           canViewSalary
-            ? "grid grid-cols-2 gap-3 lg:grid-cols-6"
+            ? "grid grid-cols-2 gap-3 lg:grid-cols-7"
             : "grid grid-cols-2 gap-3 lg:grid-cols-5"
         }
       >
@@ -503,6 +566,23 @@ export function EmployeesClient({
             hint={`TB ${formatCurrency(avgSalary)} / người`}
             tone="violet"
             icon={<Wallet size={14} />}
+          />
+        )}
+        {canViewSalary && (
+          <KpiCard
+            label="LC/lương vs Lead"
+            value={
+              avgValueIndex != null
+                ? formatPowerSalaryIndex(avgValueIndex)
+                : "—"
+            }
+            hint={
+              leadRef
+                ? `Mốc Lead ${formatCurrency(leadRef.salary)} · ${cheapCount} rẻ / ${expensiveCount} đắt`
+                : "Cần ≥1 Lead active có lương"
+            }
+            tone="emerald"
+            icon={<Scale size={14} />}
           />
         )}
         <KpiCard
@@ -728,6 +808,12 @@ export function EmployeesClient({
                   <>
                     <SelectItem value="salary_desc">Lương cao→thấp</SelectItem>
                     <SelectItem value="salary_asc">Lương thấp→cao</SelectItem>
+                    <SelectItem value="value_desc">
+                      LC/lương cao→thấp
+                    </SelectItem>
+                    <SelectItem value="value_asc">
+                      LC/lương thấp→cao
+                    </SelectItem>
                   </>
                 )}
               </SelectContent>
@@ -784,6 +870,8 @@ export function EmployeesClient({
               team={teamByUserId.get(d.profile.id) ?? null}
               level={d.profile.level}
               power={Number(d.profile.power_score) || 0}
+              valueIndex={d.value.index}
+              leadRef={leadRef}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -800,6 +888,9 @@ export function EmployeesClient({
                 <TableHead>Team</TableHead>
                 {canViewSalary && (
                   <TableHead className="text-right">Lương / tháng</TableHead>
+                )}
+                {canViewSalary && (
+                  <TableHead className="text-right">LC/lương</TableHead>
                 )}
                 <TableHead>Tải hôm nay</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -868,6 +959,11 @@ export function EmployeesClient({
                     {canViewSalary && (
                       <TableCell className="tnum text-right tabular-nums">
                         {formatCurrency(p.base_salary)}
+                      </TableCell>
+                    )}
+                    {canViewSalary && (
+                      <TableCell className="text-right">
+                        <ValueIndexBadge index={d.value.index} compact />
                       </TableCell>
                     )}
                     <TableCell>
@@ -1179,6 +1275,48 @@ export function EmployeesClient({
                 </FieldGrid>
               </div>
 
+              {canViewSalary && (
+                <div className="rounded-2xl bg-teal-500/[0.06] px-4 py-3.5 ring-1 ring-teal-500/15">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-medium text-teal-800 dark:text-teal-200">
+                      <Gauge className="size-3.5" />
+                      LC / lương vs Lead
+                    </div>
+                    <ValueIndexBadge index={draftValue.index} />
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    {leadRef ? (
+                      <>
+                        Công thức: (LC÷LC_Lead) ÷ (Lương÷Lương_Lead). Mốc Lead{" "}
+                        <span className="tnum font-medium text-foreground">
+                          {formatCurrency(leadRef.salary)}
+                        </span>
+                        {draftValue.salaryRatio != null && (
+                          <>
+                            {" "}
+                            · lương hiện tại{" "}
+                            <span className="tnum font-medium text-foreground">
+                              {Math.round(draftValue.salaryRatio * 100)}% Lead
+                            </span>
+                          </>
+                        )}
+                        {draftValue.powerRatio != null && (
+                          <>
+                            {" "}
+                            · LC{" "}
+                            <span className="tnum font-medium text-foreground">
+                              {Math.round(draftValue.powerRatio * 100)}% Lead
+                            </span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      "Cần ít nhất 1 Lead active có lương để làm hệ quy chiếu."
+                    )}
+                  </p>
+                </div>
+              )}
+
               {canViewSalary &&
                 editing &&
                 salaryInput > 0 &&
@@ -1356,6 +1494,55 @@ function KpiCard({
   );
 }
 
+function ValueIndexBadge({
+  index,
+  compact,
+}: {
+  index: number | null;
+  compact?: boolean;
+}) {
+  const meta = powerSalaryLabel(index);
+  const toneClass =
+    meta.tone === "good"
+      ? "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 ring-emerald-500/20"
+      : meta.tone === "ok"
+        ? "text-teal-700 dark:text-teal-300 bg-teal-500/10 ring-teal-500/20"
+        : meta.tone === "warn"
+          ? "text-amber-700 dark:text-amber-300 bg-amber-500/10 ring-amber-500/20"
+          : meta.tone === "bad"
+            ? "text-rose-700 dark:text-rose-300 bg-rose-500/10 ring-rose-500/20"
+            : "text-muted-foreground bg-muted/60 ring-border/50";
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 text-[10px] font-semibold ring-1",
+              toneClass
+            )}
+          >
+            <span className="tnum tabular-nums">
+              {formatPowerSalaryIndex(index)}
+            </span>
+            {!compact && index != null && (
+              <span className="font-medium opacity-80">{meta.short}</span>
+            )}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[220px] text-xs">
+          <p className="font-medium">{meta.short}</p>
+          <p className="mt-0.5 text-muted-foreground">{meta.hint}</p>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            ×1.0 = ngang Lead · &gt;1 rẻ hơn · &lt;1 đắt hơn
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function PersonCard({
   profile,
   load,
@@ -1367,6 +1554,8 @@ function PersonCard({
   team,
   level,
   power,
+  valueIndex,
+  leadRef,
   onEdit,
   onDelete,
 }: {
@@ -1380,6 +1569,8 @@ function PersonCard({
   team: { name: string; color: string } | null;
   level?: string | null;
   power: number;
+  valueIndex: number | null;
+  leadRef: LeadSalaryRef | null;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1497,19 +1688,43 @@ function PersonCard({
         </div>
       </div>
 
-      {/* Footer: salary — chỉ admin */}
-      {canViewSalary && Number(profile.base_salary) > 0 && (
-        <div className="mt-3.5 flex items-center justify-between border-t border-border/60 pt-3.5 text-xs">
-          <div>
-            <div className="text-muted-foreground">Lương / tháng</div>
-            <div className="tnum text-sm font-semibold tabular-nums text-teal-700 dark:text-teal-300">
-              {formatCurrency(profile.base_salary)}
+      {/* Footer: salary + LC/lương — chỉ admin */}
+      {canViewSalary && (
+        <div className="mt-3.5 space-y-2.5 border-t border-border/60 pt-3.5 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-muted-foreground">Lương / tháng</div>
+              <div className="tnum text-sm font-semibold tabular-nums text-teal-700 dark:text-teal-300">
+                {Number(profile.base_salary) > 0
+                  ? formatCurrency(profile.base_salary)
+                  : "—"}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-muted-foreground">LC/lương</div>
+              <div className="mt-0.5">
+                <ValueIndexBadge index={valueIndex} />
+              </div>
             </div>
           </div>
-          {historyCount > 0 && (
-            <Badge variant="info" className="py-0 text-[9px]">
-              {historyCount} lần đổi
-            </Badge>
+          {(historyCount > 0 || leadRef) && (
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              {leadRef ? (
+                <span>
+                  Mốc Lead {formatCurrency(leadRef.salary)}
+                  {leadRef.sampleSize > 1
+                    ? ` · ${leadRef.sampleSize} Lead`
+                    : ""}
+                </span>
+              ) : (
+                <span>Chưa có Lead làm mốc</span>
+              )}
+              {historyCount > 0 && (
+                <Badge variant="info" className="py-0 text-[9px]">
+                  {historyCount} lần đổi
+                </Badge>
+              )}
+            </div>
           )}
         </div>
       )}
