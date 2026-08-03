@@ -9,7 +9,25 @@ export function Field({
   return <div className={cn("flex flex-col gap-2", className)} {...props} />;
 }
 
-/** Hàng 2 cột — căn đáy để input thẳng hàng khi label lệch */
+/**
+ * Hàng label cố định chiều cao — tránh select/input lệch vì badge / link reset.
+ */
+export function FieldLabelRow({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn(
+        "flex h-5 min-h-5 items-center justify-between gap-2",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/** Hàng 2 cột — căn đỉnh để mọi input h-11 thẳng hàng */
 export function FieldGrid({
   className,
   ...props
@@ -17,7 +35,7 @@ export function FieldGrid({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-end",
+        "grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start",
         className
       )}
       {...props}

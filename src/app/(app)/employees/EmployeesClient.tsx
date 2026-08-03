@@ -15,7 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field, FieldControl, FieldGrid } from "@/components/ui/field";
+import {
+  Field,
+  FieldControl,
+  FieldGrid,
+  FieldLabelRow,
+} from "@/components/ui/field";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -966,7 +971,9 @@ export function EmployeesClient({
             <DialogBody>
               <div className="flex flex-col gap-4 rounded-2xl bg-muted/30 p-5 ring-1 ring-border/40 sm:p-6">
                 <Field>
-                  <Label htmlFor="full_name">Họ và tên</Label>
+                  <FieldLabelRow>
+                    <Label htmlFor="full_name">Họ và tên</Label>
+                  </FieldLabelRow>
                   <FieldControl icon={<User />}>
                     <Input
                       id="full_name"
@@ -974,14 +981,16 @@ export function EmployeesClient({
                       required
                       placeholder="Nguyễn Văn A"
                       defaultValue={editing?.full_name ?? ""}
-                      className="pl-10"
+                      className="h-11 pl-10"
                     />
                   </FieldControl>
                 </Field>
 
                 <FieldGrid>
                   <Field>
-                    <Label htmlFor="email">Email</Label>
+                    <FieldLabelRow>
+                      <Label htmlFor="email">Email</Label>
+                    </FieldLabelRow>
                     <FieldControl icon={<Mail />}>
                       <Input
                         id="email"
@@ -991,15 +1000,17 @@ export function EmployeesClient({
                         placeholder="name@company.com"
                         defaultValue={editing?.email ?? ""}
                         disabled={!!editing}
-                        className="pl-10"
+                        className="h-11 pl-10"
                       />
                     </FieldControl>
                   </Field>
                   <Field>
-                    <Label>Vị trí</Label>
+                    <FieldLabelRow>
+                      <Label>Vị trí</Label>
+                    </FieldLabelRow>
                     <FieldControl icon={<Briefcase />}>
                       <Select value={role} onValueChange={setRole}>
-                        <SelectTrigger className="pl-10">
+                        <SelectTrigger className="h-11 pl-10">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="max-h-[320px]">
@@ -1024,9 +1035,11 @@ export function EmployeesClient({
 
                 <FieldGrid>
                   <Field>
-                    <Label>Level</Label>
+                    <FieldLabelRow>
+                      <Label>Level</Label>
+                    </FieldLabelRow>
                     <Select value={level} onValueChange={onLevelChange}>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-11">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1042,18 +1055,18 @@ export function EmployeesClient({
                     </Select>
                   </Field>
                   <Field>
-                    <div className="flex h-4 items-center justify-between gap-2">
+                    <FieldLabelRow>
                       <Label htmlFor="power_score">Lực chiến</Label>
                       <button
                         type="button"
-                        className="text-[10px] text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
+                        className="shrink-0 text-[10px] font-medium text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
                         onClick={() =>
                           setPowerScore(defaultPowerForLevel(level))
                         }
                       >
                         Reset theo level
                       </button>
-                    </div>
+                    </FieldLabelRow>
                     <FieldControl icon={<Flame />} suffix="/100">
                       <Input
                         id="power_score"
@@ -1065,29 +1078,32 @@ export function EmployeesClient({
                         onChange={(e) =>
                           setPowerScore(clampPower(Number(e.target.value || 1)))
                         }
-                        className="pl-10 pr-14"
+                        className="h-11 pl-10 pr-14"
                       />
+                      {/* Thanh trong input — không làm lệch chiều cao hàng */}
+                      <div className="pointer-events-none absolute inset-x-2 bottom-1.5 h-1 overflow-hidden rounded-full bg-muted/80">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${powerScore}%`,
+                            background:
+                              powerScore >= 70
+                                ? "#f59e0b"
+                                : powerScore >= 40
+                                  ? "#14b8a6"
+                                  : "#94a3b8",
+                          }}
+                        />
+                      </div>
                     </FieldControl>
-                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${powerScore}%`,
-                          background:
-                            powerScore >= 70
-                              ? "#f59e0b"
-                              : powerScore >= 40
-                                ? "#14b8a6"
-                                : "#94a3b8",
-                        }}
-                      />
-                    </div>
                   </Field>
                 </FieldGrid>
 
                 {!editing && (
                   <Field>
-                    <Label htmlFor="password">Mật khẩu đăng nhập</Label>
+                    <FieldLabelRow>
+                      <Label htmlFor="password">Mật khẩu đăng nhập</Label>
+                    </FieldLabelRow>
                     <Input
                       id="password"
                       name="password"
@@ -1096,6 +1112,7 @@ export function EmployeesClient({
                       required
                       autoComplete="new-password"
                       placeholder="Tối thiểu 6 ký tự"
+                      className="h-11"
                     />
                   </Field>
                 )}
@@ -1103,14 +1120,14 @@ export function EmployeesClient({
                 <FieldGrid>
                   {canViewSalary && (
                     <Field>
-                      <div className="flex h-4 items-center justify-between gap-2">
+                      <FieldLabelRow>
                         <Label htmlFor="base_salary">Lương / tháng</Label>
                         {editing && historyCount(editing.id) > 0 ? (
                           <Badge variant="info" className="text-[9px] !py-0">
                             {historyCount(editing.id)} lần đổi
                           </Badge>
                         ) : null}
-                      </div>
+                      </FieldLabelRow>
                       <FieldControl icon={<Wallet />} suffix="VND">
                         <Input
                           id="base_salary"
@@ -1123,15 +1140,15 @@ export function EmployeesClient({
                           onChange={(e) =>
                             setSalaryInput(Number(e.target.value || 0))
                           }
-                          className="pl-10 pr-14"
+                          className="h-11 pl-10 pr-14"
                         />
                       </FieldControl>
                     </Field>
                   )}
                   <Field>
-                    <div className="flex h-4 items-center">
+                    <FieldLabelRow>
                       <Label htmlFor="start_date">Ngày vào</Label>
-                    </div>
+                    </FieldLabelRow>
                     <FieldControl icon={<CalendarDays />}>
                       <DatePicker
                         id="start_date"
@@ -1141,7 +1158,7 @@ export function EmployeesClient({
                           new Date().toISOString().slice(0, 10)
                         }
                         showIcon={false}
-                        className="pl-10"
+                        className="h-11 pl-10"
                       />
                     </FieldControl>
                   </Field>
