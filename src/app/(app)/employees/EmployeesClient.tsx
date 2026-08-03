@@ -142,7 +142,8 @@ export function EmployeesClient({
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<string>("BA");
   const [level, setLevel] = useState<DevLevel>("Junior");
-  const [powerScore, setPowerScore] = useState<number>(50);
+  /** Draft text — gõ tự do, chỉ clamp lúc blur/submit. */
+  const [powerScore, setPowerScore] = useState("50");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [salaryEffectiveFrom, setSalaryEffectiveFrom] = useState<string>(
@@ -280,7 +281,7 @@ export function EmployeesClient({
     setEditing(null);
     setRole("BA");
     setLevel("Junior");
-    setPowerScore(defaultPowerForLevel("Junior"));
+    setPowerScore(String(defaultPowerForLevel("Junior")));
     setError(null);
     setSalaryInput(0);
     setSalaryEffectiveFrom(new Date().toISOString().slice(0, 10));
@@ -297,9 +298,11 @@ export function EmployeesClient({
     const lv = isDevLevel(p.level) ? p.level : "Junior";
     setLevel(lv);
     setPowerScore(
-      Number(p.power_score) > 0
-        ? clampPower(Number(p.power_score))
-        : defaultPowerForLevel(lv)
+      String(
+        Number(p.power_score) > 0
+          ? clampPower(Number(p.power_score))
+          : defaultPowerForLevel(lv)
+      )
     );
     setError(null);
     setSalaryInput(Number(p.base_salary));
@@ -312,8 +315,8 @@ export function EmployeesClient({
     setLevel(next);
     // Chỉ auto-fill nếu đang khớp default của level cũ hoặc tạo mới
     const prevDefault = defaultPowerForLevel(level);
-    if (!editing || powerScore === prevDefault) {
-      setPowerScore(defaultPowerForLevel(next));
+    if (!editing || Number(powerScore) === prevDefault) {
+      setPowerScore(String(defaultPowerForLevel(next)));
     }
   }
 
@@ -338,7 +341,7 @@ export function EmployeesClient({
           email: (fd.get("email") as string) || null,
           job_role: role,
           level,
-          power_score: clampPower(powerScore),
+          power_score: clampPower(Number(powerScore) || 50),
           start_date: startDateValue,
           is_active: fd.get("is_active") === "on",
         };
@@ -414,7 +417,7 @@ export function EmployeesClient({
             full_name: fd.get("full_name"),
             job_role: role,
             level,
-            power_score: clampPower(powerScore),
+            power_score: clampPower(Number(powerScore) || 50),
             app_role: "member",
             base_salary: canViewSalary ? newSalary : 0,
             start_date: startDateValue,
@@ -1061,7 +1064,9 @@ export function EmployeesClient({
                         type="button"
                         className="shrink-0 text-[10px] font-medium text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
                         onClick={() =>
-                          setPowerScore(defaultPowerForLevel(level))
+                          setPowerScore(
+                            String(defaultPowerForLevel(level))
+                          )
                         }
                       >
                         Reset theo level
@@ -1071,13 +1076,22 @@ export function EmployeesClient({
                       <Input
                         id="power_score"
                         name="power_score"
-                        type="number"
-                        min={1}
-                        max={100}
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder="1–100"
                         value={powerScore}
-                        onChange={(e) =>
-                          setPowerScore(clampPower(Number(e.target.value || 1)))
-                        }
+                        onChange={(e) => {
+                          const digits = e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 3);
+                          setPowerScore(digits);
+                        }}
+                        onBlur={() => {
+                          setPowerScore(
+                            String(clampPower(Number(powerScore) || 50))
+                          );
+                        }}
                         className="h-11 pl-10 pr-14"
                       />
                       {/* Thanh trong input — không làm lệch chiều cao hàng */}
@@ -1085,11 +1099,11 @@ export function EmployeesClient({
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
-                            width: `${powerScore}%`,
+                            width: `${Math.min(100, Number(powerScore) || 0)}%`,
                             background:
-                              powerScore >= 70
+                              Number(powerScore) >= 70
                                 ? "#f59e0b"
-                                : powerScore >= 40
+                                : Number(powerScore) >= 40
                                   ? "#14b8a6"
                                   : "#94a3b8",
                           }}

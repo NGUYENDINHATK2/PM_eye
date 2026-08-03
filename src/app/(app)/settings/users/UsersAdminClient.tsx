@@ -76,7 +76,8 @@ export function UsersAdminClient() {
   const [appRole, setAppRole] = useState<AppRole>("member");
   const [jobRole, setJobRole] = useState("BA");
   const [level, setLevel] = useState<DevLevel>("Junior");
-  const [powerScore, setPowerScore] = useState(50);
+  /** Draft text — gõ tự do, chỉ clamp lúc blur/submit. */
+  const [powerScore, setPowerScore] = useState("50");
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | AppRole>("all");
 
@@ -102,7 +103,7 @@ export function UsersAdminClient() {
     setAppRole("member");
     setJobRole("BA");
     setLevel("Junior");
-    setPowerScore(defaultPowerForLevel("Junior"));
+    setPowerScore(String(defaultPowerForLevel("Junior")));
     setError(null);
     setOpen(true);
   }
@@ -114,9 +115,11 @@ export function UsersAdminClient() {
     const lv = isDevLevel(u.level) ? u.level : "Junior";
     setLevel(lv);
     setPowerScore(
-      Number(u.power_score) > 0
-        ? clampPower(Number(u.power_score))
-        : defaultPowerForLevel(lv)
+      String(
+        Number(u.power_score) > 0
+          ? clampPower(Number(u.power_score))
+          : defaultPowerForLevel(lv)
+      )
     );
     setError(null);
     setOpen(true);
@@ -135,7 +138,7 @@ export function UsersAdminClient() {
           job_role: jobRole,
           app_role: appRole,
           level,
-          power_score: clampPower(powerScore),
+          power_score: clampPower(Number(powerScore) || 50),
           is_active: fd.get("is_active") === "on",
           base_salary: Number(fd.get("base_salary") || 0),
         };
@@ -161,7 +164,7 @@ export function UsersAdminClient() {
             job_role: jobRole,
             app_role: appRole,
             level,
-            power_score: clampPower(powerScore),
+            power_score: clampPower(Number(powerScore) || 50),
             base_salary: Number(fd.get("base_salary") || 0),
             start_date: fd.get("start_date") || undefined,
           }),
@@ -573,9 +576,9 @@ export function UsersAdminClient() {
                         setLevel(v);
                         if (
                           !editing ||
-                          powerScore === defaultPowerForLevel(level)
+                          Number(powerScore) === defaultPowerForLevel(level)
                         ) {
-                          setPowerScore(defaultPowerForLevel(v));
+                          setPowerScore(String(defaultPowerForLevel(v)));
                         }
                       }}
                     >
@@ -595,13 +598,21 @@ export function UsersAdminClient() {
                     <Label htmlFor="power_score">Lực chiến (1–100)</Label>
                     <Input
                       id="power_score"
-                      type="number"
-                      min={1}
-                      max={100}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="1–100"
                       value={powerScore}
-                      onChange={(e) =>
-                        setPowerScore(clampPower(Number(e.target.value || 1)))
-                      }
+                      onChange={(e) => {
+                        setPowerScore(
+                          e.target.value.replace(/\D/g, "").slice(0, 3)
+                        );
+                      }}
+                      onBlur={() => {
+                        setPowerScore(
+                          String(clampPower(Number(powerScore) || 50))
+                        );
+                      }}
                     />
                   </Field>
                 </FieldGrid>
