@@ -56,7 +56,6 @@ import {
   isDevLevel,
 } from "@/lib/levels";
 import {
-  buildPayEfficiencyRef,
   formatEfficiencyScore,
   personEfficiency,
   type EfficiencyResult,
@@ -175,9 +174,6 @@ export function EmployeesClient({
     return Array.from(set).sort();
   }, [profiles]);
 
-  /** Mốc = median LC/triệu cả team — để so ai rẻ/đắt so với lực chiến. */
-  const payRef = useMemo(() => buildPayEfficiencyRef(profiles), [profiles]);
-
   // Decorated profiles với load HÔM NAY (đồng nhất với /allocations).
   // monthLoad dùng để smart-bench detection: chỉ gọi "Bench" khi cả today
   // và cả tháng đều = 0 → tránh hiểu nhầm với người có alloc bắt đầu mai.
@@ -190,8 +186,7 @@ export function EmployeesClient({
       const efficiency = personEfficiency(
         Number(p.power_score) || 0,
         Number(p.base_salary) || 0,
-        p.level,
-        payRef
+        p.level
       );
       return {
         profile: p,
@@ -203,7 +198,7 @@ export function EmployeesClient({
         efficiency,
       };
     });
-  }, [profiles, allocations, today, payRef]);
+  }, [profiles, allocations, today]);
 
   const filtered = useMemo(() => {
     let list = decorated;
