@@ -30,6 +30,13 @@ create table public.profiles (
   job_role text not null default 'Other',  -- FE / BA / QA … (chức danh)
   app_role text not null default 'member'
     check (app_role in ('admin', 'manager', 'pm', 'member')),
+  -- Level kinh nghiệm + lực chiến (1–100) — dùng phân bổ, không phải lương
+  level text not null default 'Junior'
+    check (level in (
+      'Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead', 'Principal'
+    )),
+  power_score numeric not null default 50
+    check (power_score >= 1 and power_score <= 100),
   base_salary numeric not null default 0,  -- admin-only (column grant)
   start_date date default current_date,
   is_active boolean not null default true,
@@ -414,16 +421,19 @@ revoke all on table public.team_members from anon, authenticated;
 -- profiles: authenticated được các cột non-salary
 grant select (
   id, full_name, email, job_role, app_role,
+  level, power_score,
   start_date, is_active, avatar_url, created_at
 ) on public.profiles to authenticated;
 
 grant insert (
   id, full_name, email, job_role, app_role,
+  level, power_score,
   start_date, is_active, avatar_url
 ) on public.profiles to authenticated;
 
 grant update (
   full_name, email, job_role, app_role,
+  level, power_score,
   start_date, is_active, avatar_url
 ) on public.profiles to authenticated;
 

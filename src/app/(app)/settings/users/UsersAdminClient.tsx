@@ -25,9 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  LEVEL_OPTIONS,
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+} from "@/lib/levels";
 import { ROLE_GROUPS } from "@/lib/roles";
 import { APP_ROLES, roleLabel } from "@/lib/rbac";
-import type { AppRole } from "@/types/database";
+import type { AppRole, DevLevel } from "@/types/database";
 import { cn, formatCurrency, humanizeSupabaseError } from "@/lib/utils";
 import {
   Briefcase,
@@ -52,6 +58,8 @@ type UserRow = {
   full_name: string;
   job_role: string;
   app_role: AppRole;
+  level: DevLevel;
+  power_score: number;
   is_active: boolean;
   base_salary: number;
   start_date: string;
@@ -67,6 +75,8 @@ export function UsersAdminClient() {
 
   const [appRole, setAppRole] = useState<AppRole>("member");
   const [jobRole, setJobRole] = useState("BA");
+  const [level, setLevel] = useState<DevLevel>("Junior");
+  const [powerScore, setPowerScore] = useState(50);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | AppRole>("all");
 
@@ -91,6 +101,8 @@ export function UsersAdminClient() {
     setEditing(null);
     setAppRole("member");
     setJobRole("BA");
+    setLevel("Junior");
+    setPowerScore(defaultPowerForLevel("Junior"));
     setError(null);
     setOpen(true);
   }
@@ -99,6 +111,13 @@ export function UsersAdminClient() {
     setEditing(u);
     setAppRole(u.app_role);
     setJobRole(u.job_role);
+    const lv = isDevLevel(u.level) ? u.level : "Junior";
+    setLevel(lv);
+    setPowerScore(
+      Number(u.power_score) > 0
+        ? clampPower(Number(u.power_score))
+        : defaultPowerForLevel(lv)
+    );
     setError(null);
     setOpen(true);
   }
@@ -115,6 +134,8 @@ export function UsersAdminClient() {
           full_name: fd.get("full_name"),
           job_role: jobRole,
           app_role: appRole,
+          level,
+          power_score: clampPower(powerScore),
           is_active: fd.get("is_active") === "on",
           base_salary: Number(fd.get("base_salary") || 0),
         };
@@ -139,6 +160,8 @@ export function UsersAdminClient() {
             full_name: fd.get("full_name"),
             job_role: jobRole,
             app_role: appRole,
+            level,
+            power_score: clampPower(powerScore),
             base_salary: Number(fd.get("base_salary") || 0),
             start_date: fd.get("start_date") || undefined,
           }),
@@ -537,6 +560,49 @@ export function UsersAdminClient() {
                         </SelectContent>
                       </Select>
                     </FieldControl>
+                  </Field>
+                </FieldGrid>
+
+                <FieldGrid>
+                  <Field>
+                    <Label>Level</Label>
+                    <Select
+                      value={level}
+                      onValueChange={(v) => {
+                        if (!isDevLevel(v)) return;
+                        setLevel(v);
+                        if (
+                          !editing ||
+                          powerScore === defaultPowerForLevel(level)
+                        ) {
+                          setPowerScore(defaultPowerForLevel(v));
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LEVEL_OPTIONS.map((lv) => (
+                          <SelectItem key={lv} value={lv}>
+                            {lv}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <Label htmlFor="power_score">Lực chiến (1–100)</Label>
+                    <Input
+                      id="power_score"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={powerScore}
+                      onChange={(e) =>
+                        setPowerScore(clampPower(Number(e.target.value || 1)))
+                      }
+                    />
                   </Field>
                 </FieldGrid>
 

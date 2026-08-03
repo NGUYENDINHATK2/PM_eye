@@ -28,7 +28,6 @@ export const ROLE_OPTIONS = [
   "Data Engineer",
   "Data Scientist",
   // Misc
-  "Intern",
   "Other",
 ] as const;
 
@@ -41,5 +40,5 @@ export const ROLE_GROUPS: { label: string; roles: RoleOption[] }[] = [
   { label: "Engineering", roles: ["Architect", "FE Dev", "BE Dev", "Fullstack", "Mobile", "DevOps"] },
   { label: "Quality", roles: ["QA", "QC", "Tester"] },
   { label: "Data", roles: ["Data Engineer", "Data Scientist"] },
-  { label: "Other", roles: ["Intern", "Other"] },
+  { label: "Other", roles: ["Other"] },
 ];

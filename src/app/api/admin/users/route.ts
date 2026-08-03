@@ -1,6 +1,11 @@
 import { PRIVATE_CACHE_HEADERS, requireRole } from "@/lib/api-auth";
+import {
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+} from "@/lib/levels";
 import { APP_ROLES, isAppRole, roleLabel } from "@/lib/rbac";
-import type { AppRole, Profile } from "@/types/database";
+import type { AppRole, DevLevel, Profile } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +34,8 @@ export async function GET() {
     job_role: p.job_role,
     app_role: p.app_role,
     app_role_label: roleLabel(p.app_role),
+    level: p.level ?? "Junior",
+    power_score: Number(p.power_score) || 50,
     is_active: p.is_active,
     base_salary: p.base_salary,
     start_date: p.start_date,
@@ -47,6 +54,8 @@ type CreateBody = {
   full_name: string;
   job_role?: string;
   app_role: AppRole;
+  level?: DevLevel;
+  power_score?: number;
   base_salary?: number;
   start_date?: string;
 };
@@ -102,6 +111,11 @@ export async function POST(req: Request) {
   }
 
   const userId = created.user.id;
+  const level: DevLevel = isDevLevel(body.level) ? body.level : "Junior";
+  const power_score =
+    body.power_score !== undefined
+      ? clampPower(Number(body.power_score))
+      : defaultPowerForLevel(level);
 
   // Trigger có thể đã insert profile — upsert để chắc chắn đúng field
   const { data: profile, error: upsertErr } = await ctx.admin
@@ -113,6 +127,8 @@ export async function POST(req: Request) {
         full_name,
         job_role: body.job_role ?? "Other",
         app_role,
+        level,
+        power_score,
         base_salary: Number(body.base_salary ?? 0),
         start_date: body.start_date ?? new Date().toISOString().slice(0, 10),
         is_active: true,

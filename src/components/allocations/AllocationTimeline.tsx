@@ -609,6 +609,10 @@ function PersonRail({
         <div className="font-medium text-sm truncate">{profile.full_name}</div>
         <div className="text-[10px] text-muted-foreground truncate">
           {profile.job_role}
+          {profile.level ? ` · ${profile.level}` : ""}
+          {Number(profile.power_score) > 0
+            ? ` · LC ${Math.round(Number(profile.power_score))}`
+            : ""}
         </div>
       </div>
       {load > 0 && (

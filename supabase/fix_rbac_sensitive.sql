@@ -83,15 +83,29 @@ $$;
 grant execute on function public.get_or_create_profile(uuid)
   to authenticated, service_role;
 
--- 5) profiles: authenticated không insert base_salary (admin tạo qua service role)
-revoke insert on table public.profiles from authenticated;
+-- 5) profiles: authenticated KHÔNG đọc/ghi base_salary (chỉ service_role / API admin)
+revoke all on table public.profiles from authenticated;
+grant select (
+  id, full_name, email, job_role, app_role,
+  level, power_score,
+  start_date, is_active, avatar_url, created_at
+) on public.profiles to authenticated;
 grant insert (
   id, full_name, email, job_role, app_role,
+  level, power_score,
   start_date, is_active, avatar_url
 ) on public.profiles to authenticated;
+grant update (
+  full_name, email, job_role, app_role,
+  level, power_score,
+  start_date, is_active, avatar_url
+) on public.profiles to authenticated;
+grant delete on public.profiles to authenticated;
 
--- base_salary vẫn KHÔNG grant SELECT cho authenticated (đã có trong schema)
+-- service_role vẫn full (bootstrap / admin API đọc lương)
+grant all on table public.profiles to service_role;
+
 -- Tiền dự án: che ở tầng API/bootstrap (stripProjectMoney) — không revoke
--- để manager/pm vẫn CRUD qua client.
+-- cột budget/revenue để manager/pm vẫn CRUD qua client.
 
 select 'OK — RBAC sensitive hardened' as status;

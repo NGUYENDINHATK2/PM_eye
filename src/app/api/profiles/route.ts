@@ -3,6 +3,11 @@ import {
   requireApiUser,
   requireRole,
 } from "@/lib/api-auth";
+import {
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+} from "@/lib/levels";
 import { canViewSalary, stripProfileSalary } from "@/lib/rbac";
 import { scopeProfiles } from "@/lib/scope-query";
 import type { Allocation, Profile, Project } from "@/types/database";
@@ -59,6 +64,23 @@ export async function PATCH(req: Request) {
   if (body.start_date !== undefined) patch.start_date = body.start_date;
   if (body.is_active !== undefined) patch.is_active = body.is_active;
   if (body.avatar_url !== undefined) patch.avatar_url = body.avatar_url;
+
+  if (body.level !== undefined) {
+    if (!isDevLevel(body.level)) {
+      return NextResponse.json(
+        { error: "bad_request", message: "level không hợp lệ." },
+        { status: 400 }
+      );
+    }
+    patch.level = body.level;
+    // Nếu không gửi power_score riêng → gợi ý theo level
+    if (body.power_score === undefined) {
+      patch.power_score = defaultPowerForLevel(body.level);
+    }
+  }
+  if (body.power_score !== undefined) {
+    patch.power_score = clampPower(Number(body.power_score));
+  }
 
   if (body.base_salary !== undefined) {
     if (!canViewSalary(ctx.role)) {

@@ -226,7 +226,7 @@ export function TeamsClient({
       <PageHeader
         eyebrow="Workspace · Tổ chức"
         title="Teams"
-        subtitle="Nhóm nhân sự theo team — mỗi team một leader. Không gắn với dự án."
+        subtitle="Nhóm nhân sự theo team + tổng lực chiến — mỗi team một leader. Không gắn dự án."
         actions={
           canWrite ? (
             <Button variant="brand" onClick={openNew}>
@@ -301,8 +301,17 @@ export function TeamsClient({
               .sort((a, b) => {
                 if (a.id === team.leader_id) return -1;
                 if (b.id === team.leader_id) return 1;
-                return a.full_name.localeCompare(b.full_name, "vi");
+                return (
+                  Number(b.power_score || 0) - Number(a.power_score || 0) ||
+                  a.full_name.localeCompare(b.full_name, "vi")
+                );
               });
+            const teamPower = people.reduce(
+              (s, p) => s + Number(p.power_score || 0),
+              0
+            );
+            const avgPower =
+              people.length > 0 ? Math.round(teamPower / people.length) : 0;
 
             return (
               <div
@@ -365,6 +374,31 @@ export function TeamsClient({
                   </Badge>
                 </div>
 
+                {people.length > 0 && (
+                  <div className="mb-3 rounded-xl bg-muted/30 px-3 py-2 ring-1 ring-border/40">
+                    <div className="mb-1 flex items-center justify-between text-[11px]">
+                      <span className="text-muted-foreground">
+                        Tổng lực chiến
+                      </span>
+                      <span className="tnum font-semibold tabular-nums">
+                        {teamPower}{" "}
+                        <span className="font-normal text-muted-foreground">
+                          · TB {avgPower}
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(100, avgPower)}%`,
+                          background: team.color,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {people.length === 0 ? (
                   <p className="text-xs italic text-muted-foreground">
                     Chưa có thành viên
@@ -382,8 +416,11 @@ export function TeamsClient({
                             {p.full_name?.[0]?.toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="max-w-[7rem] truncate text-[11px]">
+                        <span className="max-w-[6rem] truncate text-[11px]">
                           {p.full_name}
+                        </span>
+                        <span className="tnum text-[10px] text-muted-foreground">
+                          {Math.round(Number(p.power_score) || 0)}
                         </span>
                         {p.id === team.leader_id && (
                           <Crown size={10} className="shrink-0 text-amber-500" />

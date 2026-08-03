@@ -1,6 +1,11 @@
 import { PRIVATE_CACHE_HEADERS, requireRole } from "@/lib/api-auth";
+import {
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+} from "@/lib/levels";
 import { isAppRole } from "@/lib/rbac";
-import type { AppRole } from "@/types/database";
+import type { AppRole, DevLevel } from "@/types/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +14,8 @@ type PatchBody = {
   full_name?: string;
   job_role?: string;
   app_role?: AppRole;
+  level?: DevLevel;
+  power_score?: number;
   is_active?: boolean;
   base_salary?: number;
   password?: string;
@@ -69,6 +76,21 @@ export async function PATCH(
   if (body.app_role !== undefined) profilePatch.app_role = body.app_role;
   if (body.is_active !== undefined) profilePatch.is_active = body.is_active;
   if (body.base_salary !== undefined) profilePatch.base_salary = body.base_salary;
+  if (body.level !== undefined) {
+    if (!isDevLevel(body.level)) {
+      return NextResponse.json(
+        { error: "bad_request", message: "level không hợp lệ." },
+        { status: 400 }
+      );
+    }
+    profilePatch.level = body.level;
+    if (body.power_score === undefined) {
+      profilePatch.power_score = defaultPowerForLevel(body.level);
+    }
+  }
+  if (body.power_score !== undefined) {
+    profilePatch.power_score = clampPower(Number(body.power_score));
+  }
 
   if (Object.keys(profilePatch).length > 0) {
     const { data, error } = await ctx.admin

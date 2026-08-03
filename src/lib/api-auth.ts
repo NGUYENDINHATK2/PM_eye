@@ -188,13 +188,15 @@ export async function requireApiUser(): Promise<
           full_name: fullName,
           job_role: bootstrapRole === "admin" ? "BU Lead" : "Member",
           app_role: bootstrapRole,
+          level: "Junior",
+          power_score: 50,
           base_salary: 0,
           is_active: true,
         },
         { onConflict: "id" }
       )
       .select(
-        "id, full_name, email, job_role, app_role, start_date, is_active, avatar_url, created_at, base_salary"
+        "id, full_name, email, job_role, app_role, level, power_score, start_date, is_active, avatar_url, created_at, base_salary"
       )
       .maybeSingle();
 

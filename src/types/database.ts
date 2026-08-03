@@ -1,5 +1,14 @@
 export type AppRole = "admin" | "manager" | "pm" | "member";
 
+export type DevLevel =
+  | "Intern"
+  | "Fresher"
+  | "Junior"
+  | "Middle"
+  | "Senior"
+  | "Lead"
+  | "Principal";
+
 export type Profile = {
   id: string;
   full_name: string;
@@ -8,6 +17,10 @@ export type Profile = {
   job_role: string;
   /** Quyền hệ thống */
   app_role: AppRole;
+  /** Level kinh nghiệm: Intern → Principal */
+  level: DevLevel;
+  /** Lực chiến 1–100 — dùng phân bổ / so sánh sức mạnh */
+  power_score: number;
   /** Chỉ có khi caller là admin; non-admin = 0 / omitted */
   base_salary: number;
   start_date: string;

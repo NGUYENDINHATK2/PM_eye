@@ -1,4 +1,9 @@
 import {
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+} from "@/lib/levels";
+import {
   canAccessTeams,
   canViewMoney,
   canViewSalary,
@@ -9,6 +14,7 @@ import {
 import type {
   Allocation,
   AppRole,
+  DevLevel,
   OperatingExpense,
   Profile,
   Project,
@@ -18,6 +24,18 @@ import type {
   Team,
   TeamMember,
 } from "@/types/database";
+
+function normalizeProfile(p: Profile): Profile {
+  const level: DevLevel = isDevLevel(p.level) ? p.level : "Junior";
+  const rawPower = Number(p.power_score);
+  return {
+    ...p,
+    level,
+    power_score: Number.isFinite(rawPower)
+      ? clampPower(rawPower)
+      : defaultPowerForLevel(level),
+  };
+}
 
 export type ScopedBootstrap = {
   user: {
@@ -90,7 +108,9 @@ export function scopeBootstrapData(input: {
     profiles = profiles.filter((p) => userIds.has(p.id));
   }
 
-  profiles = profiles.map((p) => stripProfileSalary(p, role));
+  profiles = profiles
+    .map(normalizeProfile)
+    .map((p) => stripProfileSalary(p, role));
   projects = projects.map((p) => stripProjectMoney(p, role));
 
   let expenses = input.expenses.filter(

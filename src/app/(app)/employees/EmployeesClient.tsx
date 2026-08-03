@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/PageHeader";
+import { PowerMeter } from "@/components/PowerMeter";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,13 @@ import {
   userLoadToday,
 } from "@/lib/calculations";
 import { useAppData } from "@/lib/hooks/useAppData";
-import { ROLE_GROUPS } from "@/lib/roles";
+import {
+  LEVEL_OPTIONS,
+  clampPower,
+  defaultPowerForLevel,
+  isDevLevel,
+} from "@/lib/levels";
+import { ROLE_GROUPS, ROLE_OPTIONS } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
 import {
   cn,
@@ -52,7 +59,12 @@ import {
   humanizeSupabaseError,
   toDateInput,
 } from "@/lib/utils";
-import type { Allocation, Profile, SalaryHistory } from "@/types/database";
+import type {
+  Allocation,
+  DevLevel,
+  Profile,
+  SalaryHistory,
+} from "@/types/database";
 import {
   Activity,
   Briefcase,
@@ -77,7 +89,15 @@ import { toast } from "sonner";
 type View = "table" | "cards";
 type StatusFilter = "all" | "active" | "inactive";
 type LoadFilter = "all" | "bench" | "under" | "healthy" | "over";
-type Sort = "default" | "name" | "salary_desc" | "salary_asc" | "load_desc" | "load_asc";
+type Sort =
+  | "default"
+  | "name"
+  | "salary_desc"
+  | "salary_asc"
+  | "load_desc"
+  | "load_asc"
+  | "power_desc"
+  | "power_asc";
 
 export function EmployeesClient({
   initialProfiles,
@@ -116,6 +136,8 @@ export function EmployeesClient({
   const [editing, setEditing] = useState<Profile | null>(null);
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<string>("BA");
+  const [level, setLevel] = useState<DevLevel>("Junior");
+  const [powerScore, setPowerScore] = useState<number>(50);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [salaryEffectiveFrom, setSalaryEffectiveFrom] = useState<string>(
@@ -203,6 +225,14 @@ export function EmployeesClient({
         list.sort(
           (a, b) => Number(a.profile.base_salary) - Number(b.profile.base_salary)
         );
+      else if (sort === "power_desc")
+        list.sort(
+          (a, b) => Number(b.profile.power_score) - Number(a.profile.power_score)
+        );
+      else if (sort === "power_asc")
+        list.sort(
+          (a, b) => Number(a.profile.power_score) - Number(b.profile.power_score)
+        );
       else if (sort === "load_desc") list.sort((a, b) => b.load - a.load);
       else if (sort === "load_asc") list.sort((a, b) => a.load - b.load);
     }
@@ -223,6 +253,11 @@ export function EmployeesClient({
       ? activeList.reduce((s, d) => s + d.load, 0) / activeList.length
       : 0;
   const avgSalary = activeList.length > 0 ? totalSalary / activeList.length : 0;
+  const avgPower =
+    activeList.length > 0
+      ? activeList.reduce((s, d) => s + Number(d.profile.power_score || 0), 0) /
+        activeList.length
+      : 0;
 
   // Role distribution (top 6)
   const roleDistribution = useMemo(() => {
@@ -239,6 +274,8 @@ export function EmployeesClient({
   function openNew() {
     setEditing(null);
     setRole("BA");
+    setLevel("Junior");
+    setPowerScore(defaultPowerForLevel("Junior"));
     setError(null);
     setSalaryInput(0);
     setSalaryEffectiveFrom(new Date().toISOString().slice(0, 10));
@@ -247,11 +284,32 @@ export function EmployeesClient({
 
   function openEdit(p: Profile) {
     setEditing(p);
-    setRole(p.job_role);
+    setRole(
+      (ROLE_OPTIONS as readonly string[]).includes(p.job_role)
+        ? p.job_role
+        : "Other"
+    );
+    const lv = isDevLevel(p.level) ? p.level : "Junior";
+    setLevel(lv);
+    setPowerScore(
+      Number(p.power_score) > 0
+        ? clampPower(Number(p.power_score))
+        : defaultPowerForLevel(lv)
+    );
     setError(null);
     setSalaryInput(Number(p.base_salary));
     setSalaryEffectiveFrom(new Date().toISOString().slice(0, 10));
     setOpen(true);
+  }
+
+  function onLevelChange(next: string) {
+    if (!isDevLevel(next)) return;
+    setLevel(next);
+    // Chỉ auto-fill nếu đang khớp default của level cũ hoặc tạo mới
+    const prevDefault = defaultPowerForLevel(level);
+    if (!editing || powerScore === prevDefault) {
+      setPowerScore(defaultPowerForLevel(next));
+    }
   }
 
   function historyCount(profileId: string): number {
@@ -274,6 +332,8 @@ export function EmployeesClient({
           full_name: fd.get("full_name") as string,
           email: (fd.get("email") as string) || null,
           job_role: role,
+          level,
+          power_score: clampPower(powerScore),
           start_date: startDateValue,
           is_active: fd.get("is_active") === "on",
         };
@@ -348,6 +408,8 @@ export function EmployeesClient({
             password,
             full_name: fd.get("full_name"),
             job_role: role,
+            level,
+            power_score: clampPower(powerScore),
             app_role: "member",
             base_salary: canViewSalary ? newSalary : 0,
             start_date: startDateValue,
@@ -395,7 +457,7 @@ export function EmployeesClient({
       <PageHeader
         eyebrow="Workspace · Team"
         title="Quản lý nhân sự"
-        subtitle="KPI tổng + phân bố theo role + bảng/grid danh sách thành viên với tải, lương và lịch sử."
+        subtitle="Chức danh, level, lực chiến và tải — hỗ trợ phân bổ đúng người đúng chỗ."
         actions={
           <Button variant="brand" onClick={openNew}>
             <UserPlus />
@@ -408,8 +470,8 @@ export function EmployeesClient({
       <div
         className={
           canViewSalary
-            ? "grid grid-cols-2 gap-3 lg:grid-cols-5"
-            : "grid grid-cols-2 gap-3 lg:grid-cols-4"
+            ? "grid grid-cols-2 gap-3 lg:grid-cols-6"
+            : "grid grid-cols-2 gap-3 lg:grid-cols-5"
         }
       >
         <KpiCard
@@ -418,6 +480,13 @@ export function EmployeesClient({
           hint={`/ ${profiles.length} tổng`}
           tone="indigo"
           icon={<Users size={14} />}
+        />
+        <KpiCard
+          label="Lực chiến TB"
+          value={Math.round(avgPower).toString()}
+          hint="Thang điểm 1–100"
+          tone="amber"
+          icon={<Flame size={14} />}
         />
         {canViewSalary && (
           <KpiCard
@@ -643,6 +712,8 @@ export function EmployeesClient({
               <SelectContent>
                 <SelectItem value="default">Mặc định</SelectItem>
                 <SelectItem value="name">Tên A→Z</SelectItem>
+                <SelectItem value="power_desc">Lực chiến cao→thấp</SelectItem>
+                <SelectItem value="power_asc">Lực chiến thấp→cao</SelectItem>
                 <SelectItem value="load_desc">Tải cao→thấp</SelectItem>
                 <SelectItem value="load_asc">Tải thấp→cao</SelectItem>
                 {canViewSalary && (
@@ -703,6 +774,8 @@ export function EmployeesClient({
               historyCount={historyCount(d.profile.id)}
               canViewSalary={canViewSalary}
               team={teamByUserId.get(d.profile.id) ?? null}
+              level={d.profile.level}
+              power={Number(d.profile.power_score) || 0}
               onEdit={() => openEdit(d.profile)}
               onDelete={() => remove(d.profile)}
             />
@@ -715,6 +788,7 @@ export function EmployeesClient({
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-5">Tên</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Level / LC</TableHead>
                 <TableHead>Team</TableHead>
                 {canViewSalary && (
                   <TableHead className="text-right">Lương / tháng</TableHead>
@@ -760,6 +834,13 @@ export function EmployeesClient({
                     </TableCell>
                     <TableCell>
                       <Badge variant="brand">{p.job_role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <PowerMeter
+                        level={p.level}
+                        power={Number(p.power_score) || 0}
+                        compact
+                      />
                     </TableCell>
                     <TableCell>
                       {teamByUserId.get(p.id) ? (
@@ -938,6 +1019,69 @@ export function EmployeesClient({
                         </SelectContent>
                       </Select>
                     </FieldControl>
+                  </Field>
+                </FieldGrid>
+
+                <FieldGrid>
+                  <Field>
+                    <Label>Level</Label>
+                    <Select value={level} onValueChange={onLevelChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LEVEL_OPTIONS.map((lv) => (
+                          <SelectItem key={lv} value={lv}>
+                            {lv}
+                            <span className="ml-2 text-[10px] text-muted-foreground">
+                              · LC {defaultPowerForLevel(lv)}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <div className="flex h-4 items-center justify-between gap-2">
+                      <Label htmlFor="power_score">Lực chiến</Label>
+                      <button
+                        type="button"
+                        className="text-[10px] text-teal-700 underline-offset-2 hover:underline dark:text-teal-300"
+                        onClick={() =>
+                          setPowerScore(defaultPowerForLevel(level))
+                        }
+                      >
+                        Reset theo level
+                      </button>
+                    </div>
+                    <FieldControl icon={<Flame />} suffix="/100">
+                      <Input
+                        id="power_score"
+                        name="power_score"
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={powerScore}
+                        onChange={(e) =>
+                          setPowerScore(clampPower(Number(e.target.value || 1)))
+                        }
+                        className="pl-10 pr-14"
+                      />
+                    </FieldControl>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${powerScore}%`,
+                          background:
+                            powerScore >= 70
+                              ? "#f59e0b"
+                              : powerScore >= 40
+                                ? "#14b8a6"
+                                : "#94a3b8",
+                        }}
+                      />
+                    </div>
                   </Field>
                 </FieldGrid>
 
@@ -1190,6 +1334,8 @@ function PersonCard({
   historyCount,
   canViewSalary,
   team,
+  level,
+  power,
   onEdit,
   onDelete,
 }: {
@@ -1201,6 +1347,8 @@ function PersonCard({
   historyCount: number;
   canViewSalary: boolean;
   team: { name: string; color: string } | null;
+  level?: string | null;
+  power: number;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1262,6 +1410,9 @@ function PersonCard({
                 Off
               </Badge>
             )}
+          </div>
+          <div className="mt-2">
+            <PowerMeter level={level} power={power} />
           </div>
           {profile.email && (
             <div className="mt-1 truncate text-xs text-muted-foreground">
