@@ -6,6 +6,7 @@ import {
   ForceFitBadge,
   ForceFitMini,
 } from "@/components/projects/ForceFitPanel";
+import { ProjectPortfolioTimeline } from "@/components/projects/ProjectPortfolioTimeline";
 import {
   forceFitTone,
   projectForceFit,
@@ -75,10 +76,12 @@ import {
   Activity,
   ArrowUpRight,
   Briefcase,
+  CalendarRange,
+  Download,
   Flame,
   Gauge,
+  LayoutGrid,
   MoreHorizontal,
-  Download,
   Pencil,
   Plus,
   Search,
@@ -162,6 +165,7 @@ export function ProjectsClient({
   const teams = appData?.teams ?? [];
 
   // Filters / sort
+  const [view, setView] = useState<"cards" | "timeline">("cards");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<
@@ -539,9 +543,37 @@ export function ProjectsClient({
       <PageHeader
         eyebrow="Workspace · Dự án"
         title="Portfolio dự án"
-        subtitle="Health (Staffing·Tiền·Tiến độ·Người), Fit team, P&L theo quyền."
+        subtitle="Health, Fit, P&L — và timeline để nhìn hạn / dự án không end."
         actions={
           <div className="flex flex-wrap gap-2">
+            <div className="inline-flex rounded-xl bg-muted/40 p-1 ring-1 ring-border/50">
+              <button
+                type="button"
+                onClick={() => setView("cards")}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition",
+                  view === "cards"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <LayoutGrid className="!size-3.5" />
+                Cards
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("timeline")}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition",
+                  view === "timeline"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <CalendarRange className="!size-3.5" />
+                Timeline
+              </button>
+            </div>
             <Button variant="secondary" size="sm" onClick={exportHealthCsv}>
               <Download className="!size-3.5" />
               Export CSV
@@ -693,28 +725,33 @@ export function ProjectsClient({
               </SelectContent>
             </Select>
 
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-              <SelectTrigger className="h-10 w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recent">Mới tạo trước</SelectItem>
-                <SelectItem value="name">Theo tên</SelectItem>
-                <SelectItem value="fit">Fit yếu → mạnh</SelectItem>
-                <SelectItem value="power">LC TB cao</SelectItem>
-                <SelectItem value="difficulty">Độ khó cao</SelectItem>
-                {canViewMoney && (
-                  <>
-                    <SelectItem value="profit">Lợi nhuận cao</SelectItem>
-                    <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
-                  </>
-                )}
-              </SelectContent>
-            </Select>
+            {view === "cards" && (
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                <SelectTrigger className="h-10 w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Mới tạo trước</SelectItem>
+                  <SelectItem value="name">Theo tên</SelectItem>
+                  <SelectItem value="fit">Fit yếu → mạnh</SelectItem>
+                  <SelectItem value="power">LC TB cao</SelectItem>
+                  <SelectItem value="difficulty">Độ khó cao</SelectItem>
+                  {canViewMoney && (
+                    <>
+                      <SelectItem value="profit">Lợi nhuận cao</SelectItem>
+                      <SelectItem value="spent">Đã tiêu nhiều</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
       )}
 
+      {view === "timeline" ? (
+        <ProjectPortfolioTimeline projects={filteredProjects} />
+      ) : (
       <TooltipProvider delayDuration={100}>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
         {projects.length === 0 && (
@@ -1031,6 +1068,7 @@ export function ProjectsClient({
         })}
       </div>
       </TooltipProvider>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">

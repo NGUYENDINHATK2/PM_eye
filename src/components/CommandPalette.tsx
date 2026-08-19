@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   Activity,
   Briefcase,
+  CalendarRange,
   LayoutDashboard,
   LineChart,
   Receipt,
@@ -31,6 +32,7 @@ const NAV: (Item & { roles?: string[] })[] = [
   { id: "nav-cap", label: "Capacity team", href: "/capacity", icon: Activity, group: "Điều hướng" },
   { id: "nav-emp", label: "Nhân sự", href: "/employees", icon: Users, group: "Điều hướng", roles: ["admin", "manager", "pm"] },
   { id: "nav-proj", label: "Dự án", href: "/projects", icon: Briefcase, group: "Điều hướng" },
+  { id: "nav-timeline", label: "Tiến độ dự án", href: "/timeline", icon: CalendarRange, group: "Điều hướng" },
   {
     id: "nav-alloc",
     label: "Phân bổ",

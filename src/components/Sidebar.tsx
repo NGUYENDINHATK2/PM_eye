@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   Activity,
   Briefcase,
+  CalendarRange,
   ChevronRight,
   Eye,
   LayoutDashboard,
@@ -68,6 +69,12 @@ const MENU_ITEMS: Item[] = [
     label: "Dự án",
     labelByRole: { member: "Dự án của tôi" },
     icon: Briefcase,
+  },
+  {
+    href: "/timeline",
+    label: "Tiến độ",
+    labelByRole: { member: "Tiến độ của tôi" },
+    icon: CalendarRange,
   },
   {
     href: "/allocations",
