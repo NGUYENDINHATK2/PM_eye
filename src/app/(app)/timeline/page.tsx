@@ -54,7 +54,7 @@ export default function TimelinePage() {
       <PageHeader
         eyebrow="Workspace · Tiến độ"
         title="Tiến độ dự án"
-        subtitle="Timeline toàn portfolio — hạn gần, quá hạn, dự án không end kéo dài."
+        subtitle="Gantt / List — zoom rõ ngày, cột còn lại, mốc end và dự án open-ended."
       />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
