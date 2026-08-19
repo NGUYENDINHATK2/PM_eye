@@ -16,6 +16,7 @@ import type {
   Project,
   ProjectPhase,
 } from "@/types/database";
+import { RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type Lane = Allocation[];
@@ -127,6 +128,8 @@ export function AllocationTimeline({
   startDate,
   endDate,
   onEditAllocation,
+  onReallocateProject,
+  reallocatingProjectId,
   groupBy = "person",
   density = "normal",
 }: {
@@ -137,6 +140,8 @@ export function AllocationTimeline({
   startDate: Date;
   endDate: Date;
   onEditAllocation?: (a: Allocation) => void;
+  onReallocateProject?: (project: Project) => void;
+  reallocatingProjectId?: string | null;
   groupBy?: GroupBy;
   density?: Density;
 }) {
@@ -346,8 +351,14 @@ export function AllocationTimeline({
           {/* Rows */}
           <div className="divide-y">
             {rows.map((row, idx) => {
+              const extraRail =
+                row.kind === "project" &&
+                onReallocateProject &&
+                row.lanes.length > 0
+                  ? 18
+                  : 0;
               const rowHeight = Math.max(
-                sizes.rowMin,
+                sizes.rowMin + extraRail,
                 sizes.padTop +
                   Math.max(1, row.lanes.length) * sizes.laneStep +
                   (sizes.padBot - (sizes.laneStep - sizes.barH))
@@ -376,6 +387,8 @@ export function AllocationTimeline({
                         project={row.project}
                         allocations={allocations}
                         profilesById={profilesById}
+                        onReallocate={onReallocateProject}
+                        reallocating={reallocatingProjectId === row.project.id}
                       />
                     )}
                   </div>
@@ -639,15 +652,21 @@ function ProjectRail({
   project,
   allocations,
   profilesById,
+  onReallocate,
+  reallocating,
 }: {
   project: Project;
   allocations: Allocation[];
   profilesById: Map<string, Profile>;
+  onReallocate?: (project: Project) => void;
+  reallocating?: boolean;
 }) {
   const today = new Date();
   const activeMembers = new Set<string>();
+  let allocCount = 0;
   for (const a of allocations) {
     if (a.project_id !== project.id) continue;
+    allocCount += 1;
     const s = new Date(a.start_date);
     const e = new Date(a.end_date);
     if (today >= s && today <= e) activeMembers.add(a.user_id);
@@ -667,25 +686,42 @@ function ProjectRail({
         }}
       />
       <div className="min-w-0 flex-1">
-        <div className="font-semibold text-sm truncate">{project.name}</div>
+        <div className="flex items-center gap-1.5">
+          <div className="font-semibold text-sm truncate">{project.name}</div>
+          <Badge
+            variant={
+              project.status === "ongoing"
+                ? "success"
+                : project.status === "paused"
+                ? "warning"
+                : project.status === "completed"
+                ? "secondary"
+                : "info"
+            }
+            className="shrink-0 text-[10px]"
+          >
+            {STATUS_LABEL_VI[project.status] ?? project.status}
+          </Badge>
+        </div>
         <div className="text-[10px] text-muted-foreground truncate">
           {activeMembers.size} người · {roles.size} role
         </div>
+        {onReallocate && allocCount > 0 && (
+          <button
+            type="button"
+            onClick={() => onReallocate(project)}
+            disabled={reallocating}
+            title="Xóa toàn bộ phân bổ nhân sự trên dự án này để gán lại"
+            className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-teal-600 hover:text-teal-700 disabled:opacity-50 dark:text-teal-400 dark:hover:text-teal-300"
+          >
+            <RotateCcw
+              size={10}
+              className={reallocating ? "animate-spin" : undefined}
+            />
+            {reallocating ? "Đang xóa..." : "Phân bổ lại"}
+          </button>
+        )}
       </div>
-      <Badge
-        variant={
-          project.status === "ongoing"
-            ? "success"
-            : project.status === "paused"
-            ? "warning"
-            : project.status === "completed"
-            ? "secondary"
-            : "info"
-        }
-        className="shrink-0 text-[10px]"
-      >
-        {STATUS_LABEL_VI[project.status] ?? project.status}
-      </Badge>
     </>
   );
 }

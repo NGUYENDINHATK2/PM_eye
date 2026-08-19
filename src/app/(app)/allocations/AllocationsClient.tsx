@@ -40,6 +40,7 @@ import {
   humanizeSupabaseError,
   toDateInput,
 } from "@/lib/utils";
+import { toast } from "sonner";
 import type {
   Allocation,
   Profile,
@@ -71,11 +72,14 @@ export function AllocationsClient({
   phases: ProjectPhase[];
   initialAllocations: Allocation[];
 }) {
-  const { data: appData } = useAppData();
+  const { data: appData, mutate } = useAppData();
   const role = appData?.user.role;
   const readOnly = role === "member";
   const supabase = createClient();
   const [allocations, setAllocations] = useState(initialAllocations);
+  const [reallocatingProjectId, setReallocatingProjectId] = useState<
+    string | null
+  >(null);
   useEffect(() => setAllocations(initialAllocations), [initialAllocations]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Allocation | null>(null);
@@ -254,6 +258,37 @@ export function AllocationsClient({
     if (!confirm("Xóa phân bổ này?")) return;
     await supabase.from("allocations").delete().eq("id", id);
     setAllocations((arr) => arr.filter((x) => x.id !== id));
+  }
+
+  async function reallocateProject(project: Project) {
+    if (readOnly) return;
+    if (reallocatingProjectId) return;
+    const count = allocations.filter((a) => a.project_id === project.id).length;
+    if (count === 0) return;
+    if (
+      !confirm(
+        `Phân bổ lại dự án “${project.name}”?\n\nSẽ xóa ${count} đợt phân bổ của toàn bộ member trên dự án này. Hành động không hoàn tác.`
+      )
+    ) {
+      return;
+    }
+
+    setReallocatingProjectId(project.id);
+    const { error: err } = await supabase
+      .from("allocations")
+      .delete()
+      .eq("project_id", project.id);
+    setReallocatingProjectId(null);
+    if (err) {
+      toast.error(humanizeSupabaseError(err.message));
+      return;
+    }
+    setAllocations((arr) => arr.filter((x) => x.project_id !== project.id));
+    mutate((prev) => ({
+      ...prev,
+      allocations: prev.allocations.filter((x) => x.project_id !== project.id),
+    }));
+    toast.success(`Đã xóa ${count} đợt phân bổ của “${project.name}”.`);
   }
 
   // Peak load của user trong khoảng allocation đang gõ — loại trừ allocation đang edit
@@ -554,6 +589,8 @@ export function AllocationsClient({
           startDate={timelineRange.start}
           endDate={timelineRange.end}
           onEditAllocation={readOnly ? undefined : openEdit}
+          onReallocateProject={readOnly ? undefined : reallocateProject}
+          reallocatingProjectId={reallocatingProjectId}
           groupBy={readOnly ? "person" : groupBy}
           density={density}
         />
